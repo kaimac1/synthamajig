@@ -1,0 +1,3 @@
+Except where otherwise stated, Copyright (c) 2024 kaimac.org. All rights reserved.
+
+Contains files that are Copyright (c) 2020 Raspberry Pi (Trading) Ltd, licensed under BSD 3-clause
