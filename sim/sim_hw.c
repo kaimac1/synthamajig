@@ -3,6 +3,7 @@
 #include "../src/hw/pinmap.h"
 #include "../src/gfx/ngl.h"
 #include "../src/common.h"
+#include "raylib.h"
 
 uint8_t led_value[NUM_LEDS];
 uint8_t btn_value[NUM_BUTTONS];
@@ -48,23 +49,20 @@ void delay_us_in_isr(uint32_t us) {
 
 void hw_scan_buttons(void) {
 
-    // // Stop scanning and blank LEDs while reading the buttons
-    // cancel_repeating_timer(&led_timer);
-    // gpio_init(PIN_LED0);
-    // gpio_init(PIN_LED1);
+    btn_value[BTN_SHIFT]    = IsKeyPressed(KEY_LEFT_SHIFT);
+    btn_value[BTN_SOFT_A]   = IsKeyPressed(KEY_O);
+    btn_value[BTN_TRACK]    = IsKeyPressed(KEY_ONE);
+    btn_value[BTN_VOICE]    = IsKeyPressed(KEY_TWO);
+    btn_value[BTN_PATTERN]  = IsKeyPressed(KEY_THREE);
+    btn_value[BTN_LEFT]     = IsKeyPressed(KEY_Q);
+    btn_value[BTN_RIGHT]    = IsKeyPressed(KEY_W);
+    btn_value[BTN_SOFT_B]   = IsKeyPressed(KEY_L);
+    btn_value[BTN_PLAY]     = IsKeyPressed(KEY_SPACE);
+    btn_value[BTN_REC]      = IsKeyPressed(KEY_R);
+    //btn_value[BTN_UNKN2]
+    btn_value[BTN_MENU]     = IsKeyPressed(KEY_M);
+    btn_value[BTN_KEYBOARD] = IsKeyPressed(KEY_K);
 
-    // for (int col=0; col<NUM_COLUMNS; col++) {
-    //     set_column(col);
-    //     sleep_us(2);
-    //     //delay_us_in_isr(2); // we should need this but don't for some reason
-    //     btn_value[col+8*0] = !gpio_get(PIN_BTN0);
-    //     btn_value[col+8*1] = !gpio_get(PIN_BTN1);
-    //     btn_value[col+8*2] = !gpio_get(PIN_BTN2);
-    //     btn_value[col+8*3] = !gpio_get(PIN_BTN3);
-    // }
-
-    // set_column(led_column);
-    // led_timer_start();
 }
 
 

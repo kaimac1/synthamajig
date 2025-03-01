@@ -108,7 +108,7 @@ void draw_text(int x, int y, uint8_t flags, const char* text) {
         }
     }
 
-    DrawText(text, xoffs, y, 10, DCOL);
+    DrawText(text, xoffs, y, 10, flags&TEXT_INVERT ? BLACK : DCOL);
 }
 
 void draw_textf(int x, int y, uint8_t flags, const char *fmt, ...) {
