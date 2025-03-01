@@ -3,10 +3,12 @@
 #include "../src/hw/pinmap.h"
 #include "../src/gfx/ngl.h"
 #include "../src/common.h"
+#include <stdio.h>
 #include "raylib.h"
 
 uint8_t led_value[NUM_LEDS];
 uint8_t btn_value[NUM_BUTTONS];
+static int knob_position[NUM_KNOBS];
 
 void oled_set_brightness(int brightness) {
     //
@@ -21,7 +23,7 @@ void hw_init(void) {
 
 int32_t read_knob(int encoder) {
     if ((encoder < 0) || (encoder > 4)) return 0;
-    return 1;
+    return knob_position[encoder];
 }
 
 
@@ -62,6 +64,14 @@ void hw_scan_buttons(void) {
     //btn_value[BTN_UNKN2]
     btn_value[BTN_MENU]     = IsKeyPressed(KEY_M);
     btn_value[BTN_KEYBOARD] = IsKeyPressed(KEY_K);
+
+    int knob = 0;
+    if (IsKeyDown(KEY_F2)) knob = 2;
+    if (IsKeyDown(KEY_F3)) knob = 3;
+    if (IsKeyDown(KEY_F4)) knob = 4;
+
+    float wheel = GetMouseWheelMove(); //-1,0,1
+    knob_position[knob] += wheel;
 
 }
 
