@@ -1,0 +1,2 @@
+gauge_arc.png
+gauge_test.png
