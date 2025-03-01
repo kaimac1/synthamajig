@@ -13,6 +13,10 @@
 uint8_t framebuffer[NGL_FRAMEBUFFER_SIZE];
 uint16_t font_index[FONT_CHARS];
 
+void ngl_init(void) {
+    build_font_index();
+}
+
 uint8_t *ngl_framebuffer(void) {
     return framebuffer;
 }

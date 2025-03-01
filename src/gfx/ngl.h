@@ -27,6 +27,8 @@ typedef struct {
 } nglBitmap;
 
 
+void ngl_init(void);
+
 // Get the framebuffer
 uint8_t *ngl_framebuffer(void);
 

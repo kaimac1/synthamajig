@@ -5,8 +5,6 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "pinmap.h"
-#include "pico/audio_i2s.h"
 
 #define NUM_KNOBS 4
 #define NUM_LEDS 16
@@ -50,6 +48,12 @@ typedef enum {
     BTN_KEYBOARD = 31
 } ButtonName;
 
+typedef struct {
+    uint16_t *samples;
+    uint32_t sample_count;
+} AudioBuffer;
+
+
 void hw_init(void);
 
 // Read one of the rotary encoders. Absolute (cumulative) value, can be positive or negative.
@@ -62,14 +66,16 @@ bool hw_read_button(int button);
 
 void hw_set_led(int led, uint8_t value);
 
+void hw_debug_led(bool value);
+
 // Microsecond delay which can be used in an interrupt service routine
 void delay_us_in_isr(uint32_t us);
 
 // Get audio buffer - blocks until one is available
-struct audio_buffer *get_audio_buffer(void);
+AudioBuffer get_audio_buffer(void);
 
 // Send out a previously got buffer
-void put_audio_buffer(struct audio_buffer *buf);
+void put_audio_buffer(AudioBuffer buffer);
 
 #ifdef __cplusplus
 }

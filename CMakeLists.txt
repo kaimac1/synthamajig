@@ -9,12 +9,27 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 include_directories(${CMAKE_CURRENT_LIST_DIR}/src)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/src/gfx)
 
 add_executable(synth
+    src/main.cpp
+
     src/hw/hw.c
     src/hw/oled.c
+    src/hw/perf.c
+
     src/gfx/ngl.c
-    src/main.c
+    src/gfx/gfx_ext.c
+    src/gfx/kmgui.c
+    
+    src/assets/assets.c
+
+    src/input.c
+    src/synth_common.c
+    src/keyboard.c
+    src/ui.cpp
+    src/track.cpp
+    src/instrument.cpp    
 )
 
 pico_generate_pio_header(synth ${CMAKE_CURRENT_LIST_DIR}/src/hw/quadrature_encoder.pio)

@@ -5,6 +5,7 @@
 #include "quadrature_encoder.pio.h"
 #include "hw.h"
 #include "oled.h"
+#include "pinmap.h"
 #include "audio.h"
 #include "gfx/ngl.h"
 #include "../common.h"
@@ -24,7 +25,9 @@ repeating_timer_t led_timer;
 int led_column;
 uint8_t led_value[NUM_LEDS];
 uint8_t btn_value[NUM_BUTTONS];
+
 struct audio_buffer_pool *audio_pool;
+struct audio_buffer *current_audio_buffer;
 
 
 void hw_init(void) {
@@ -59,6 +62,11 @@ int32_t read_knob(int encoder) {
 void hw_set_led(int led, uint8_t value) {
     int scaled = (value*value) >> 8;
     led_value[led] = scaled;
+}
+
+
+void hw_debug_led(bool value) {
+    gpio_put(PICO_LED_PIN, value);
 }
 
 
@@ -156,12 +164,23 @@ void hw_scan_buttons(void) {
 }
 
 
-struct audio_buffer *get_audio_buffer(void) {
-    struct audio_buffer *buf = take_audio_buffer(audio_pool, true);
-    return buf;
+AudioBuffer get_audio_buffer(void) {
+    // The Pico code uses audio_buffers but we don't want to expose that to
+    // the main application code
+    struct audio_buffer *abuf = take_audio_buffer(audio_pool, true);
+    current_audio_buffer = abuf;
+
+    AudioBuffer buffer;
+    buffer.samples = (uint16_t*)abuf->buffer->bytes;
+    buffer.sample_count = abuf->max_sample_count;
+    return buffer;
 }
 
 
-void put_audio_buffer(struct audio_buffer *buf) {
-    give_audio_buffer(audio_pool, buf);
+void put_audio_buffer(AudioBuffer buffer) {
+    current_audio_buffer->buffer->bytes = (uint8_t*)buffer.samples;
+    current_audio_buffer->sample_count = current_audio_buffer->max_sample_count;
+
+    give_audio_buffer(audio_pool, current_audio_buffer);
+    current_audio_buffer = NULL;
 }

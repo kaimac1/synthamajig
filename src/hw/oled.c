@@ -5,6 +5,7 @@
 #include "hardware/i2c.h"
 #include "hardware/dma.h"
 #include "hw.h"
+#include "pinmap.h"
 
 #define SH1107_I2C_ADDR            0x3C
 #define SH1107_SET_MEM_MODE        0x20
