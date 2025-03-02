@@ -8,16 +8,16 @@
 
 uint8_t led_value[NUM_LEDS];
 uint8_t btn_value[NUM_BUTTONS];
-static int knob_position[NUM_KNOBS];
+
+int knob_position[NUM_KNOBS] = {1,1,1,1};
+uint16_t samplebuffer[512];
 
 void oled_set_brightness(int brightness) {
-    //
+    // not implemented
 }
 
 void hw_init(void) {
-
     //oled_init(ngl_framebuffer());
-
 }
 
 
@@ -34,7 +34,7 @@ void hw_set_led(int led, uint8_t value) {
 
 
 void hw_debug_led(bool value) {
-
+    // not implemented
 }
 
 
@@ -44,8 +44,7 @@ bool hw_read_button(int button) {
 
 
 void delay_us_in_isr(uint32_t us) {
-    //int64_t now = get_absolute_time();
-    //while (get_absolute_time() - now < us);
+    // not implemented
 }
 
 
@@ -66,9 +65,9 @@ void hw_scan_buttons(void) {
     btn_value[BTN_KEYBOARD] = IsKeyPressed(KEY_K);
 
     int knob = 0;
-    if (IsKeyDown(KEY_F2)) knob = 2;
-    if (IsKeyDown(KEY_F3)) knob = 3;
-    if (IsKeyDown(KEY_F4)) knob = 4;
+    if (IsKeyDown(KEY_F2)) knob = 1;
+    if (IsKeyDown(KEY_F3)) knob = 2;
+    if (IsKeyDown(KEY_F4)) knob = 3;
 
     float wheel = GetMouseWheelMove(); //-1,0,1
     knob_position[knob] += wheel;
@@ -76,10 +75,11 @@ void hw_scan_buttons(void) {
 }
 
 
+
 AudioBuffer get_audio_buffer(void) {
     AudioBuffer buffer;
-    buffer.samples = NULL;
-    buffer.sample_count = 0;
+    buffer.samples = &samplebuffer[0];
+    buffer.sample_count = 256;
     return buffer;
 }
 

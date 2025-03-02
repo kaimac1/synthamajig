@@ -127,6 +127,7 @@ void Track::fill_buffer(AudioBuffer buffer) {
 Voice::Voice() {}
 
 int Voice::next_note_idx() {
+    if (pattern.length == 0) return 0;
     return (step + 1) % pattern.length;
 }
 
@@ -153,7 +154,6 @@ void Voice::schedule() {
         next_note.off_time = next_note.on_time + len;
         step_on = false;
     }
-
 }
 
 void Voice::play(bool start) {

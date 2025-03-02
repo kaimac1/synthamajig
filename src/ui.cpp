@@ -372,7 +372,7 @@ void ui_drawdebug(void) {
     //draw_textf(0,0,0,"%.1f fps", fps_display);
     draw_textf(127,115,TEXT_ALIGN_RIGHT,"draw %d", perf_get(PERF_DRAWTIME));
 
-    ngl_bitmap(16,16, gauge_test);
+    //ngl_bitmap(16,16, gauge_test);
 
     #ifdef DEBUG_AMPLITUDE
     draw_textf(64,64,TEXT_CENTRE,"(%d, %d)", samplemin, samplemax);

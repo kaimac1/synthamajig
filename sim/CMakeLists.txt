@@ -13,6 +13,7 @@ add_executable(${PROJECT_NAME}
     sim_perf.c
 
     ../src/input.c
+    ../src/audio.cpp
     ../src/track.cpp
     ../src/ui.cpp
     ../src/instrument.cpp

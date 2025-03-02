@@ -3,23 +3,15 @@
 #include "ngl.h"
 #include "raylib.h"
 
-const int scaling = 4;
-const int displayWidth = NGL_DISPLAY_WIDTH;
-const int displayHeight = NGL_DISPLAY_HEIGHT;
-const int windowWidth = displayWidth * scaling;
-const int windowHeight = displayHeight * scaling;
-
 #define DCOL ORANGE
 
 Camera2D camera;
 RenderTexture2D display;
 
 
-
 void ngl_init(void) {
-    InitWindow(windowWidth, windowHeight, "sim");
     camera.zoom = 1.0f;
-    display = LoadRenderTexture(displayWidth, displayHeight);
+    display = LoadRenderTexture(NGL_DISPLAY_WIDTH, NGL_DISPLAY_HEIGHT);
 }
 
 void ngl_sim_begin(void) {
@@ -30,18 +22,6 @@ void ngl_sim_end(void) {
     EndMode2D();
     EndTextureMode();
 }
-void ngl_sim_write(void) {
-    Rectangle sourceRec = {0.0f, 0.0f, (float)display.texture.width, -(float)display.texture.height};
-    Rectangle destRec = {0, 0, windowWidth, windowHeight};
-    Vector2 origin = {0.0f, 0.0f};
-
-    BeginDrawing();
-    BeginMode2D(camera);
-    DrawTexturePro(display.texture, sourceRec, destRec, origin, 0.0f, WHITE);
-    EndMode2D();
-    EndDrawing();
-}
-
 
 
 
