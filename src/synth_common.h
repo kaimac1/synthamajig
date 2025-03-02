@@ -93,11 +93,11 @@ typedef enum {
     WAVE_SAW,
     WAVE_NOISE,
     NUM_WAVE
-} Wave;
+} OscWave;
 
 typedef struct {
     // Parameters
-    Wave waveform;
+    OscWave waveform;
     float modifier;
     float detune;
     float gain;
