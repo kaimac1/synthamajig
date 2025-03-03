@@ -1,3 +1,5 @@
+// Raylib implementation of ngl API
+
 #include <stddef.h>
 #include <stdio.h>
 #include "ngl.h"
@@ -8,10 +10,16 @@
 Camera2D camera;
 RenderTexture2D display;
 
+Font font;
+const int font_size = 20;
+const int font_yoffset = -4;
+const float font_spacing = 0.0f;
+const char *font_file = "../assets/minipixel7.ttf";
 
 void ngl_init(void) {
     camera.zoom = 1.0f;
     display = LoadRenderTexture(NGL_DISPLAY_WIDTH, NGL_DISPLAY_HEIGHT);
+    font = LoadFontEx(font_file, font_size, NULL, 0);
 }
 
 void ngl_sim_begin(void) {
@@ -76,11 +84,11 @@ void build_font_index(void) {}
 
 void draw_text(int x, int y, uint8_t flags, const char* text) {
 
-    const int font_size = 10;
     int xoffs = x;
 
     if (flags & TEXT_CENTRE || flags & TEXT_ALIGN_RIGHT) {
-        int xlen = MeasureText(text, font_size);
+        Vector2 size = MeasureTextEx(font, text, font_size, font_spacing);
+        int xlen = size.x;
         if (flags & TEXT_CENTRE) {
             xoffs -= xlen/2;
         } else {
@@ -88,7 +96,8 @@ void draw_text(int x, int y, uint8_t flags, const char* text) {
         }
     }
 
-    DrawText(text, xoffs, y, 10, flags&TEXT_INVERT ? BLACK : DCOL);
+    Vector2 pos = {xoffs, y+font_yoffset};
+    DrawTextEx(font, text, pos, font_size, font_spacing, flags&TEXT_INVERT ? BLACK : DCOL);
 }
 
 void draw_textf(int x, int y, uint8_t flags, const char *fmt, ...) {
