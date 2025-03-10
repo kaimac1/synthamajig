@@ -10,7 +10,6 @@ uint8_t led_value[NUM_LEDS];
 uint8_t btn_value[NUM_BUTTONS];
 
 int knob_position[NUM_KNOBS] = {1,1,1,1};
-uint16_t samplebuffer[512];
 
 void oled_set_brightness(int brightness) {
     // not implemented
@@ -50,19 +49,36 @@ void delay_us_in_isr(uint32_t us) {
 
 void hw_scan_buttons(void) {
 
-    btn_value[BTN_SHIFT]    = IsKeyPressed(KEY_LEFT_SHIFT);
-    btn_value[BTN_SOFT_A]   = IsKeyPressed(KEY_O);
-    btn_value[BTN_TRACK]    = IsKeyPressed(KEY_ONE);
-    btn_value[BTN_VOICE]    = IsKeyPressed(KEY_TWO);
-    btn_value[BTN_PATTERN]  = IsKeyPressed(KEY_THREE);
-    btn_value[BTN_LEFT]     = IsKeyPressed(KEY_Q);
-    btn_value[BTN_RIGHT]    = IsKeyPressed(KEY_W);
-    btn_value[BTN_SOFT_B]   = IsKeyPressed(KEY_L);
-    btn_value[BTN_PLAY]     = IsKeyPressed(KEY_SPACE);
-    btn_value[BTN_REC]      = IsKeyPressed(KEY_R);
+    btn_value[BTN_STEP_1]  = IsKeyDown(KEY_A);
+    btn_value[BTN_STEP_2]  = IsKeyDown(KEY_S);
+    btn_value[BTN_STEP_3]  = IsKeyDown(KEY_D);
+    btn_value[BTN_STEP_4]  = IsKeyDown(KEY_F);
+    btn_value[BTN_STEP_5]  = IsKeyDown(KEY_G);
+    btn_value[BTN_STEP_6]  = IsKeyDown(KEY_H);
+    btn_value[BTN_STEP_7]  = IsKeyDown(KEY_J);
+    btn_value[BTN_STEP_8]  = IsKeyDown(KEY_K);
+    btn_value[BTN_STEP_9]  = IsKeyDown(161); // backslash \ on UK layout
+    btn_value[BTN_STEP_10] = IsKeyDown(KEY_Z);
+    btn_value[BTN_STEP_11] = IsKeyDown(KEY_X);
+    btn_value[BTN_STEP_12] = IsKeyDown(KEY_C);
+    btn_value[BTN_STEP_13] = IsKeyDown(KEY_V);
+    btn_value[BTN_STEP_14] = IsKeyDown(KEY_B);
+    btn_value[BTN_STEP_15] = IsKeyDown(KEY_N);
+    btn_value[BTN_STEP_16] = IsKeyDown(KEY_M);
+
+    btn_value[BTN_SHIFT]    = IsKeyDown(KEY_LEFT_SHIFT);
+    btn_value[BTN_SOFT_A]   = IsKeyDown(KEY_O);
+    btn_value[BTN_TRACK]    = IsKeyDown(KEY_ONE);
+    btn_value[BTN_VOICE]    = IsKeyDown(KEY_TWO);
+    btn_value[BTN_PATTERN]  = IsKeyDown(KEY_THREE);
+    btn_value[BTN_LEFT]     = IsKeyDown(KEY_Q);
+    btn_value[BTN_RIGHT]    = IsKeyDown(KEY_W);
+    btn_value[BTN_SOFT_B]   = IsKeyDown(KEY_L);
+    btn_value[BTN_PLAY]     = IsKeyDown(KEY_SPACE);
+    btn_value[BTN_REC]      = IsKeyDown(KEY_R);
     //btn_value[BTN_UNKN2]
-    btn_value[BTN_MENU]     = IsKeyPressed(KEY_M);
-    btn_value[BTN_KEYBOARD] = IsKeyPressed(KEY_K);
+    btn_value[BTN_MENU]     = IsKeyDown(KEY_Y);
+    btn_value[BTN_KEYBOARD] = IsKeyDown(KEY_T);
 
     int knob = 0;
     if (IsKeyDown(KEY_F2)) knob = 1;
@@ -77,10 +93,8 @@ void hw_scan_buttons(void) {
 
 
 AudioBuffer get_audio_buffer(void) {
-    AudioBuffer buffer;
-    buffer.samples = &samplebuffer[0];
-    buffer.sample_count = 256;
-    return buffer;
+    AudioBuffer x;
+    return x;
 }
 
 

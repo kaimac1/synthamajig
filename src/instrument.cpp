@@ -49,13 +49,13 @@ int32_t AcidBass::process() {
 
     // Modulation (testing)
     int gain = ISCALE;
-    int freq = note.freq;
+    uint32_t freq = note.freq;
     int newcutoff = cutoff;
     int newresonance = resonance;
-    const int depth_n = 3;  // scale numerator
-    const int depth_b = 3;  // denominator bits
-    int *dest = &gain;
-    //*dest += (lfo_wave*depth_n) >> depth_b;
+    // const int depth_n = 3;  // scale numerator
+    // const int depth_b = 3;  // denominator bits
+    // int *dest = &gain;
+    // //*dest += (lfo_wave*depth_n) >> depth_b;
     CLAMP(gain, 0, ISCALE*2);
     CLAMP(newcutoff, 0, 127);
     CLAMP(newresonance, 0, 127);
