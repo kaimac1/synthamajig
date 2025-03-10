@@ -30,7 +30,7 @@ void audio_callback(AudioBuffer buffer, RawInput input) {
 
     if (input_process(&audio_cb_input_state, input)) {
         // Change parameters via encoders
-        track.control_active_voice(&audio_cb_input_state);
+        track.control_active_channel(&audio_cb_input_state);
 
         play_notes_from_input(&audio_cb_input_state);
     }

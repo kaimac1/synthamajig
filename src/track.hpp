@@ -4,10 +4,10 @@
 
 #define DEFAULT_BPM 120
 #define DEFAULT_VOLUME 50
+#define NUM_CHANNELS 4
 
 #define MAX_VOLUME_LEVEL 4096
 #define AMPLITUDE_LIMIT 8192
-#define NUM_VOICES 4
 #define PATTERN_MAX_LEN 64
 #define GATE_LENGTH_BITS 7
 
@@ -31,9 +31,9 @@ typedef struct {
 
 
 
-class Voice {
+class Channel {
 public:
-    Voice();
+    Channel();
     void play(bool start);
     void schedule();
 
@@ -58,7 +58,7 @@ public:
     // Start/stop
     void play(bool start_playing);
 
-    void control_active_voice(InputState *input);
+    void control_active_channel(InputState *input);
 
     // Call frequently to ensure the next notes in the pattern are scheduled
     void schedule();
@@ -70,8 +70,8 @@ public:
     int bpm;
     bool is_playing;
     
-    Voice voice[NUM_VOICES];
-    int active_voice;
+    Channel channels[NUM_CHANNELS];
+    int active_channel;
 
 private:
     int bpm_old;

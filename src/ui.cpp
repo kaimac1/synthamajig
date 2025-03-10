@@ -12,7 +12,7 @@
 
 void ui_drawdebug(void);
 
-// Contains voices, parameters, pattern data
+// Contains channels, parameters, pattern data
 Track track;
 
 // Main state of the unit
@@ -35,7 +35,7 @@ UIState ui;
 bool keys_pressed;
 uint32_t last_note;         // Last played note freq, for entry into the pattern
 
-Voice *cur_voice;           // Pointers to the currently selected voice and pattern
+Channel *cur_channel;         // Pointers to the currently selected channel and pattern
 Pattern *cur_pattern;
 int step_cursor;            // The currently selected step
 int pattern_page;           // Which page of the pattern we can currently see
@@ -45,17 +45,17 @@ static void set_brightness(int level) {
     oled_set_brightness(25 * level);
 }
 
-// Change the current voice
-static void set_voice(int i) {
-    track.active_voice = i;
-    cur_voice = &track.voice[track.active_voice];
-    cur_pattern = &cur_voice->pattern;
+// Change the current channel
+static void set_channel(int i) {
+    track.active_channel = i;
+    cur_channel = &track.channels[track.active_channel];
+    cur_pattern = &cur_channel->pattern;
 }
 
 static void enable_keyboard(bool en) {
     gb.keyboard_enabled = en;
     if (!en) {
-        cur_voice->inst->silence();
+        cur_channel->inst->silence();
     }
 }
 
@@ -126,15 +126,15 @@ void pattern_view(void) {
     // }
 }
 
-void select_voice(void) {
+void select_channel(void) {
    for (int i=0; i<NUM_KEYS; i++) {
         int b = 0;
-        if (i < NUM_VOICES) b = 64;
-        if (i == track.active_voice) b = 255;
+        if (i < NUM_CHANNELS) b = 64;
+        if (i == track.active_channel) b = 255;
         hw_set_led(i, b);
 
-        if (btn_press(&gb_input, i) && i<NUM_VOICES) {
-            set_voice(i);
+        if (btn_press(&gb_input, i) && i<NUM_CHANNELS) {
+            set_channel(i);
         }
     }
 }
@@ -188,14 +188,14 @@ void ui_init(void) {
 
     track.reset();
     track.bpm = 120;
-    set_voice(0);
+    set_channel(0);
 
     // demo pattern
     #define PATTERN_LEN 16
     const int notes[PATTERN_LEN] = {32,32,37,32,35,39,35,32,42,39,46,47,32,49,39,49};
     const int    on[PATTERN_LEN] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
     const int accts[PATTERN_LEN] = { 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0};
-    Pattern *p = &track.voice[0].pattern;
+    Pattern *p = &track.channels[0].pattern;
     for (int i=0; i<PATTERN_LEN; i++) {
         p->step[i].on = on[i];
         p->step[i].gate_length = 96;
@@ -252,7 +252,7 @@ bool ui_process(RawInput in_raw) {
             
         }
 
-        // Voice
+        // Channel
         if (PRESSED(BTN_VOICE)) {
             ui.msg = MSG_SELECT_VOICE;
             gb.keyboard_inhibit = true;
@@ -297,7 +297,7 @@ bool ui_process(RawInput in_raw) {
 
         switch (ui.page) {
         case PAGE_INSTRUMENT:
-            track.voice[track.active_voice].inst->draw();
+            track.channels[track.active_channel].inst->draw();
             break;
 
         case PAGE_DEBUG_MENU:
@@ -315,7 +315,7 @@ bool ui_process(RawInput in_raw) {
 
         switch (ui.msg) {
         case MSG_SELECT_VOICE:
-            select_voice();
+            select_channel();
             break;
         }
 
@@ -330,15 +330,15 @@ bool ui_process(RawInput in_raw) {
             uint8_t led = LED_OFF;
             
             if (ui.leds == LEDS_SHOW_VOICES) {
-                // Show gates of each voice
-                if (i < NUM_VOICES) {
-                    if (track.voice[i].inst->gate) led = LED_ON;
+                // Show gates of each channel
+                if (i < NUM_CHANNELS) {
+                    if (track.channels[i].inst->gate) led = LED_ON;
                 }
             } else if (ui.leds == LEDS_SHOW_STEPS) {
                 int pidx = pattern_page*NUM_KEYS + i;
                 if (cur_pattern->step[pidx].on && pidx < cur_pattern->length) led = LED_DIM;
                 if (gb.playing) {
-                    if (cur_voice->step == pidx) led = LED_ON;
+                    if (cur_channel->step == pidx) led = LED_ON;
                 }
             }
             hw_set_led(i, led);
@@ -356,10 +356,10 @@ void ui_drawdebug(void) {
     if (gb.recording) strcat(buf, "Rec ");
     if (gb.keyboard_enabled) strcat(buf, "Kb ");
 
-    draw_textf(0,0,0, "%sVoice%d", buf, track.active_voice+1);
+    draw_textf(0,0,0, "%sCh%d", buf, track.active_channel+1);
     //draw_textf(70,0,0, "P%02d", track.pattern_idx+1);
     draw_textf(127,0,TEXT_ALIGN_RIGHT, "%d/%d",
-        track.voice[track.active_voice].step+1, track.voice[track.active_voice].pattern.length);
+        track.channels[track.active_channel].step+1, track.channels[track.active_channel].pattern.length);
     
     // audio CPU usage
     int64_t time_audio_us = perf_get(PERF_AUDIO);
@@ -379,7 +379,7 @@ void ui_drawdebug(void) {
 }
 
 
-// Play live notes on the active voice from the keys
+// Play live notes on the active channel from the keys
 // For low latency this is called from within the audio context
 void play_notes_from_input(InputState *input) {
     static int current_key = -1;
@@ -403,11 +403,11 @@ void play_notes_from_input(InputState *input) {
             int note = map(b, shift);
             if (note > 0) {
                 uint32_t freq = note_table[note];
-                cur_voice->inst->note.trigger = 1;
-                cur_voice->inst->note.accent = btn_down(input, BTN_SHIFT);
-                cur_voice->inst->note.glide = 0;
-                cur_voice->inst->gate = 1;
-                cur_voice->inst->note.freq = freq;
+                cur_channel->inst->note.trigger = 1;
+                cur_channel->inst->note.accent = btn_down(input, BTN_SHIFT);
+                cur_channel->inst->note.glide = 0;
+                cur_channel->inst->gate = 1;
+                cur_channel->inst->note.freq = freq;
 
                 // Store last played note for the sequencer
                 last_note = freq;
@@ -419,7 +419,7 @@ void play_notes_from_input(InputState *input) {
         for (int b=0; b<NUM_KEYS; b++) {
             if (input->button_state[b] == BTN_RELEASED) {
                 if (current_key == b) {
-                    cur_voice->inst->gate = 0;
+                    cur_channel->inst->gate = 0;
                 }
             }
         }

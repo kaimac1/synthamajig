@@ -27,23 +27,23 @@ void Track::reset() {
     bpm_old = 0;
     set_volume_percent(DEFAULT_VOLUME);
 
-    voice[0].inst = &acid;
-    voice[0].inst->init();
-    voice[1].inst = &testsynth;
-    voice[1].inst->init();
-    voice[2].inst = &empty_inst;
-    voice[3].inst = &empty_inst;   
+    channels[0].inst = &acid;
+    channels[0].inst->init();
+    channels[1].inst = &testsynth;
+    channels[1].inst->init();
+    channels[2].inst = &empty_inst;
+    channels[3].inst = &empty_inst;   
     
-    active_voice = 0;
-    for (int v=0; v<NUM_VOICES; v++) {
-        voice[v].next_note.off_time = 1;
+    active_channel = 0;
+    for (int v=0; v<NUM_CHANNELS; v++) {
+        channels[v].next_note.off_time = 1;
     }
 }
 
 void Track::play(bool start_playing) {
     is_playing = start_playing;
-    for (int v=0; v<NUM_VOICES; v++) {
-        voice[v].play(start_playing);
+    for (int v=0; v<NUM_CHANNELS; v++) {
+        channels[v].play(start_playing);
     } 
 }
 
@@ -61,17 +61,17 @@ void Track::schedule() {
         bpm_old = bpm;
     }
 
-    // Schedule next note for each voice
+    // Schedule next note for each channel
     if (is_playing) {
-        for (int v=0; v<NUM_VOICES; v++) {
-            voice[v].schedule();
+        for (int v=0; v<NUM_CHANNELS; v++) {
+            channels[v].schedule();
         }
     }
 }
 
-void Track::control_active_voice(InputState *input) {
-    if (voice[active_voice].inst) {
-        voice[active_voice].inst->control(input);
+void Track::control_active_channel(InputState *input) {
+    if (channels[active_channel].inst) {
+        channels[active_channel].inst->control(input);
     }
 }
 
@@ -89,16 +89,16 @@ void Track::fill_buffer(AudioBuffer buffer) {
         // then combine
 
         int32_t sample = 0;
-        for (int v=0; v<NUM_VOICES; v++) {
-            if (sampletick == voice[v].next_note.on_time) {
-                voice[v].inst->gate = voice[v].next_note.note.trigger; // NOTE: trigger becomes gate
-                voice[v].inst->note = voice[v].next_note.note;
-            } else if (sampletick == voice[v].next_note.off_time) {
-                voice[v].inst->gate = 0;
-                voice[v].inst->note.trigger = 0;
+        for (int v=0; v<NUM_CHANNELS; v++) {
+            if (sampletick == channels[v].next_note.on_time) {
+                channels[v].inst->gate = channels[v].next_note.note.trigger; // NOTE: trigger becomes gate
+                channels[v].inst->note = channels[v].next_note.note;
+            } else if (sampletick == channels[v].next_note.off_time) {
+                channels[v].inst->gate = 0;
+                channels[v].inst->note.trigger = 0;
             }
 
-            sample += voice[v].inst->process();
+            sample += channels[v].inst->process();
         }
 
 
@@ -124,14 +124,14 @@ void Track::fill_buffer(AudioBuffer buffer) {
 
 
 
-Voice::Voice() {}
+Channel::Channel() {}
 
-int Voice::next_note_idx() {
+int Channel::next_note_idx() {
     if (pattern.length == 0) return 0;
     return (step + 1) % pattern.length;
 }
 
-void Voice::schedule() {
+void Channel::schedule() {
 
     if (!step_on && sampletick > next_step_time) {
         // Increment step
@@ -156,7 +156,7 @@ void Voice::schedule() {
     }
 }
 
-void Voice::play(bool start) {
+void Channel::play(bool start) {
 
     if (start) {
         step = 0;
