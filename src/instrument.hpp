@@ -10,7 +10,7 @@ public:
     Instrument() {}
     virtual void init() {}
     virtual int32_t process() { return 0; }
-    virtual void control(Input *input) {}
+    virtual void control(InputState *input) {}
     virtual void draw() {}
     virtual void silence() { gate = 0; }
 
@@ -37,7 +37,7 @@ public:
     AcidBass();
     void init();
     int32_t process();
-    void control(Input *input);
+    void control(InputState *input);
     void draw(void);
 
 private:
@@ -68,7 +68,7 @@ public:
     TestSynth();
     void init();
     int32_t process();
-    void control(Input *input);
+    void control(InputState *input);
     void draw(void);
 
 private:

@@ -1,9 +1,9 @@
 #include "input.h"
 #include <stdio.h>
 
-Input input_get(void) {
+RawInput input_read(void) {
 
-    Input input;
+    RawInput input;
 
     for (int i=0; i<NUM_KNOBS; i++) {
         input.knob_raw[i] = read_knob(i);
@@ -28,36 +28,39 @@ Input input_get(void) {
     return input;
 }
 
-int update_button_state(int state, bool raw) {
+static int update_button_state(int state, bool down) {
     int new = state;
+
     switch (state) {
     case BTN_UP:
-        if (raw) new = BTN_PRESSED;
+        if (down) new = BTN_PRESSED;
         break;
     case BTN_PRESSED:
-        new = raw ? BTN_DOWN : BTN_RELEASED;
+        new = down ? BTN_DOWN : BTN_RELEASED;
         break;
     case BTN_DOWN:
-        if (!raw) new = BTN_RELEASED;
+        if (!down) new = BTN_RELEASED;
         break;
     case BTN_RELEASED:
-        new = raw ? BTN_PRESSED : BTN_UP;
+        new = down ? BTN_PRESSED : BTN_UP;
         break;
     }
     return new;
 }
 
-bool input_detect_events(Input *input, Input input_prev) {
+bool input_process(InputState *input_state, RawInput in) {
 
     bool changed = false;
 
     for (int i=0; i<NUM_KNOBS; i++) {
-        input->knob_delta[i] = input->knob_raw[i] - input_prev.knob_raw[i];
-        changed |= (input->knob_delta[i] != 0);
+        input_state->knob_delta[i] = input_state->knob_angle[i] - in.knob_raw[i];
+        input_state->knob_angle[i] = in.knob_raw[i];
+        changed |= (input_state->knob_delta[i] != 0);
     }
     for (int i=0; i<NUM_BUTTONS; i++) {
-        input->button_state[i] = update_button_state(input_prev.button_state[i], input->button_raw[i]);
-        changed |= (input->button_state[i] != input_prev.button_state[i]);
+        int new_state = update_button_state(input_state->button_state[i], in.button_raw[i]);
+        changed |= (new_state != input_state->button_state[i]);
+        input_state->button_state[i] = new_state;
     }
 
     return changed;

@@ -21,13 +21,13 @@ const int windowWidth = NGL_DISPLAY_WIDTH * display_scale;
 const int windowHeight = display_height + 64;
 Camera2D window_camera;
 
-Input global_input;
+RawInput global_raw_input;
 
 void raylib_audio_callback(void *buffer, unsigned int frames) {
     AudioBuffer abuf;
     abuf.samples = (uint16_t*)buffer;
     abuf.sample_count = frames;
-    audio_callback(abuf, global_input);
+    audio_callback(abuf, global_raw_input);
 }
 
 
@@ -76,10 +76,10 @@ int main(void) {
         ngl_sim_begin();
 
         // We can't read the inputs in the audio callback with raylib, so read it here
-        global_input = input_get();
+        global_raw_input = input_read();
         audio_wait();
         
-        ui_process(global_input);
+        ui_process(global_raw_input);
     
         // DrawText("Congrats! You created your first window!", 16, 16, 20, DCOL);
         // ngl_setpixel(0,0, 1);

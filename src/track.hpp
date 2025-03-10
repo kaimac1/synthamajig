@@ -58,7 +58,7 @@ public:
     // Start/stop
     void play(bool start_playing);
 
-    void control_active_voice(Input *input);
+    void control_active_voice(InputState *input);
 
     // Call frequently to ensure the next notes in the pattern are scheduled
     void schedule();

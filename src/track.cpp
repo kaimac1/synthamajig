@@ -69,7 +69,7 @@ void Track::schedule() {
     }
 }
 
-void Track::control_active_voice(Input *input) {
+void Track::control_active_voice(InputState *input) {
     if (voice[active_voice].inst) {
         voice[active_voice].inst->control(input);
     }

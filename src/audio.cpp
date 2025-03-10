@@ -7,12 +7,17 @@
 
 extern Track track;
 
+// The main code and the audio callback use the same RawInput data which is read once per frame,
+// but they (potentially) process this data at different rates, so they each have their own InputState.
+// The audio_cb InputState is used to control/play the active channel with minimal latency.
+static InputState audio_cb_input_state;
+
 struct {
     volatile bool audio_done;
-    Input input;
+    RawInput input;
 } shared;
 
-Input audio_wait(void) {
+RawInput audio_wait(void) {
     // TODO: redo this properly
     // Wait for end of audio task
     while (!shared.audio_done);
@@ -20,17 +25,14 @@ Input audio_wait(void) {
     return shared.input;
 }
 
-void audio_callback(AudioBuffer buffer, Input input) {
-    static Input input_prev;
-
+void audio_callback(AudioBuffer buffer, RawInput input) {
     perf_start(PERF_AUDIO);
 
-    if (input_detect_events(&input, input_prev)) {
-        input_prev = input;
+    if (input_process(&audio_cb_input_state, input)) {
         // Change parameters via encoders
-        track.control_active_voice(&input);
+        track.control_active_voice(&audio_cb_input_state);
 
-        play_notes_from_input(&input);
+        play_notes_from_input(&audio_cb_input_state);
     }
 
     // Sample generation

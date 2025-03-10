@@ -15,7 +15,7 @@
 // - Update parameters for current voice
 // - Generate audio
 extern "C" void audio_dma_callback(void) {
-    Input input = input_get();
+    RawInput input = input_read();
     AudioBuffer buffer = get_audio_buffer();
     audio_callback(buffer, input);
     put_audio_buffer(buffer);
@@ -30,11 +30,11 @@ int main() {
     bool update_display = true;
     while (1) {
         // Wait for audio generation to finish, get input data
-        Input input = audio_wait();
+        RawInput raw_input = audio_wait();
 
         // Update device state & draw UI
         //time_loop_us = perf_loop(PERF_MAINLOOP);
-        if (ui_process(input)) {
+        if (ui_process(raw_input)) {
             update_display = true;
         }
 

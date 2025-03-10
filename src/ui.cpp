@@ -29,7 +29,7 @@ Groovebox gb = {
     .brightness = 1
 };
 
-Input gb_input, gb_input_prev;
+InputState gb_input;
 UIState ui;
 
 bool keys_pressed;
@@ -213,15 +213,13 @@ void ui_init(void) {
 #define RELEASED(btn) btn_release(&gb_input, (btn))
 #define SHIFT_PRESSED(mod, btn) (btn_down(&gb_input, (mod)) && btn_press(&gb_input, (btn)))
 
-bool ui_process(Input in) {
+bool ui_process(RawInput in_raw) {
 
     bool update = false;
-    gb_input = in;
 
     track.schedule();   // Run sequencer
 
-    if (input_detect_events(&gb_input, gb_input_prev)) {
-        gb_input_prev = gb_input;
+    if (input_process(&gb_input, in_raw)) {
         update = true;
 
         for (int i=0; i<NUM_KEYS; i++) {
@@ -383,13 +381,13 @@ void ui_drawdebug(void) {
 
 // Play live notes on the active voice from the keys
 // For low latency this is called from within the audio context
-void play_notes_from_input(Input *input) {
+void play_notes_from_input(InputState *input) {
     static int current_key = -1;
 
     if (!gb.keyboard_enabled || gb.keyboard_inhibit) return;
 
-    bool oct_dn = input->button_raw[BTN_LEFT];
-    bool oct_up = input->button_raw[BTN_RIGHT];
+    bool oct_dn = btn_down(input, BTN_LEFT);
+    bool oct_up = btn_down(input, BTN_RIGHT);
     int shift = oct_up - oct_dn;
 
     int (*map)(int, int) = keymap_pentatonic_linear;
@@ -406,7 +404,7 @@ void play_notes_from_input(Input *input) {
             if (note > 0) {
                 uint32_t freq = note_table[note];
                 cur_voice->inst->note.trigger = 1;
-                cur_voice->inst->note.accent = input->button_raw[BTN_SHIFT];
+                cur_voice->inst->note.accent = btn_down(input, BTN_SHIFT);
                 cur_voice->inst->note.glide = 0;
                 cur_voice->inst->gate = 1;
                 cur_voice->inst->note.freq = freq;

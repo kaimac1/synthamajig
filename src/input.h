@@ -12,33 +12,40 @@ typedef enum {
 } ButtonState;
 
 typedef struct {
-    // Raw cumulative angle of an encoder.
-    // Not a meaningful value - use knob_delta instead.
+    // Cumulative angle of an encoder
     int knob_raw[NUM_KNOBS];
-    // Switch open/closed state.
+    // Switch open/closed state
     bool button_raw[NUM_BUTTONS];
+} RawInput;
 
+typedef struct {
+    // Cumulative angle, needed to compute knob_delta - not a meaningful value on its own
+    int knob_angle[NUM_KNOBS];
     // Difference in value (+/-) since last input
     int knob_delta[NUM_KNOBS];
-    // See ButtonState enum. Use to detect press/release events
+    // See ButtonState enum
     int button_state[NUM_BUTTONS];
-} Input;
+} InputState;
+
+
 
 // Read raw values from encoders/buttons
-Input input_get(void);
+RawInput input_read(void);
 
-// Returns true if inputs have changed
-// Updates knob_delta and button_state
-bool input_detect_events(Input *input, Input input_prev);
+// Update input_state based on input_raw
+// Returns true if input states have changed
+bool input_process(InputState *input_state, RawInput input_raw);
 
-inline bool btn_down(Input *input, int btn) {
-    return input->button_raw[btn];
+
+inline bool btn_down(InputState *input, int btn) {
+    return ((input->button_state[btn] == BTN_PRESSED) || (input->button_state[btn] == BTN_DOWN));
 }
 
-inline bool btn_press(Input *input, int btn) {
+inline bool btn_press(InputState *input, int btn) {
     return input->button_state[btn] == BTN_PRESSED;
 }
-inline bool btn_release(Input *input, int btn) {
+
+inline bool btn_release(InputState *input, int btn) {
     return input->button_state[btn] == BTN_RELEASED;
 }
 

@@ -1,5 +1,5 @@
 #pragma once
 #include "input.h"
 
-Input audio_wait(void);
-void audio_callback(AudioBuffer buffer, Input input);
+RawInput audio_wait(void);
+void audio_callback(AudioBuffer buffer, RawInput input);

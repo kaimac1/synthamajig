@@ -83,7 +83,7 @@ int32_t AcidBass::process() {
 }
 
 
-void AcidBass::control(Input *in) {
+void AcidBass::control(InputState *in) {
 
     switch (ui.inst_page) {
     case INSTRUMENT_PAGE_OSC:
@@ -184,7 +184,7 @@ int32_t TestSynth::process() {
 }
 
 
-void TestSynth::control(Input *in) {
+void TestSynth::control(InputState *in) {
 
     switch (ui.inst_page) {
     case INSTRUMENT_PAGE_OSC:

@@ -46,10 +46,10 @@ extern UIState ui;
 void ui_init(void);
 
 // Returns whether a redraw is needed
-bool ui_process(Input input);
+bool ui_process(RawInput input);
 
 void ui_draw(void);
 
 // Play live notes on active instrument from the keys
-void play_notes_from_input(Input *input);
+void play_notes_from_input(InputState *input);
 
