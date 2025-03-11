@@ -15,7 +15,7 @@ add_executable(${PROJECT_NAME}
     ../src/input.c
     ../src/audio.cpp
     ../src/track.cpp
-    ../src/ui.cpp
+    ../src/userinterface.cpp
     ../src/instrument.cpp
     ../src/synth_common.c
     ../src/keyboard.c

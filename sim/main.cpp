@@ -1,7 +1,7 @@
 #include "raylib.h"
 #include "ngl.h"
 #include "../src/input.h"
-#include "../src/ui.hpp"
+#include "../src/userinterface.hpp"
 #include "../src/assets/assets.h"
 #include "../src/audio.hpp"
 #include "../src/synth_common.h"
@@ -58,7 +58,9 @@ int main(void) {
     InitWindow(windowWidth, windowHeight, "sim");
     create_lookup_tables();
     ngl_init();
-    ui_init();
+
+    UI ui;
+    ui.init();
 
     // Change asset data to point to raylib Texture2Ds instead of OLED-friendly bitmaps
     // This is a manual step at this stage
@@ -79,7 +81,7 @@ int main(void) {
         global_raw_input = input_read();
         audio_wait();
         
-        ui_process(global_raw_input);
+        ui.process(global_raw_input);
     
         // DrawText("Congrats! You created your first window!", 16, 16, 20, DCOL);
         // ngl_setpixel(0,0, 1);
