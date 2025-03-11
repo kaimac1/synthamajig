@@ -75,6 +75,13 @@ void Track::schedule() {
     }
 }
 
+bool Track::get_channel_gate(int chan) {
+    if (channels[chan].type == CHANNEL_INSTRUMENT) {
+        return channels[chan].inst->gate;
+    }
+    return false;
+}
+
 void Track::control_active_channel(InputState *input) {
     if (channels[active_channel].inst) {
         channels[active_channel].inst->control(instrument_page, input);

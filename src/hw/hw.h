@@ -36,7 +36,7 @@ typedef enum {
     // 17 absent
     BTN_SOFT_A = 18,
     BTN_TRACK = 19,
-    BTN_VOICE = 20,
+    BTN_CHAN = 20,
     BTN_PATTERN = 21,
     // 22,23 absent
     BTN_LEFT = 24,

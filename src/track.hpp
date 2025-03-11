@@ -29,12 +29,12 @@ struct ScheduledNote {
     Note note;
 };
 
+// Channels can be sample channels, where each step can be an arbitrary sample,
+// or instrument channels, which play notes from a single instrument
 enum ChannelType {
     CHANNEL_SAMPLE,
     CHANNEL_INSTRUMENT
 };
-
-
 
 class Channel {
 public:
@@ -69,6 +69,8 @@ public:
     void fill_buffer(AudioBuffer buffer);
     void set_volume_percent(int vol);
     void enable_keyboard(bool en);
+
+    bool get_channel_gate(int chan);
     
     int bpm;
     bool is_playing;

@@ -6,11 +6,13 @@
 #define SBTN_FILTER     BTN_STEP_9
 #define SBTN_AMP        BTN_STEP_10
 
-enum UIPage {
-    PAGE_DEBUG_MENU,
-    PAGE_INSTRUMENT,
-    PAGE_TRACK,
-    PAGE_PATTERN
+enum UIView {
+    VIEW_DEBUG_MENU,
+    VIEW_INSTRUMENT,
+    VIEW_TRACK,
+    VIEW_PATTERN,
+    VIEW_CHANNELS,
+    VIEW_CHANNEL_MENU
 };
 
 enum UIMessage {
@@ -20,12 +22,11 @@ enum UIMessage {
 
 enum LEDMode {
     LEDS_OVERRIDDEN,
-    LEDS_SHOW_VOICES,
+    LEDS_SHOW_CHANNELS,
     LEDS_SHOW_STEPS
 };
 
 struct UIState {
-    UIPage page;
     UIMessage msg;
 };
 
@@ -35,15 +36,20 @@ public:
     void init();
     bool process(RawInput in);
 
-    void debug_menu();
+    void channel_overview();
+    void channel_menu();
     void pattern_view();
-    void select_channel();
-    void draw_debug_info();
     void track_page();
+    void debug_menu();
+    void draw_debug_info();
 
     InputState inputs {};
     int brightness {1}; // 0-10
     int volume_percent {50};
     bool recording {false};
-    LEDMode led_mode {LEDS_SHOW_VOICES};
+    LEDMode led_mode {LEDS_SHOW_CHANNELS};
+    UIView view;
+
+private:
+    void handle_channel_modes();
 };
