@@ -36,7 +36,7 @@ static int next_pattern_page(void) {
 
 // Get the step in the pattern corresponding to the given key.
 // May return null, as the key could be beyond the end of the pattern.
-static PatternStep *get_step_from_key(int key) {
+static Step *get_step_from_key(int key) {
     int stepidx = pattern_page*NUM_STEPKEYS + key;
     if (stepidx >= PATTERN.length) return NULL;
     return &PATTERN.step[stepidx];
@@ -276,7 +276,7 @@ void UI::pattern_view() {
         for (int i=0; i<NUM_STEPKEYS; i++) {
             if (recording) {
                 if (btn_press(&inputs, i)) {
-                    PatternStep *step = get_step_from_key(i);
+                    Step *step = get_step_from_key(i);
                     if (step) {
                         step->on ^= 1;
                         if (!shift && step->on) {

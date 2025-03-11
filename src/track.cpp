@@ -8,12 +8,8 @@
 // at 44.1kHz this uint32 value will overflow after 27 hours
 static uint32_t sampletick;
 
-Instrument empty_inst;
 AcidBass acid;
 TestSynth testsynth;
-
-int samples_between_notes;
-
 
 
 
@@ -23,12 +19,16 @@ void Track::reset() {
     bpm = DEFAULT_BPM;
     bpm_old = 0;
 
+    channels[0].type = CHANNEL_INSTRUMENT;
     channels[0].inst = &acid;
     channels[0].inst->init();
+
+    channels[1].type = CHANNEL_INSTRUMENT;
     channels[1].inst = &testsynth;
     channels[1].inst->init();
-    channels[2].inst = &empty_inst;
-    channels[3].inst = &empty_inst;   
+
+    channels[2].type = CHANNEL_SAMPLE;
+    channels[3].type = CHANNEL_SAMPLE;  
     
     active_channel = 0;
     for (int v=0; v<NUM_CHANNELS; v++) {
@@ -40,7 +40,7 @@ void Track::play(bool start_playing) {
     is_playing = start_playing;
     for (int v=0; v<NUM_CHANNELS; v++) {
         channels[v].play(start_playing);
-    } 
+    }
 }
 
 void Track::set_volume_percent(int vol) {
@@ -58,9 +58,12 @@ void Track::enable_keyboard(bool en) {
 }
 
 void Track::schedule() {
-    // BPM change
+    // Tempo change
     if (bpm != bpm_old) {
-        samples_between_notes = SAMPLE_RATE * 60.0f / (bpm * 4); // steps (sixteenth notes)
+        int sps = SAMPLE_RATE * 60.0f / (bpm * 4); // steps (sixteenth notes)
+        for (int v=0; v<NUM_CHANNELS; v++) {
+            channels[v].samples_per_step = sps;
+        }
         bpm_old = bpm;
     }
 
@@ -138,15 +141,17 @@ void Track::fill_buffer(AudioBuffer buffer) {
 
         int32_t sample = 0;
         for (int v=0; v<NUM_CHANNELS; v++) {
-            if (sampletick == channels[v].next_note.on_time) {
-                channels[v].inst->gate = channels[v].next_note.note.trigger; // NOTE: trigger becomes gate
-                channels[v].inst->note = channels[v].next_note.note;
-            } else if (sampletick == channels[v].next_note.off_time) {
-                channels[v].inst->gate = 0;
-                channels[v].inst->note.trigger = 0;
-            }
+            if (channels[v].type == CHANNEL_INSTRUMENT) {
+                if (sampletick == channels[v].next_note.on_time) {
+                    channels[v].inst->gate = channels[v].next_note.note.trigger; // NOTE: trigger becomes gate
+                    channels[v].inst->note = channels[v].next_note.note;
+                } else if (sampletick == channels[v].next_note.off_time) {
+                    channels[v].inst->gate = 0;
+                    channels[v].inst->note.trigger = 0;
+                }
 
-            sample += channels[v].inst->process();
+                sample += channels[v].inst->process();
+            }
         }
 
         sample = ((int64_t)(sample) * (int32_t)(volume)) >> 16;
@@ -181,7 +186,7 @@ void Channel::schedule() {
 
         // Now that we are in the "next" step, and it has started,
         // we can set the on_time for the next step
-        next_step_time += samples_between_notes;
+        next_step_time += samples_per_step;
         int nn = next_note_idx();
         if (pattern.step[nn].on) {
             next_note.on_time = next_step_time;        
@@ -192,7 +197,7 @@ void Channel::schedule() {
     } else if (step_on && sampletick > next_note.off_time) {
         // Step off time reached, set off time for the next step
         int nn = next_note_idx();
-        int len = (samples_between_notes * pattern.step[nn].gate_length) >> GATE_LENGTH_BITS;
+        int len = (samples_per_step * pattern.step[nn].gate_length) >> GATE_LENGTH_BITS;
         next_note.off_time = next_note.on_time + len;
         step_on = false;
     }
@@ -208,7 +213,7 @@ void Channel::play(bool start) {
 
         // Play first note immediately
         next_note.on_time = sampletick;
-        int len = (samples_between_notes * pattern.step[step].gate_length) >> GATE_LENGTH_BITS;
+        int len = (samples_per_step * pattern.step[step].gate_length) >> GATE_LENGTH_BITS;
         next_note.off_time = next_note.on_time + len;
         next_note.note = pattern.step[step].note;
     } else {

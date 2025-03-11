@@ -10,14 +10,15 @@
 #define PATTERN_MAX_LEN 64
 #define GATE_LENGTH_BITS 7
 
-struct PatternStep {
+
+struct Step {
     Note note;
-    uint8_t on;
+    bool on;
     uint8_t gate_length;
 };
 
 struct Pattern {
-    PatternStep step[PATTERN_MAX_LEN];
+    Step step[PATTERN_MAX_LEN];
     int length;
 };
 
@@ -28,6 +29,11 @@ struct ScheduledNote {
     Note note;
 };
 
+enum ChannelType {
+    CHANNEL_SAMPLE,
+    CHANNEL_INSTRUMENT
+};
+
 
 
 class Channel {
@@ -36,10 +42,12 @@ public:
     void play(bool start);
     void schedule();
 
+    ChannelType type;
     Instrument *inst;
     Pattern pattern;
     int step;
     ScheduledNote next_note;
+    int samples_per_step;
     
 private:
     int next_note_idx();
