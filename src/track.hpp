@@ -1,5 +1,5 @@
 #pragma once
-#include "synth_common.h"
+#include "synth_common.hpp"
 #include "instrument.hpp"
 
 #define DEFAULT_BPM 120
@@ -10,23 +10,23 @@
 #define PATTERN_MAX_LEN 64
 #define GATE_LENGTH_BITS 7
 
-typedef struct {
+struct PatternStep {
     Note note;
     uint8_t on;
     uint8_t gate_length;
-} PatternStep;
+};
 
-typedef struct {
+struct Pattern {
     PatternStep step[PATTERN_MAX_LEN];
     int length;
-} Pattern;
+};
 
 // Note data with a start and end time, sent to instrument
-typedef struct {
+struct ScheduledNote {
     uint32_t on_time;
     uint32_t off_time;
     Note note;
-} ScheduledNote;
+};
 
 
 
@@ -53,18 +53,12 @@ private:
 class Track {
 public:
     void reset();
-
-    // Start/stop
     void play(bool start_playing);
-
     void control_active_channel(InputState *input);
     void play_active_channel(InputState *input);
-
     // Call frequently to ensure the next notes in the pattern are scheduled
     void schedule();
-
     void fill_buffer(AudioBuffer buffer);
-
     void set_volume_percent(int vol);
     void enable_keyboard(bool en);
     

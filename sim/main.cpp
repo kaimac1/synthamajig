@@ -4,7 +4,7 @@
 #include "../src/userinterface.hpp"
 #include "../src/assets/assets.h"
 #include "../src/audio.hpp"
-#include "../src/synth_common.h"
+#include "../src/synth_common.hpp"
 #include <stdio.h>
 #include <math.h>
 

@@ -6,28 +6,28 @@
 #define SBTN_FILTER     BTN_STEP_9
 #define SBTN_AMP        BTN_STEP_10
 
-typedef enum {
+enum UIPage {
     PAGE_DEBUG_MENU,
     PAGE_INSTRUMENT,
     PAGE_TRACK,
     PAGE_PATTERN
-} UIPage;
+};
 
-typedef enum {
+enum UIMessage {
     MSG_NONE,
     MSG_SELECT_VOICE
-} UIMessage;
+};
 
-typedef enum {
+enum LEDMode {
     LEDS_OVERRIDDEN,
     LEDS_SHOW_VOICES,
     LEDS_SHOW_STEPS
-} LEDMode;
+};
 
-typedef struct {
+struct UIState {
     UIPage page;
     UIMessage msg;
-} UIState;
+};
 
 
 class UI {

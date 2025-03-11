@@ -1,7 +1,4 @@
 #pragma once
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -24,12 +21,12 @@ extern uint32_t note_table[128];
 
 
 // Note data sent from keyboard/sequencer/MIDI
-typedef struct {
+struct Note {
     uint32_t freq;
     bool trigger;
     bool accent;
     bool glide;    
-} Note;
+};
 
 
 
@@ -39,14 +36,14 @@ typedef struct {
 #define ENV_MAX INT32_MAX
 #define ENV_BITS 31
 
-typedef enum {
+enum EnvState {
     ENV_ATTACK,
     ENV_DECAY,
     ENV_SUSTAIN,
     ENV_RELEASE
-} EnvState;
+};
 
-typedef struct {
+struct ADSR {
     // Parameters
     uint32_t attack;
     uint32_t decay;
@@ -55,7 +52,7 @@ typedef struct {
     // State
     int32_t level;
     EnvState state;
-} ADSR;
+};
 
 int32_t process_adsr(ADSR *e, bool gate);
 int32_t map_attack(int param);
@@ -68,7 +65,7 @@ int32_t map_decay(int param);
 // State variable filter, second order (12 dB/oct)
 //
 
-typedef struct {
+struct SVFilterInt {
     uint32_t cutoff;
     uint32_t res;
     int32_t lp0;
@@ -77,7 +74,7 @@ typedef struct {
     int32_t lp;
     int32_t bp;
     int32_t hp;
-} SVFilterInt;
+};
 
 int32_t process_svfilter_int(SVFilterInt *f, int32_t in);
 uint32_t svfreq_map(uint32_t param);
@@ -87,15 +84,15 @@ uint32_t svfreq_map(uint32_t param);
 /************************************************/
 // Oscillators
 
-typedef enum {
+enum OscWave {
     WAVE_TRI,
     WAVE_SQUARE,
     WAVE_SAW,
     WAVE_NOISE,
     NUM_WAVE
-} OscWave;
+};
 
-typedef struct {
+struct Oscillator {
     // Parameters
     OscWave waveform;
     float modifier;
@@ -103,7 +100,7 @@ typedef struct {
     float gain;
     // State
     uint32_t phase;
-} Oscillator;
+};
 
 static inline int32_t polyblep(uint32_t t, uint32_t dt) {
 
@@ -131,7 +128,3 @@ static inline int32_t oscillator_saw(uint32_t phase, uint32_t dphase, uint32_t m
 
 int32_t oscillator_square(uint32_t phase, uint32_t dphase, uint32_t mod);
 
-
-#ifdef __cplusplus
-}
-#endif

@@ -3,7 +3,7 @@
 #include "hw/oled.h"
 #include "gfx/ngl.h"
 #include "input.h"
-#include "synth_common.h"
+#include "synth_common.hpp"
 
 #include "audio.hpp"
 #include "userinterface.hpp"

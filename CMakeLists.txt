@@ -25,8 +25,8 @@ add_executable(synth
     src/assets/assets.c
 
     src/input.c
-    src/synth_common.c
     src/keyboard.c
+    src/synth_common.cpp
     src/audio.cpp
     src/track.cpp
     src/instrument.cpp    

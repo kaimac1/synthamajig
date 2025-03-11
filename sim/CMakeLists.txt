@@ -17,7 +17,7 @@ add_executable(${PROJECT_NAME}
     ../src/track.cpp
     ../src/userinterface.cpp
     ../src/instrument.cpp
-    ../src/synth_common.c
+    ../src/synth_common.cpp
     ../src/keyboard.c
     ../src/gfx/kmgui.c
     ../src/gfx/gfx_ext.c

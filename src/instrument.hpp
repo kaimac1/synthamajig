@@ -1,14 +1,14 @@
 #pragma once
-#include "synth_common.h"
+#include "synth_common.hpp"
 #include "input.h"
 #include "gfx/ngl.h"
 #include "gfx/gfx_ext.h"
 
-typedef enum {
+enum InstrumentPage {
     INSTRUMENT_PAGE_OSC,
     INSTRUMENT_PAGE_AMP,
     INSTRUMENT_PAGE_FILTER
-} InstrumentPage;
+};
 
 
 // Base class for instruments

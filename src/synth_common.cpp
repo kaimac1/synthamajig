@@ -1,4 +1,4 @@
-#include "synth_common.h"
+#include "synth_common.hpp"
 #include "common.h"
 #include <math.h>
 
