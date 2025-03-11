@@ -4,35 +4,44 @@
 #include "hw/oled.h"
 #include "gfx/ngl.h"
 #include "gfx/kmgui.h"
+#include "assets/assets.h"
 #include <cstdio>
 #include <string.h>
 
-#include "assets/assets.h"
-
-
-static void set_channel(int i);
-void track_page(void);
-static void enable_keyboard(bool en);
-static int next_pattern_page(void);
-
-static void set_brightness(int level) {
-    oled_set_brightness(25 * level);
-}
-
-
+#define CHANNEL (track.channels[track.active_channel])
+#define PATTERN (CHANNEL.pattern)
 
 // Contains channels, instruments, parameters, pattern data
 Track track;
 
 UIState ui;
-
 bool keys_pressed;
-uint32_t last_note;         // Last played note freq, for entry into the pattern
-
-Channel *cur_channel;         // Pointers to the currently selected channel and pattern
-Pattern *cur_pattern;
-int step_cursor;            // The currently selected step
 int pattern_page;           // Which page of the pattern we can currently see
+
+
+
+
+static void set_brightness(int level) {
+    oled_set_brightness(25 * level);
+}
+
+static void set_channel(int ch) {
+    track.active_channel = ch;
+}
+
+static int next_pattern_page(void) {
+    int num_pages = (PATTERN.length + NUM_STEPKEYS-1) / NUM_STEPKEYS; // round up
+    return (pattern_page + 1) % num_pages;
+}
+
+// Get the step in the pattern corresponding to the given key.
+// May return null, as the key could be beyond the end of the pattern.
+static PatternStep *get_step_from_key(int key) {
+    int stepidx = pattern_page*NUM_STEPKEYS + key;
+    if (stepidx >= PATTERN.length) return NULL;
+    return &PATTERN.step[stepidx];
+}
+
 
 
 
@@ -40,12 +49,10 @@ void UI::init() {
     set_brightness(brightness);
 
     ui.page = PAGE_TRACK;
-    ui.leds = LEDS_SHOW_VOICES;
 
     track.reset();
-    track.bpm = 120;
     track.set_volume_percent(volume_percent);
-    set_channel(0);
+    track.bpm = 120;
 
     // demo pattern
     #define PATTERN_LEN 16
@@ -131,12 +138,12 @@ bool UI::process(RawInput in) {
 
         // Keyboard
         if (PRESSED(BTN_KEYBOARD)) {
-            enable_keyboard(!track.keyboard_enabled);
+            track.enable_keyboard(!track.keyboard_enabled);
             keys_pressed = false;
         } else if (RELEASED(BTN_KEYBOARD)) {
             // Quick mode
             if (track.keyboard_enabled && keys_pressed) {
-                enable_keyboard(0);
+                track.enable_keyboard(false);
             }
         }
     }
@@ -181,21 +188,21 @@ bool UI::process(RawInput in) {
     }
 
     // Set step LEDs
-    if (ui.msg) ui.leds = LEDS_OVERRIDDEN;
-    if (ui.leds != LEDS_OVERRIDDEN) {
+    if (ui.msg) led_mode = LEDS_OVERRIDDEN;
+    if (led_mode != LEDS_OVERRIDDEN) {
         for (int i=0; i<NUM_STEPKEYS; i++) {
             uint8_t led = LED_OFF;
             
-            if (ui.leds == LEDS_SHOW_VOICES) {
+            if (led_mode == LEDS_SHOW_VOICES) {
                 // Show gates of each channel
                 if (i < NUM_CHANNELS) {
                     if (track.channels[i].inst->gate) led = LED_ON;
                 }
-            } else if (ui.leds == LEDS_SHOW_STEPS) {
+            } else if (led_mode == LEDS_SHOW_STEPS) {
                 int pidx = pattern_page*NUM_STEPKEYS + i;
-                if (cur_pattern->step[pidx].on && pidx < cur_pattern->length) led = LED_DIM;
+                if (PATTERN.step[pidx].on && pidx < PATTERN.length) led = LED_DIM;
                 if (track.is_playing) {
-                    if (cur_channel->step == pidx) led = LED_ON;
+                    if (CHANNEL.step == pidx) led = LED_ON;
                 }
             }
             hw_set_led(i, led);
@@ -206,6 +213,11 @@ bool UI::process(RawInput in) {
 
 
 }
+
+
+
+
+
 
 
 
@@ -244,52 +256,15 @@ void UI::debug_menu() {
     //draw_bitmap(119-offs,0,testimg,0,MIN(offs,120),128);    
 }
 
-
-
-
-
-
-// Change the current channel
-static void set_channel(int i) {
-    track.active_channel = i;
-    cur_channel = &track.channels[track.active_channel];
-    cur_pattern = &cur_channel->pattern;
-}
-
-static void enable_keyboard(bool en) {
-    track.keyboard_enabled = en;
-    if (!en) {
-        cur_channel->inst->silence();
-    }
-}
-
-static int next_pattern_page(void) {
-    int num_pages = (cur_pattern->length + NUM_STEPKEYS-1) / NUM_STEPKEYS; // round up
-    return (pattern_page + 1) % num_pages;
-}
-
-// Get the step in the pattern corresponding to the given key.
-// May return null, as the key could be beyond the end of the pattern.
-static PatternStep *get_step_from_key(int key) {
-    int stepidx = pattern_page*NUM_STEPKEYS + key;
-    if (stepidx >= cur_pattern->length) return NULL;
-    return &cur_pattern->step[stepidx];
-}
-
-
-
-
-
-
-void track_page(void) {
-    ui.leds = LEDS_SHOW_VOICES;
+void UI::track_page() {
+    led_mode = LEDS_SHOW_VOICES;
     kmgui_gauge(0, &track.bpm, 5, 240, "$ bpm");
 }
 
 void UI::pattern_view() {
     const int xsp = 14, ysp = 16;
 
-    ui.leds = LEDS_SHOW_STEPS;
+    led_mode = LEDS_SHOW_STEPS;
 
     if (track.keyboard_enabled) {
         // Play notes. Enter them into the pattern if in write mode
@@ -316,7 +291,7 @@ void UI::pattern_view() {
     }
 
     // Pattern length 
-    kmgui_gauge(0, &cur_pattern->length, 1, 64, "Length=$");
+    kmgui_gauge(0, &PATTERN.length, 1, 64, "Length=$");
 
     // for (int i=0; i<16; i++) {
     //     char buf[2];
@@ -335,10 +310,10 @@ void UI::pattern_view() {
 
 void UI::select_channel() {
    for (int i=0; i<NUM_STEPKEYS; i++) {
-        int b = 0;
-        if (i < NUM_CHANNELS) b = 64;
-        if (i == track.active_channel) b = 255;
-        hw_set_led(i, b);
+        int val = LED_OFF;
+        if (i < NUM_CHANNELS) val = LED_DIM;
+        if (i == track.active_channel) val = LED_ON;
+        hw_set_led(i, val);
 
         if (btn_press(&inputs, i) && i<NUM_CHANNELS) {
             set_channel(i);

@@ -27,7 +27,6 @@ typedef enum {
 typedef struct {
     UIPage page;
     UIMessage msg;
-    LEDMode leds;
 } UIState;
 
 
@@ -40,9 +39,11 @@ public:
     void pattern_view();
     void select_channel();
     void draw_debug_info();
+    void track_page();
 
     InputState inputs {};
     int brightness {1}; // 0-10
     int volume_percent {50};
     bool recording {false};
+    LEDMode led_mode {LEDS_SHOW_VOICES};
 };

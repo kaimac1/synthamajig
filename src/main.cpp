@@ -1,5 +1,3 @@
-#include <stdio.h>
-
 #include "common.h"
 #include "hw/hw.h"
 #include "hw/oled.h"
@@ -28,7 +26,6 @@ int main() {
 
     UI ui;
     ui.init();
-
 
     bool update_display = true;
     while (1) {

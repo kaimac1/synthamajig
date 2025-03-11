@@ -50,6 +50,13 @@ void Track::set_volume_percent(int vol) {
     volume = (vol/100.0f) * MAX_VOLUME_LEVEL;
 }
 
+void Track::enable_keyboard(bool en) {
+    keyboard_enabled = en;
+    if (!en) {
+        channels[active_channel].inst->silence();
+    }    
+}
+
 void Track::schedule() {
     // BPM change
     if (bpm != bpm_old) {

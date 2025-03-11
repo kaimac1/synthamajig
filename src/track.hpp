@@ -66,6 +66,7 @@ public:
     void fill_buffer(AudioBuffer buffer);
 
     void set_volume_percent(int vol);
+    void enable_keyboard(bool en);
     
     int bpm;
     bool is_playing;
