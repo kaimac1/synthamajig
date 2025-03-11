@@ -1,9 +1,6 @@
 #include "audio.hpp"
-#include "common.h"
-#include "synth_common.h"
 #include "track.hpp"
-#include "instrument.hpp"
-#include "ui.hpp"
+#include "common.h"
 
 extern Track track;
 
@@ -16,6 +13,8 @@ struct {
     volatile bool audio_done;
     RawInput input;
 } shared;
+
+
 
 RawInput audio_wait(void) {
     // TODO: redo this properly
@@ -30,9 +29,9 @@ void audio_callback(AudioBuffer buffer, RawInput input) {
 
     if (input_process(&audio_cb_input_state, input)) {
         // Change parameters via encoders
+        // Play notes via keyboard
         track.control_active_channel(&audio_cb_input_state);
-
-        play_notes_from_input(&audio_cb_input_state);
+        track.play_active_channel(&audio_cb_input_state);
     }
 
     // Sample generation

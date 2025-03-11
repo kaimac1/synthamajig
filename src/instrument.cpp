@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <cstdint>
 #include "instrument.hpp"
-#include "ui.hpp"
 
 #define UPDATE_PARAM(par, delta) param[(par)] += delta; CLAMPPARAM(param[(par)]);
+
+
 
 
 AcidBass::AcidBass() {
@@ -83,9 +84,9 @@ int32_t AcidBass::process() {
 }
 
 
-void AcidBass::control(InputState *in) {
+void AcidBass::control(InstrumentPage page, InputState *in) {
 
-    switch (ui.inst_page) {
+    switch (page) {
     case INSTRUMENT_PAGE_OSC:
         break;
 
@@ -111,9 +112,9 @@ void AcidBass::control(InputState *in) {
     }
 }
 
-void AcidBass::draw() {
+void AcidBass::draw(InstrumentPage page) {
 
-    switch (ui.inst_page) {
+    switch (page) {
     case INSTRUMENT_PAGE_OSC:
         draw_osc();
         break;
@@ -184,9 +185,9 @@ int32_t TestSynth::process() {
 }
 
 
-void TestSynth::control(InputState *in) {
+void TestSynth::control(InstrumentPage page, InputState *in) {
 
-    switch (ui.inst_page) {
+    switch (page) {
     case INSTRUMENT_PAGE_OSC:
         break;
 
@@ -202,9 +203,9 @@ void TestSynth::control(InputState *in) {
     }
 }
 
-void TestSynth::draw() {
+void TestSynth::draw(InstrumentPage page) {
 
-    switch (ui.inst_page) {
+    switch (page) {
     case INSTRUMENT_PAGE_OSC:
         draw_osc();
         break;

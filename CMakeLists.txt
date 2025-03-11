@@ -28,9 +28,9 @@ add_executable(synth
     src/synth_common.c
     src/keyboard.c
     src/audio.cpp
-    src/ui.cpp
     src/track.cpp
     src/instrument.cpp    
+    src/userinterface.cpp
 )
 
 pico_generate_pio_header(synth ${CMAKE_CURRENT_LIST_DIR}/src/hw/quadrature_encoder.pio)

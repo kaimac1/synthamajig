@@ -2,14 +2,11 @@
 #include <cstdint>
 #include "common.h"
 #include "track.hpp"
+#include "keyboard.h"
 
 // Total count of elapsed samples
 // at 44.1kHz this uint32 value will overflow after 27 hours
-uint32_t sampletick;
-
-#ifdef DEBUG_AMPLITUDE
-int32_t samplemin, samplemax;
-#endif
+static uint32_t sampletick;
 
 Instrument empty_inst;
 AcidBass acid;
@@ -25,7 +22,6 @@ int samples_between_notes;
 void Track::reset() {
     bpm = DEFAULT_BPM;
     bpm_old = 0;
-    set_volume_percent(DEFAULT_VOLUME);
 
     channels[0].inst = &acid;
     channels[0].inst->init();
@@ -71,7 +67,52 @@ void Track::schedule() {
 
 void Track::control_active_channel(InputState *input) {
     if (channels[active_channel].inst) {
-        channels[active_channel].inst->control(input);
+        channels[active_channel].inst->control(instrument_page, input);
+    }
+}
+
+void Track::play_active_channel(InputState *input) {
+    static int current_key = -1;
+
+    if (!keyboard_enabled || keyboard_inhibited) return;
+
+    bool oct_dn = btn_down(input, BTN_LEFT);
+    bool oct_up = btn_down(input, BTN_RIGHT);
+    int shift = oct_up - oct_dn;
+
+    int (*map)(int, int) = keymap_pentatonic_linear;
+
+    // Triggers
+    bool any_triggered = false;
+    bool any_released = false;
+    for (int b=0; b<NUM_STEPKEYS; b++) {
+        if (input->button_state[b] == BTN_RELEASED) any_released = true;
+        if (input->button_state[b] == BTN_PRESSED) {
+            any_triggered = true;
+            current_key = b;
+            int note = map(b, shift);
+            if (note > 0) {
+                uint32_t freq = note_table[note];
+                channels[active_channel].inst->note.trigger = 1;
+                channels[active_channel].inst->note.accent = btn_down(input, BTN_SHIFT);
+                channels[active_channel].inst->note.glide = 0;
+                channels[active_channel].inst->gate = 1;
+                channels[active_channel].inst->note.freq = freq;
+
+                // Store last played note for the sequencer
+                last_played_freq = freq;
+            }
+        }
+    }
+
+    if (!any_triggered && any_released) {
+        for (int b=0; b<NUM_STEPKEYS; b++) {
+            if (input->button_state[b] == BTN_RELEASED) {
+                if (current_key == b) {
+                    channels[active_channel].inst->gate = 0;
+                }
+            }
+        }
     }
 }
 
@@ -100,12 +141,6 @@ void Track::fill_buffer(AudioBuffer buffer) {
 
             sample += channels[v].inst->process();
         }
-
-
-        #ifdef DEBUG_AMPLITUDE
-        if (sample < samplemin) samplemin = sample;
-        if (sample > samplemax) samplemax = sample;
-        #endif
 
         sample = ((int64_t)(sample) * (int32_t)(volume)) >> 16;
         

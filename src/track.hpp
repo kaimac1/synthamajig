@@ -3,7 +3,6 @@
 #include "instrument.hpp"
 
 #define DEFAULT_BPM 120
-#define DEFAULT_VOLUME 50
 #define NUM_CHANNELS 4
 
 #define MAX_VOLUME_LEVEL 4096
@@ -59,6 +58,7 @@ public:
     void play(bool start_playing);
 
     void control_active_channel(InputState *input);
+    void play_active_channel(InputState *input);
 
     // Call frequently to ensure the next notes in the pattern are scheduled
     void schedule();
@@ -72,6 +72,11 @@ public:
     
     Channel channels[NUM_CHANNELS];
     int active_channel;
+
+    InstrumentPage instrument_page {INSTRUMENT_PAGE_FILTER};
+    uint32_t last_played_freq {0};
+    bool keyboard_enabled {false};
+    bool keyboard_inhibited {false};
 
 private:
     int bpm_old;

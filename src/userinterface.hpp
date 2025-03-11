@@ -1,18 +1,10 @@
 #pragma once
 #include "input.h"
-
-// Number of step keys
-#define NUM_KEYS    16
+#include "instrument.hpp"
 
 // Shifted button functions
 #define SBTN_FILTER     BTN_STEP_9
 #define SBTN_AMP        BTN_STEP_10
-
-typedef enum {
-    INSTRUMENT_PAGE_OSC,
-    INSTRUMENT_PAGE_AMP,
-    INSTRUMENT_PAGE_FILTER
-} InstrumentPage;
 
 typedef enum {
     PAGE_DEBUG_MENU,
@@ -32,24 +24,25 @@ typedef enum {
     LEDS_SHOW_STEPS
 } LEDMode;
 
-
 typedef struct {
     UIPage page;
     UIMessage msg;
     LEDMode leds;
-    InstrumentPage inst_page;
 } UIState;
-extern UIState ui;
 
 
+class UI {
+public:
+    void init();
+    bool process(RawInput in);
 
-void ui_init(void);
+    void debug_menu();
+    void pattern_view();
+    void select_channel();
+    void draw_debug_info();
 
-// Returns whether a redraw is needed
-bool ui_process(RawInput input);
-
-void ui_draw(void);
-
-// Play live notes on active instrument from the keys
-void play_notes_from_input(InputState *input);
-
+    InputState inputs {};
+    int brightness {1}; // 0-10
+    int volume_percent {50};
+    bool recording {false};
+};

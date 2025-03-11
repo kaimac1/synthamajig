@@ -8,7 +8,7 @@
 #include "synth_common.h"
 
 #include "audio.hpp"
-#include "ui.hpp"
+#include "userinterface.hpp"
 
 // DMA transfer complete ISR
 // - Read hardware inputs
@@ -25,7 +25,10 @@ int main() {
     create_lookup_tables();
     hw_init();
     ngl_init();
-    ui_init();
+
+    UI ui;
+    ui.init();
+
 
     bool update_display = true;
     while (1) {
@@ -34,7 +37,7 @@ int main() {
 
         // Update device state & draw UI
         //time_loop_us = perf_loop(PERF_MAINLOOP);
-        if (ui_process(raw_input)) {
+        if (ui.process(raw_input)) {
             update_display = true;
         }
 

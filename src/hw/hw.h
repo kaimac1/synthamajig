@@ -9,6 +9,7 @@ extern "C" {
 #define NUM_KNOBS 4
 #define NUM_LEDS 16
 #define NUM_BUTTONS 32
+#define NUM_STEPKEYS 16
 
 #define LED_OFF 0
 #define LED_DIM 64

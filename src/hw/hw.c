@@ -21,13 +21,13 @@ static bool led_timer_callback(repeating_timer_t *rt);
 static void led_timer_start(void);
 static void matrix_init(void);
 
-repeating_timer_t led_timer;
-int led_column;
-uint8_t led_value[NUM_LEDS];
-uint8_t btn_value[NUM_BUTTONS];
+static repeating_timer_t led_timer;
+static int led_column;
+static uint8_t led_value[NUM_LEDS];
+static uint8_t btn_value[NUM_BUTTONS];
 
-struct audio_buffer_pool *audio_pool;
-struct audio_buffer *current_audio_buffer;
+static struct audio_buffer_pool *audio_pool;
+static struct audio_buffer *current_audio_buffer;
 
 
 void hw_init(void) {

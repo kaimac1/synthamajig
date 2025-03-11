@@ -4,14 +4,21 @@
 #include "gfx/ngl.h"
 #include "gfx/gfx_ext.h"
 
+typedef enum {
+    INSTRUMENT_PAGE_OSC,
+    INSTRUMENT_PAGE_AMP,
+    INSTRUMENT_PAGE_FILTER
+} InstrumentPage;
+
+
 // Base class for instruments
 class Instrument {
 public:
     Instrument() {}
     virtual void init() {}
     virtual int32_t process() { return 0; }
-    virtual void control(InputState *input) {}
-    virtual void draw() {}
+    virtual void control(InstrumentPage page, InputState *input) {}
+    virtual void draw(InstrumentPage page) {}
     virtual void silence() { gate = 0; }
 
     Note note;
@@ -37,8 +44,8 @@ public:
     AcidBass();
     void init();
     int32_t process();
-    void control(InputState *input);
-    void draw(void);
+    void control(InstrumentPage page, InputState *input);
+    void draw(InstrumentPage page);
 
 private:
     int param[AB_NUM_PARAMS];
@@ -68,8 +75,8 @@ public:
     TestSynth();
     void init();
     int32_t process();
-    void control(InputState *input);
-    void draw(void);
+    void control(InstrumentPage page, InputState *input);
+    void draw(InstrumentPage page);
 
 private:
     int param[NUM_PARAM_TEST];
