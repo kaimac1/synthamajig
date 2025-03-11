@@ -41,10 +41,12 @@ public:
     Channel();
     void play(bool start);
     void schedule();
+    void mute(bool mute);
 
     ChannelType type;
     Instrument *inst;
     Pattern pattern;
+    bool is_muted;
     int step;
     ScheduledNote next_note;
     int samples_per_step;

@@ -148,6 +148,7 @@ void Track::fill_buffer(AudioBuffer buffer) {
 
         int32_t sample = 0;
         for (int v=0; v<NUM_CHANNELS; v++) {
+            if (channels[v].is_muted) continue;
             if (channels[v].type == CHANNEL_INSTRUMENT) {
                 if (sampletick == channels[v].next_note.on_time) {
                     channels[v].inst->gate = channels[v].next_note.note.trigger; // NOTE: trigger becomes gate
@@ -229,4 +230,11 @@ void Channel::play(bool start) {
         next_note.off_time = sampletick;
     }
 
+}
+
+void Channel::mute(bool mute) {
+    is_muted = mute;
+    if (mute && type == CHANNEL_INSTRUMENT) {
+        inst->gate = false;
+    }
 }

@@ -316,12 +316,17 @@ void UI::pattern_view() {
 
 void UI::handle_channel_modes() {
     led_mode = LEDS_SHOW_CHANNELS;
-    for (int i=0; i<NUM_STEPKEYS; i++) {
-        if (btn_press(&inputs, i) && i<NUM_CHANNELS) {
-            set_channel(i);
-            view = VIEW_CHANNEL_MENU;
+
+    if (!track.keyboard_enabled) {
+        for (int i=0; i<NUM_CHANNELS; i++) {
+            if (MOD_PRESSED(BTN_SHIFT, i)) {
+                track.channels[i].mute(!track.channels[i].is_muted);
+            } else if (PRESSED(i)) {
+                set_channel(i);
+                view = VIEW_CHANNEL_MENU;
+            }
         }
-    }    
+    }
 }
 
 // Channel overview

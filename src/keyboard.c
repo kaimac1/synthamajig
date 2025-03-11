@@ -1,6 +1,6 @@
 #include "keyboard.h"
 
-const int transpose = -12;
+const int transpose = -24;
 
 int keymap_chromatic_piano(int key, int shift) {
     const int map[16] = {61,63, 0,66,68,70, 0,73,
