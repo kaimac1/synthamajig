@@ -53,7 +53,7 @@ bool input_process(InputState *input_state, RawInput in) {
     bool changed = false;
 
     for (int i=0; i<NUM_KNOBS; i++) {
-        input_state->knob_delta[i] = input_state->knob_angle[i] - in.knob_raw[i];
+        input_state->knob_delta[i] = -(input_state->knob_angle[i] - in.knob_raw[i]);
         input_state->knob_angle[i] = in.knob_raw[i];
         changed |= (input_state->knob_delta[i] != 0);
     }
