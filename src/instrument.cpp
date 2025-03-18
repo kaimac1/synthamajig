@@ -8,7 +8,6 @@
 
 
 AcidBass::AcidBass() {
-    printf("acidbass const.\n");
 }
 
 

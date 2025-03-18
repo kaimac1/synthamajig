@@ -7,6 +7,7 @@
 
 #include "audio.hpp"
 #include "userinterface.hpp"
+#include "sample.hpp"
 
 // DMA transfer complete ISR
 // - Read hardware inputs
@@ -23,6 +24,8 @@ int main() {
     create_lookup_tables();
     hw_init();
     ngl_init();
+
+    Sample::build_list();
 
     UI ui;
     ui.init();

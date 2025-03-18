@@ -29,9 +29,12 @@ add_executable(synth
     src/synth_common.cpp
     src/audio.cpp
     src/track.cpp
+    src/sample.cpp
     src/instrument.cpp    
     src/userinterface.cpp
 )
+
+target_compile_options(synth PUBLIC -fno-exceptions)
 
 pico_generate_pio_header(synth ${CMAKE_CURRENT_LIST_DIR}/src/hw/quadrature_encoder.pio)
 
@@ -42,6 +45,9 @@ target_link_libraries(synth
     hardware_pwm
     hardware_pio
 #    pico_multicore
+
+    # linker flags:
+    -specs=nano.specs
 )
 
 # enable usb output, disable uart output

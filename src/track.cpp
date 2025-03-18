@@ -3,6 +3,7 @@
 #include "common.h"
 #include "track.hpp"
 #include "keyboard.h"
+#include "sample.hpp"
 
 // Total count of elapsed samples
 // at 44.1kHz this uint32 value will overflow after 27 hours
@@ -46,8 +47,7 @@ void Track::play(bool start_playing) {
 void Track::set_volume_percent(int vol) {
     if (vol < 0) vol = 0;
     if (vol > 100) vol = 100;
-
-    volume = (vol/100.0f) * MAX_VOLUME_LEVEL;
+    volume = vol/100.0f;
 }
 
 void Track::enable_keyboard(bool en) {
@@ -75,9 +75,11 @@ void Track::schedule() {
     }
 }
 
-bool Track::get_channel_gate(int chan) {
+bool Track::get_channel_activity(int chan) {
     if (channels[chan].type == CHANNEL_INSTRUMENT) {
         return channels[chan].inst->gate;
+    } else if (channels[chan].type == CHANNEL_SAMPLE) {
+        return (channels[chan].cur_sample_id >= 0);
     }
     return false;
 }
@@ -150,6 +152,7 @@ void Track::fill_buffer(AudioBuffer buffer) {
         for (int v=0; v<NUM_CHANNELS; v++) {
             if (channels[v].is_muted) continue;
             if (channels[v].type == CHANNEL_INSTRUMENT) {
+                
                 if (sampletick == channels[v].next_note.on_time) {
                     channels[v].inst->gate = channels[v].next_note.note.trigger; // NOTE: trigger becomes gate
                     channels[v].inst->note = channels[v].next_note.note;
@@ -159,14 +162,24 @@ void Track::fill_buffer(AudioBuffer buffer) {
                 }
 
                 sample += channels[v].inst->process();
+
+            } else if (channels[v].type == CHANNEL_SAMPLE) {
+
+                if (sampletick == channels[v].next_note.on_time) {
+                    channels[v].cur_sample_id = channels[v].next_note.sample_id;
+                    channels[v].cur_sample_pos = 0;
+                }
+
+                sample += channels[v].process_sample();
+
             }
         }
 
-        sample = ((int64_t)(sample) * (int32_t)(volume)) >> 16;
+        sample = sample * volume * 0.1f;
         
         // TODO: a proper limiter
         int vlimit = AMPLITUDE_LIMIT;
-        if (vlimit > 0x8000) vlimit = 0x8000;
+        if (vlimit > 0x7fff) vlimit = 0x7fff;
         if (sample > (vlimit-1)) { sample = (vlimit-1); } 
         else if (sample < -vlimit) { sample = -vlimit; }
         samples[sn] = sample;
@@ -197,8 +210,9 @@ void Channel::schedule() {
         next_step_time += samples_per_step;
         int nn = next_note_idx();
         if (pattern.step[nn].on) {
-            next_note.on_time = next_step_time;        
+            next_note.on_time = next_step_time;
             next_note.note = pattern.step[nn].note;
+            next_note.sample_id = pattern.step[nn].sample_id;
             step_on = true;
         }
         first_step = false;
@@ -220,10 +234,13 @@ void Channel::play(bool start) {
         first_step = true;
 
         // Play first note immediately
-        next_note.on_time = sampletick;
-        int len = (samples_per_step * pattern.step[step].gate_length) >> GATE_LENGTH_BITS;
-        next_note.off_time = next_note.on_time + len;
-        next_note.note = pattern.step[step].note;
+        if (pattern.step[step].on) {
+            next_note.on_time = sampletick;
+            int len = (samples_per_step * pattern.step[step].gate_length) >> GATE_LENGTH_BITS;
+            next_note.off_time = next_note.on_time + len;
+            next_note.note = pattern.step[step].note;
+            next_note.sample_id = pattern.step[step].sample_id;
+        }
     } else {
         step = 0;
         next_note.on_time = 0;
@@ -237,4 +254,16 @@ void Channel::mute(bool mute) {
     if (mute && type == CHANNEL_INSTRUMENT) {
         inst->gate = false;
     }
+}
+
+int32_t Channel::process_inst() {
+    return inst->process();
+}
+
+int32_t Channel::process_sample() {
+    if (cur_sample_id < 0) return 0;
+
+    int16_t s = Sample::fetch(cur_sample_id, cur_sample_pos);
+    cur_sample_pos++;
+    return s;
 }

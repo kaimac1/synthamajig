@@ -19,6 +19,8 @@
 #define AUDIO_DMA_CHANNEL 1
 #define PIN_I2S_DATA 9
 #define PIN_I2S_BCLK 10
+#define PIN_I2S_LRCLK_UNUSED 11
+#define PIN_DAC_MUTE_UNUSED 22
 
 // Button/LED matrix
 #define LED_PWM_SLICE 1

@@ -5,7 +5,6 @@
 #define DEFAULT_BPM 120
 #define NUM_CHANNELS 4
 
-#define MAX_VOLUME_LEVEL 4096
 #define AMPLITUDE_LIMIT 8192
 #define PATTERN_MAX_LEN 64
 #define GATE_LENGTH_BITS 7
@@ -13,6 +12,7 @@
 
 struct Step {
     Note note;
+    int sample_id {-1};
     bool on;
     uint8_t gate_length;
 };
@@ -26,6 +26,7 @@ struct Pattern {
 struct ScheduledNote {
     uint32_t on_time;
     uint32_t off_time;
+    int sample_id {-1};
     Note note;
 };
 
@@ -42,6 +43,8 @@ public:
     void play(bool start);
     void schedule();
     void mute(bool mute);
+    int32_t process_inst();
+    int32_t process_sample();
 
     ChannelType type;
     Instrument *inst;
@@ -50,6 +53,10 @@ public:
     int step;
     ScheduledNote next_note;
     int samples_per_step;
+
+    int cur_sample_id {-1};
+    int cur_sample_pos;
+
     
 private:
     int next_note_idx();
@@ -72,7 +79,7 @@ public:
     void set_volume_percent(int vol);
     void enable_keyboard(bool en);
 
-    bool get_channel_gate(int chan);
+    bool get_channel_activity(int chan);
     
     int bpm;
     bool is_playing;
@@ -87,5 +94,5 @@ public:
 
 private:
     int bpm_old;
-    int volume;
+    float volume {0.0f};
 };
