@@ -139,6 +139,8 @@ void Track::fill_buffer(AudioBuffer buffer) {
     int16_t *samples = (int16_t *) buffer.samples;
     int count = buffer.sample_count;
 
+    is_over_limit = false;
+
     // See if note events will occur during this buffer
     //bool note_events = false;
     //if (voice[0].next_note.on_time >= sampletick && voice[0].next_note.on_time < sampletick+count) note_events = true;
@@ -177,9 +179,15 @@ void Track::fill_buffer(AudioBuffer buffer) {
         sample *= volume * 0.2f * 32767;
         
         // TODO: a proper limiter
-        const float vlimit = 32767.0f;
-        if (sample > vlimit) { sample = vlimit; } 
-        else if (sample < -vlimit) { sample = -vlimit; }
+        const float vlimit = 20000.0f;
+        if (sample > vlimit) { 
+            sample = vlimit;
+            is_over_limit = true;
+        } 
+        else if (sample < -vlimit) {
+            sample = -vlimit;
+            is_over_limit = true;
+        }
         samples[sn] = (int16_t)sample;
         sampletick++;
     }

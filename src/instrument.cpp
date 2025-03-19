@@ -56,8 +56,8 @@ float AcidBass::process() {
     // int *dest = &gain;
     // //*dest += (lfo_wave*depth_n) >> depth_b;
     //CLAMP(gain, 0, ISCALE*2);
-    CLAMP(newcutoff, 0, 127);
-    CLAMP(newresonance, 0, 127);
+    CLAMPPARAM(newcutoff);
+    CLAMPPARAM(newresonance);
 
     // Oscillator
     uint32_t dphase = freq;

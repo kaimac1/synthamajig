@@ -365,7 +365,7 @@ void UI::draw_debug_info(void) {
     if (recording) strcat(buf, "Rec ");
     if (track.keyboard_enabled) strcat(buf, "Kb ");
 
-    draw_textf(0,0,0, "%sCh%d", buf, track.active_channel+1);
+    draw_textf(0,0,0, "%sCh%d %s", buf, track.active_channel+1, track.is_over_limit ? "[!]" : "");
     //draw_textf(70,0,0, "P%02d", track.pattern_idx+1);
     draw_textf(127,0,TEXT_ALIGN_RIGHT, "%d/%d",
         track.channels[track.active_channel].step+1, track.channels[track.active_channel].pattern.length);

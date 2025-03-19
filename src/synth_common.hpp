@@ -6,8 +6,6 @@
 #define CLAMP(x, xmin, xmax) if ((x)>(xmax)) x=(xmax); else if ((x)<(xmin)) x=(xmin);
 #define CLAMP127(x) CLAMP(x, 0, 127)
 
-#define ISCALE 32768
-
 #define PARAM_SCALE 128
 #define PARAM_BITS 7
 
@@ -100,7 +98,7 @@ struct Oscillator {
 };
 
 static inline float polyblep(uint32_t t, uint32_t dt) {
-    
+
     if (t < dt) {
         float f = (float)t / dt;
         float x = f + f - f*f - 1.0f;
@@ -123,5 +121,5 @@ static inline float oscillator_saw(uint32_t phase, uint32_t dphase, uint32_t mod
 
 }
 
-int32_t oscillator_square(uint32_t phase, uint32_t dphase, uint32_t mod);
+float oscillator_square(uint32_t phase, uint32_t dphase, uint32_t mod);
 

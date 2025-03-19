@@ -17,18 +17,18 @@ float map_decay(int param) {
 }
 
 
-int32_t oscillator_square(uint32_t phase, uint32_t dphase, uint32_t mod) {
+float oscillator_square(uint32_t phase, uint32_t dphase, uint32_t mod) {
 
-    int32_t out;
+    float out;
     uint32_t width = UINT32_MAX/2;
     uint32_t phase2;
     //float width = 0.5f + 0.5f*mod;
     
     if (phase < width) {
-        out = -ISCALE+1;
+        out = -1.0f;
         phase2 = phase + (UINT32_MAX-width);
     } else {
-        out = ISCALE;
+        out = 1.0f;
         phase2 = phase - width;
     }
     out -= polyblep(phase, dphase);
