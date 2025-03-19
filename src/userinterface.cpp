@@ -70,11 +70,11 @@ void UI::init() {
     }
     p->length = PATTERN_LEN;
 
-    // drum
-    p = &track.channels[2].pattern;
-    p->length = 4;
-    p->step[0].on = true;
-    p->step[0].sample_id = 0;
+    // // drum
+    // p = &track.channels[2].pattern;
+    // p->length = 4;
+    // p->step[0].on = true;
+    // p->step[0].sample_id = 0;
 }
 
 
@@ -304,7 +304,7 @@ void UI::view_pattern() {
     }
 
     // Pattern length 
-    kmgui_gauge(0, &PATTERN.length, 1, 64, "Length=$");
+    kmgui_gauge(0, &PATTERN.length, 1, 64, "Len=$");
 
     // for (int i=0; i<16; i++) {
     //     char buf[2];

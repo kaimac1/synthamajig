@@ -148,11 +148,10 @@ void Track::fill_buffer(AudioBuffer buffer) {
         // TODO: see if it's faster to fill a whole buffer for each instrument separately,
         // then combine
 
-        int32_t sample = 0;
+        float sample = 0.0f;
         for (int v=0; v<NUM_CHANNELS; v++) {
             if (channels[v].is_muted) continue;
             if (channels[v].type == CHANNEL_INSTRUMENT) {
-                
                 if (sampletick == channels[v].next_note.on_time) {
                     channels[v].inst->gate = channels[v].next_note.note.trigger; // NOTE: trigger becomes gate
                     channels[v].inst->note = channels[v].next_note.note;
@@ -161,7 +160,7 @@ void Track::fill_buffer(AudioBuffer buffer) {
                     channels[v].inst->note.trigger = 0;
                 }
 
-                sample += channels[v].inst->process();
+                sample += channels[v].process_inst();
 
             } else if (channels[v].type == CHANNEL_SAMPLE) {
 
@@ -170,19 +169,18 @@ void Track::fill_buffer(AudioBuffer buffer) {
                     channels[v].cur_sample_pos = 0;
                 }
 
-                sample += channels[v].process_sample();
+                //sample += channels[v].process_sample();
 
             }
         }
 
-        sample = sample * volume * 0.1f;
+        sample *= volume * 0.2f * 32767;
         
         // TODO: a proper limiter
-        int vlimit = AMPLITUDE_LIMIT;
-        if (vlimit > 0x7fff) vlimit = 0x7fff;
-        if (sample > (vlimit-1)) { sample = (vlimit-1); } 
+        const float vlimit = 32767.0f;
+        if (sample > vlimit) { sample = vlimit; } 
         else if (sample < -vlimit) { sample = -vlimit; }
-        samples[sn] = sample;
+        samples[sn] = (int16_t)sample;
         sampletick++;
     }
 }
@@ -256,7 +254,7 @@ void Channel::mute(bool mute) {
     }
 }
 
-int32_t Channel::process_inst() {
+float Channel::process_inst() {
     return inst->process();
 }
 

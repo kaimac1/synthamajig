@@ -5,7 +5,6 @@
 #define DEFAULT_BPM 120
 #define NUM_CHANNELS 4
 
-#define AMPLITUDE_LIMIT 8192
 #define PATTERN_MAX_LEN 64
 #define GATE_LENGTH_BITS 7
 
@@ -43,7 +42,7 @@ public:
     void play(bool start);
     void schedule();
     void mute(bool mute);
-    int32_t process_inst();
+    float process_inst();
     int32_t process_sample();
 
     ChannelType type;
@@ -83,6 +82,7 @@ public:
     
     int bpm;
     bool is_playing;
+    bool is_over_limit;
     
     Channel channels[NUM_CHANNELS];
     int active_channel;

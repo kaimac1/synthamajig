@@ -31,7 +31,7 @@ void AcidBass::init() {
 }
 
 
-int32_t AcidBass::process() {
+float AcidBass::process() {
 
     // // LFO (testing)
     // static Oscillator lfo;
@@ -48,7 +48,6 @@ int32_t AcidBass::process() {
     bool envgate = gate || note.glide; // ??
 
     // Modulation (testing)
-    int gain = ISCALE;
     uint32_t freq = note.freq;
     int newcutoff = cutoff;
     int newresonance = resonance;
@@ -56,30 +55,29 @@ int32_t AcidBass::process() {
     // const int depth_b = 3;  // denominator bits
     // int *dest = &gain;
     // //*dest += (lfo_wave*depth_n) >> depth_b;
-    CLAMP(gain, 0, ISCALE*2);
+    //CLAMP(gain, 0, ISCALE*2);
     CLAMP(newcutoff, 0, 127);
     CLAMP(newresonance, 0, 127);
 
     // Oscillator
     uint32_t dphase = freq;
     osc.phase += dphase;
-    int32_t s1 = oscillator_saw(osc.phase, dphase, 0);
-    s1 = (s1 * gain) >> 15;
+    float s = oscillator_saw(osc.phase, dphase, 0);
 
     // Envelope
-    int32_t envelope = process_adsr(&env, envgate);
+    float envelope = process_adsr(&env, envgate);
 
     // Filter
-    int mod = ((int64_t)env_mod * envelope) >> 31;
+    int32_t mod = env_mod * envelope;
     if (note.accent) mod = mod + mod;
     filter.cutoff = svfreq_map(newcutoff + mod);
-    filter.res = newresonance;
-    process_svfilter_int(&filter, s1); // oversample
-    s1 = process_svfilter_int(&filter, s1);    
+    filter.res = (float)newresonance / PARAM_SCALE;
+    (void)process_svfilter(&filter, s); // oversample
+    s = process_svfilter(&filter, s);
 
     // Amp
-    s1 = ((int64_t)s1 * envelope) >> ENV_BITS;
-    return s1;
+    s *= envelope;
+    return s;
 }
 
 
@@ -161,9 +159,11 @@ void TestSynth::init() {
 }
 
 
-int32_t TestSynth::process() {
+float TestSynth::process() {
 
-    int gain = ISCALE;
+    return 0.0f;
+
+    /*int gain = ISCALE;
     CLAMP(gain, 0, ISCALE*2);
 
     // Oscillator
@@ -180,7 +180,7 @@ int32_t TestSynth::process() {
 
     // Amp
     if (!gate) s1 = 0;
-    return s1;
+    return s1;*/
 }
 
 

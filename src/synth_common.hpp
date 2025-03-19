@@ -33,9 +33,6 @@ struct Note {
 /************************************************/
 // ADSR envelope
 
-#define ENV_MAX INT32_MAX
-#define ENV_BITS 31
-
 enum EnvState {
     ENV_ATTACK,
     ENV_DECAY,
@@ -45,19 +42,19 @@ enum EnvState {
 
 struct ADSR {
     // Parameters
-    uint32_t attack;
-    uint32_t decay;
-    int32_t sustain;
-    uint32_t release;
+    float attack;
+    float decay;
+    float sustain;
+    float release;
     // State
-    int32_t level;
+    float level;
     EnvState state;
 };
 
-int32_t process_adsr(ADSR *e, bool gate);
-int32_t map_attack(int param);
-int32_t map_sustain(int param);
-int32_t map_decay(int param);
+float process_adsr(ADSR *e, bool gate);
+float map_attack(int param);
+float map_sustain(int param);
+float map_decay(int param);
 
 
 
@@ -65,19 +62,19 @@ int32_t map_decay(int param);
 // State variable filter, second order (12 dB/oct)
 //
 
-struct SVFilterInt {
-    uint32_t cutoff;
-    uint32_t res;
-    int32_t lp0;
-    int32_t bp0;
-    int32_t hp0;
-    int32_t lp;
-    int32_t bp;
-    int32_t hp;
+struct SVFilter {
+    float cutoff;
+    float res;
+    float lp0;
+    float bp0;
+    float hp0;
+    float lp;
+    float bp;
+    float hp;
 };
 
-int32_t process_svfilter_int(SVFilterInt *f, int32_t in);
-uint32_t svfreq_map(uint32_t param);
+float process_svfilter(SVFilter *f, float in);
+float svfreq_map(uint32_t param);
 
 
 
@@ -102,25 +99,25 @@ struct Oscillator {
     uint32_t phase;
 };
 
-static inline int32_t polyblep(uint32_t t, uint32_t dt) {
-
+static inline float polyblep(uint32_t t, uint32_t dt) {
+    
     if (t < dt) {
-        int64_t f = ((int64_t)ISCALE * t) / dt;
-        int32_t x = f + f - f*f/ISCALE - ISCALE;
+        float f = (float)t / dt;
+        float x = f + f - f*f - 1.0f;
         return x;
     } else if (t > UINT32_MAX - dt) {
-        int64_t f = ((int64_t)ISCALE * ((int64_t)t - UINT32_MAX)) / dt;
-        int32_t x = f*f/ISCALE + f + f + ISCALE;
+        float f = (float)((int64_t)t - UINT32_MAX) / dt;
+        float x = f*f + f + f + 1.0f;
         return x;
     } else {
-        return 0;
+        return 0.0f;
     }
 }
 
-static inline int32_t oscillator_saw(uint32_t phase, uint32_t dphase, uint32_t mod) {
+static inline float oscillator_saw(uint32_t phase, uint32_t dphase, uint32_t mod) {
 
-    uint64_t p = ((uint64_t)ISCALE * phase) >> 32;
-    int32_t out = 2*p - ISCALE;
+    float p = (float)phase / (float)UINT32_MAX;
+    float out = 2.0f*p - 1.0f;
     out -= polyblep(phase, dphase);
     return out;
 

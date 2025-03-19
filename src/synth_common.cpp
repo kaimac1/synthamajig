@@ -5,14 +5,14 @@
 // Lookup tables
 #define EXP_TABLE_SIZE 1024
 float exp_table[EXP_TABLE_SIZE];
-uint32_t svfreq_map_table[PARAM_SCALE];
+float svfreq_map_table[PARAM_SCALE];
 uint32_t note_table[128];
 
-int32_t map_attack(int param) { return ENV_MAX / (100*(param+1)); }
-int32_t map_sustain(int param) { return param * (ENV_MAX / PARAM_SCALE); }
-int32_t map_decay(int param) { 
-    const int kd = 60000;
-    float df = param / (float)PARAM_SCALE;
+float map_attack(int param) { return 1.0f / (100*(param+1)); }
+float map_sustain(int param) { return (float)param / PARAM_SCALE; }
+float map_decay(int param) {
+    const float kd = 0.000014f;
+    float df = (float)param / PARAM_SCALE + 0.06f;
     return kd / (df*df*df);
 }
 
@@ -39,8 +39,8 @@ int32_t oscillator_square(uint32_t phase, uint32_t dphase, uint32_t mod) {
 
 
 // ADSR envelope generator
-const int32_t ENV_OVERSHOOT = 0.005f * ENV_MAX;
-int32_t process_adsr(ADSR *e, bool gate) {
+const float ENV_OVERSHOOT = 0.005f;
+float process_adsr(ADSR *e, bool gate) {
 
     if (gate) {
         switch (e->state) {
@@ -50,14 +50,14 @@ int32_t process_adsr(ADSR *e, bool gate) {
 
             case ENV_ATTACK:
                 e->level += e->attack;
-                if (e->level < 0) {
-                    e->level = ENV_MAX;
+                if (e->level > 1.0f) {
+                    e->level = 1.0f;
                     e->state = ENV_DECAY;
                 }
                 break;
 
             case ENV_DECAY:
-                e->level += ((int64_t)(e->sustain - ENV_OVERSHOOT - e->level) * e->decay) >> 32;
+                e->level += (e->sustain - ENV_OVERSHOOT - e->level) * e->decay;
                 if (e->level < e->sustain) {
                     e->level = e->sustain;
                     e->state = ENV_SUSTAIN;
@@ -70,9 +70,9 @@ int32_t process_adsr(ADSR *e, bool gate) {
         }        
     } else {
         e->state = ENV_RELEASE;
-        if (e->level > 0) {
-            e->level -= ((int64_t)(e->level + ENV_OVERSHOOT) * e->release) >> 32;
-            if (e->level < 0) e->level = 0;
+        if (e->level > 0.0f) {
+            e->level -= (e->level + ENV_OVERSHOOT) * e->release;
+            if (e->level < 0.0f) e->level = 0.0f;
         }
     }
 
@@ -83,28 +83,26 @@ int32_t process_adsr(ADSR *e, bool gate) {
 
 
 // Curve for the SV filter cutoff parameter which has a nonlinear response
-// 0..127 -> 0..127
-uint32_t svfreq_map(uint32_t param) {
+// 0..127 -> 0..1
+float svfreq_map(uint32_t param) {
     if (param < 0) param = 0;
     if (param >= PARAM_SCALE) param = PARAM_SCALE - 1;
     return svfreq_map_table[param];
 }
 
-#define RES_BITS 10
-
-int32_t process_svfilter_int(SVFilterInt *f, int32_t in) {
-    int32_t kf = f->cutoff;
-    int32_t kq = 1024 - 7*f->res;   // Scale resonance by 7/8
+float process_svfilter(SVFilter *f, float in) {
+    float kf = f->cutoff;
+    float kq = 1.0f - 0.875f*f->res;   // Scale resonance by 7/8
     
-    int32_t lp0 = f->lp0 + ((f->bp0 * kf) >> PARAM_BITS);
-    int32_t hp0 = in - lp0 - ((f->bp0 * kq) >> RES_BITS);
-    int32_t bp0 = f->bp0 + ((hp0 * kf) >> PARAM_BITS);
+    float lp0 = f->lp0 + (f->bp0 * kf);
+    float hp0 = in - lp0 - (f->bp0 * kq);
+    float bp0 = f->bp0 + (hp0 * kf);
     f->lp0 = lp0;
     f->bp0 = bp0;
 
-    int32_t lp1 = f->lp + ((f->bp * kf) >> PARAM_BITS);
-    int32_t hp1 = lp0 - lp1 - ((f->bp * kq) >> RES_BITS);
-    int32_t bp1 = f->bp + ((hp1 * kf) >> PARAM_BITS);
+    float lp1 = f->lp + (f->bp * kf);
+    float hp1 = lp0 - lp1 - (f->bp * kq);
+    float bp1 = f->bp + (hp1 * kf);
     f->lp = lp1;
     f->bp = bp1;
     f->hp = hp1;
@@ -136,7 +134,7 @@ void create_lookup_tables(void) {
     // SV filter cutoff map
     for (int i=0; i<PARAM_SCALE; i++) {
         float arg = (float)i/PARAM_SCALE;
-        svfreq_map_table[i] = (0.1f * arg * expf(2.1f*arg)) * PARAM_SCALE;
+        svfreq_map_table[i] = 0.1f * arg * expf(2.1f*arg);
     }
 
     // MIDI note table

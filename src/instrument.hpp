@@ -16,7 +16,7 @@ class Instrument {
 public:
     Instrument() {}
     virtual void init() {}
-    virtual int32_t process() { return 0; }
+    virtual float process() { return 0.0f; }
     virtual void control(InstrumentPage page, InputState *input) {}
     virtual void draw(InstrumentPage page) {}
     virtual void silence() { gate = 0; }
@@ -43,7 +43,7 @@ class AcidBass : public Instrument {
 public:
     AcidBass();
     void init();
-    int32_t process();
+    float process();
     void control(InstrumentPage page, InputState *input);
     void draw(InstrumentPage page);
 
@@ -54,7 +54,7 @@ private:
     uint32_t resonance;    
     Oscillator osc;
     ADSR env;
-    SVFilterInt filter;
+    SVFilter filter;
 
     void draw_osc();
     void draw_filter();
@@ -74,7 +74,7 @@ class TestSynth : public Instrument {
 public:
     TestSynth();
     void init();
-    int32_t process();
+    float process();
     void control(InstrumentPage page, InputState *input);
     void draw(InstrumentPage page);
 
@@ -84,7 +84,7 @@ private:
     uint32_t resonance;    
     Oscillator osc;
     ADSR env;
-    SVFilterInt filter;
+    SVFilter filter;
 
     void draw_osc();
     void draw_filter();
