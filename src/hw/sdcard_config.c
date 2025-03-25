@@ -1,19 +1,19 @@
 #include "hw_config.h"
+#include "pinmap.h"
+
+#define DISK_BAUD_RATE (125 * 1000 * 1000 / 4) // 31.25 MHz
 
 static spi_t spi = {
     .hw_inst = spi1,
-    .sck_gpio = 14,
-    .mosi_gpio = 15,
-    .miso_gpio = 8,
-    //.baud_rate = 125 * 1000 * 1000 / 8  // 15625000 Hz
-    //.baud_rate = 125 * 1000 * 1000 / 6  // 20833333 Hz
-    .baud_rate = 125 * 1000 * 1000 / 4  // 31250000 Hz
-    //.baud_rate = 125 * 1000 * 1000 / 2  // 62500000 Hz
+    .sck_gpio = PIN_DISK_SCK,
+    .mosi_gpio = PIN_DISK_MOSI,
+    .miso_gpio = PIN_DISK_MISO,
+    .baud_rate = DISK_BAUD_RATE  // 31250000 Hz
 };
 
 static sd_spi_if_t spi_if = {
     .spi = &spi,
-    .ss_gpio = 13  // Chip select
+    .ss_gpio = PIN_DISK_CS
 };
 
 static sd_card_t sd_card = {

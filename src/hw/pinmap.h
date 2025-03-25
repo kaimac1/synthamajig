@@ -33,3 +33,9 @@
 #define PIN_BTN1 21
 #define PIN_BTN2 22
 #define PIN_BTN3 12
+
+// SD card
+#define PIN_DISK_MOSI   15
+#define PIN_DISK_MISO   8
+#define PIN_DISK_SCK    14
+#define PIN_DISK_CS     13
