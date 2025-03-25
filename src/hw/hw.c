@@ -5,8 +5,10 @@
 #include "quadrature_encoder.pio.h"
 #include "hw.h"
 #include "oled.h"
+#include "disk.h"
 #include "pinmap.h"
 #include "audio.h"
+#include "pico/audio_i2s.h"
 #include "gfx/ngl.h"
 #include "../common.h"
 
@@ -50,6 +52,13 @@ void hw_init(void) {
     matrix_init();
 
     audio_pool = init_audio(SAMPLE_RATE, PIN_I2S_DATA, PIN_I2S_BCLK, 0, AUDIO_DMA_CHANNEL);
+
+    sleep_ms(1000);
+    disk_init();
+}
+
+void hw_audio_start(void) {
+    audio_i2s_set_enabled(true);
 }
 
 

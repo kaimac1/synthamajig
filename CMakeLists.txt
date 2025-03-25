@@ -11,12 +11,16 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/src)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/src/gfx)
 
+add_subdirectory(vendor/fatfspico/src build)
+
 add_executable(synth
     src/main.cpp
 
     src/hw/hw.c
     src/hw/oled.c
     src/hw/perf.c
+    src/hw/disk.c
+    src/hw/sdcard_config.c
 
     src/gfx/ngl.c
     src/gfx/gfx_ext.c
@@ -32,6 +36,7 @@ add_executable(synth
     src/sample.cpp
     src/instrument.cpp    
     src/userinterface.cpp
+
 )
 
 target_compile_options(synth PUBLIC -fno-exceptions)
@@ -45,6 +50,8 @@ target_link_libraries(synth
     hardware_pwm
     hardware_pio
 #    pico_multicore
+
+    no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
 
     # linker flags:
     -specs=nano.specs

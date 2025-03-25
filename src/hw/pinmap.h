@@ -31,5 +31,5 @@
 #define PIN_LED1 19
 #define PIN_BTN0 20
 #define PIN_BTN1 21
-#define PIN_BTN2 14
-#define PIN_BTN3 15
+#define PIN_BTN2 22
+#define PIN_BTN3 12

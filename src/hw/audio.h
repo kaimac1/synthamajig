@@ -47,7 +47,5 @@ struct audio_buffer_pool *init_audio(uint32_t sample_rate, uint8_t pin_data, uin
     panic("PicoAudio: Unable to connect to audio device.\n");
   }
 
-  audio_i2s_set_enabled(true);
-
   return producer_pool;
 }

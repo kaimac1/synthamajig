@@ -42,8 +42,7 @@ public:
     void play(bool start);
     void schedule();
     void mute(bool mute);
-    float process_inst();
-    int32_t process_sample();
+    float process();
 
     ChannelType type;
     Instrument *inst;

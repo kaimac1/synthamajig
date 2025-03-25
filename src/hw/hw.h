@@ -57,6 +57,8 @@ typedef struct {
 
 void hw_init(void);
 
+void hw_audio_start(void);
+
 // Read one of the rotary encoders. Absolute (cumulative) value, can be positive or negative.
 int32_t read_knob(int encoder);
 

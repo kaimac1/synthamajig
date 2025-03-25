@@ -162,18 +162,15 @@ void Track::fill_buffer(AudioBuffer buffer) {
                     channels[v].inst->note.trigger = 0;
                 }
 
-                sample += channels[v].process_inst();
-
             } else if (channels[v].type == CHANNEL_SAMPLE) {
 
                 if (sampletick == channels[v].next_note.on_time) {
                     channels[v].cur_sample_id = channels[v].next_note.sample_id;
                     channels[v].cur_sample_pos = 0;
                 }
-
-                //sample += channels[v].process_sample();
-
             }
+
+            sample += channels[v].process();
         }
 
         sample *= volume * 0.2f * 32767;
@@ -262,14 +259,17 @@ void Channel::mute(bool mute) {
     }
 }
 
-float Channel::process_inst() {
-    return inst->process();
+float Channel::process() {
+    if (type == CHANNEL_INSTRUMENT) {
+        return inst->process();
+
+    } else if (type == CHANNEL_SAMPLE) {
+        if (cur_sample_id < 0) return 0.0f;
+        int16_t s = Sample::fetch(cur_sample_id, cur_sample_pos);
+        cur_sample_pos++;
+        
+        return s/32768.0f;
+    }
+    return 0.0f;
 }
 
-int32_t Channel::process_sample() {
-    if (cur_sample_id < 0) return 0;
-
-    int16_t s = Sample::fetch(cur_sample_id, cur_sample_pos);
-    cur_sample_pos++;
-    return s;
-}

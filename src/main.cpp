@@ -30,6 +30,8 @@ int main() {
     UI ui;
     ui.init();
 
+    hw_audio_start();
+
     bool update_display = true;
     while (1) {
         // Wait for audio generation to finish, get input data
