@@ -3,7 +3,7 @@
 # This can be dropped into an external project to help locate pico-extras
 # It should be include()ed prior to project()
 
-set(PICO_EXTRAS_PATH "${CMAKE_CURRENT_LIST_DIR}/pico/pico-extras")
+set(PICO_EXTRAS_PATH "${CMAKE_CURRENT_LIST_DIR}/vendor/pico-extras")
 
 if (DEFINED ENV{PICO_EXTRAS_PATH} AND (NOT PICO_EXTRAS_PATH))
     set(PICO_EXTRAS_PATH $ENV{PICO_EXTRAS_PATH})

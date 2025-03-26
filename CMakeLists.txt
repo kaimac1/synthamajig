@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13...3.27)
 
-include(pico/pico-sdk/pico_sdk_init.cmake)
+include(vendor/pico-sdk/pico_sdk_init.cmake)
 include(pico_extras_import.cmake)
 
 project(starling)
