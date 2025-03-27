@@ -25,8 +25,8 @@ specific language governing permissions and limitations under the License.
 #include "f_util.h"
 #include "ff_stdio.h"
 
-//#define TRACE_PRINTF(fmt, args...) {}
-#define TRACE_PRINTF printf
+#define TRACE_PRINTF(fmt, args...) {}
+//#define TRACE_PRINTF printf
 
 static BYTE posix2mode(const char *pcMode) {
     if (0 == strcmp("r", pcMode)) return FA_READ;
@@ -163,7 +163,7 @@ size_t ff_fwrite(const void *pvBuffer, size_t xSize, size_t xItems,
 }
 size_t ff_fread(void *pvBuffer, size_t xSize, size_t xItems,
                 FF_FILE *pxStream) {
-    TRACE_PRINTF("%s %08x\n", __func__, pxStream);
+    TRACE_PRINTF("%s\n", __func__);
     // FRESULT f_read (
     //  FIL* fp,     /* [IN] File object */
     //  void* buff,  /* [OUT] Buffer to store read data */
