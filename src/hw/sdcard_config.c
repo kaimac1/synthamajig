@@ -8,12 +8,12 @@ static spi_t spi = {
     .sck_gpio = PIN_DISK_SCK,
     .mosi_gpio = PIN_DISK_MOSI,
     .miso_gpio = PIN_DISK_MISO,
-    .baud_rate = DISK_BAUD_RATE  // 31250000 Hz
+    .baud_rate = DISK_BAUD_RATE
 };
 
 static sd_spi_if_t spi_if = {
     .spi = &spi,
-    .ss_gpio = PIN_DISK_CS
+    .ss_gpio = -1 // do not drive CS pin
 };
 
 static sd_card_t sd_card = {
