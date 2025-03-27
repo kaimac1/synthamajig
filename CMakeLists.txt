@@ -38,6 +38,7 @@ add_executable(synth
     src/instrument.cpp    
     src/userinterface.cpp
 
+    vendor/libwave/libwave.c
 )
 
 target_compile_options(synth PUBLIC -fno-exceptions)
