@@ -10,7 +10,6 @@
 #include <string.h>
 
 #include "libwave.h"
-#include "ff_stdio.h"
 
 #define WAVE_ENDIAN_ORDER_LITTLE    0x41424344UL
 #define WAVE_ENDIAN_ORDER_BIG       0x44434241UL
@@ -43,85 +42,12 @@
 #define WAVE_WAVE_ID             ((WaveU32)'WAVE')
 #endif
 
-WAVE_THREAD_LOCAL WaveErr g_err = {WAVE_OK, (char*)"", 1};
+WAVE_THREAD_LOCAL WaveErr g_err = {WAVE_OK, "", 1};
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-static void* wave_default_malloc(void *context, size_t size)
-{
-    (void)context;
-    void *p = malloc(size);
-    assert(p != NULL);
-    return p;
-}
 
-static void* wave_default_realloc(void *context, void *p, size_t size)
-{
-    (void)context;
-    void *ptr = realloc(p, size);
-    assert(ptr != NULL);
-    return ptr;
-}
-
-static void wave_default_free(void *context, void *p)
-{
-    (void)context;
-    free(p);
-}
-
-static WaveAllocFuncs g_default_alloc_funcs = {
-    &wave_default_malloc,
-    &wave_default_realloc,
-    &wave_default_free
-};
-
-static void *g_alloc_context = NULL;
-static WAVE_CONST WaveAllocFuncs* g_alloc_funcs = &g_default_alloc_funcs;
-
-void wave_set_allocator(void *context, WAVE_CONST WaveAllocFuncs *funcs)
-{
-    g_alloc_context = context;
-    g_alloc_funcs = funcs;
-}
-
-void* wave_malloc(size_t size)
-{
-    return g_alloc_funcs->malloc(g_alloc_context, size);
-}
-
-void* wave_realloc(void *p, size_t size)
-{
-    return g_alloc_funcs->realloc(g_alloc_context, p, size);
-}
-
-void wave_free(void *p)
-{
-    if (p != NULL) {
-        g_alloc_funcs->free(g_alloc_context, p);
-    }
-}
-
-char* wave_strdup(WAVE_CONST char *str)
-{
-    size_t len = strlen(str) + 1;
-    void *new = wave_malloc(len);
-    if (new == NULL)
-        return NULL;
-
-    return memcpy(new, str, len);
-}
-
-char* wave_strndup(WAVE_CONST char *str, size_t n)
-{
-    char *result = wave_malloc(n + 1);
-    if (result == NULL)
-        return NULL;
-
-    result[n] = 0;
-    return memcpy(result, str, n);
-}
-
-int wave_vasprintf(char **str, WAVE_CONST char *format, va_list args)
+int wave_vasprintf(char *str, WAVE_CONST char *format, va_list args)
 {
     int size = 0;
 
@@ -134,20 +60,7 @@ int wave_vasprintf(char **str, WAVE_CONST char *format, va_list args)
         return size;
     }
 
-    *str = wave_malloc((size_t)size + 1);
-    if (*str == NULL)
-        return -1;
-
-    return vsprintf(*str, format, args);
-}
-
-int wave_asprintf(char **str, WAVE_CONST char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    int size = wave_vasprintf(str, format, args);
-    va_end(args);
-    return size;
+    return vsprintf(str, format, args);
 }
 
 WAVE_CONST WaveErr* wave_err(void)
@@ -158,11 +71,8 @@ WAVE_CONST WaveErr* wave_err(void)
 void wave_err_clear(void)
 {
     if (g_err.code != WAVE_OK) {
-        if (!g_err._is_literal) {
-            wave_free(g_err.message);
-        }
         g_err.code = WAVE_OK;
-        g_err.message = (char*)"";
+        strcpy(g_err.message, "");
         g_err._is_literal = 1;
     }
 }
@@ -173,7 +83,7 @@ WAVE_INLINE void wave_err_set(WaveErrCode code, WAVE_CONST char *format, ...)
     va_list args;
     va_start(args, format);
     g_err.code = code;
-    wave_vasprintf(&g_err.message, format, args);
+    wave_vasprintf(g_err.message, format, args);
     g_err._is_literal = 0;
     va_end(args);
 }
@@ -182,78 +92,9 @@ WAVE_INLINE void wave_err_set_literal(WaveErrCode code, WAVE_CONST char *message
 {
     assert(g_err.code == WAVE_OK);
     g_err.code = code;
-    g_err.message = (char *)message;
+    strcpy(g_err.message, message);
     g_err._is_literal = 1;
 }
-
-#pragma pack(push, 1)
-
-typedef struct {
-    WaveU32 id;
-    WaveU32 size;
-} WaveChunkHeader;
-
-typedef struct {
-    WaveChunkHeader header;
-
-    WaveU64 offset;
-
-    struct {
-        WaveU16 format_tag;
-        WaveU16 num_channels;
-        WaveU32 sample_rate;
-        WaveU32 avg_bytes_per_sec;
-        WaveU16 block_align;
-        WaveU16 bits_per_sample;
-
-        WaveU16 ext_size;
-        WaveU16 valid_bits_per_sample;
-        WaveU32 channel_mask;
-
-        WaveU8 sub_format[16];
-    } body;
-} WaveFormatChunk;
-
-typedef struct {
-    WaveChunkHeader header;
-
-    WaveU64 offset;
-
-    struct {
-        WaveU32 sample_length;
-    } body;
-} WaveFactChunk;
-
-typedef struct {
-    WaveChunkHeader header;
-    WaveU64 offset;
-} WaveDataChunk;
-
-typedef struct {
-    WaveU32 id;
-    WaveU32 size;
-    WaveU32 wave_id;
-    WaveU64 offset;
-} WaveMasterChunk;
-
-#pragma pack(pop)
-
-#define WAVE_CHUNK_MASTER    ((WaveU32)1)
-#define WAVE_CHUNK_FORMAT    ((WaveU32)2)
-#define WAVE_CHUNK_FACT      ((WaveU32)4)
-#define WAVE_CHUNK_DATA      ((WaveU32)8)
-
-struct _WaveFile {
-    FF_FILE*             fp;
-    char*                filename;
-    WaveU32              mode;
-    WaveBool             is_a_new_file;
-
-    WaveMasterChunk      riff_chunk;
-    WaveFormatChunk      format_chunk;
-    WaveFactChunk        fact_chunk;
-    WaveDataChunk        data_chunk;
-};
 
 static WAVE_CONST WaveU8 default_sub_format[16] = {
     0x01, 0x00,
@@ -419,7 +260,7 @@ void wave_init(WaveFile* self, WAVE_CONST char* filename, WaveU32 mode)
         return;
     }
 
-    self->filename = wave_strdup(filename);
+    strlcpy(self->filename, filename, WAVE_FILENAME_LEN);
     self->mode = mode;
 
     if (!(self->mode & WAVE_OPEN_WRITE) && !(self->mode & WAVE_OPEN_APPEND)) {
@@ -470,8 +311,6 @@ void wave_finalize(WaveFile* self)
 {
     int ret;
 
-    wave_free(self->filename);
-
     if (self->fp == NULL) {
         return;
     }
@@ -483,22 +322,14 @@ void wave_finalize(WaveFile* self)
     }
 }
 
-WaveFile* wave_open(WAVE_CONST char* filename, WaveU32 mode)
+void wave_open(WaveFile *wf, WAVE_CONST char* filename, WaveU32 mode)
 {
-    WaveFile* self = wave_malloc(sizeof(WaveFile));
-    if (self == NULL) {
-        return NULL;
-    }
-
-    wave_init(self, filename, mode);
-
-    return self;
+    wave_init(wf, filename, mode);
 }
 
 void wave_close(WaveFile* self)
 {
     wave_finalize(self);
-    wave_free(self);
 }
 
 WaveFile* wave_reopen(WaveFile* self, WAVE_CONST char* filename, WaveU32 mode)

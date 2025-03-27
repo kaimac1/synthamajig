@@ -22,6 +22,8 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ff_stdio.h"
+
 #if !defined(_MSC_VER) || _MSC_VER >= 1800
 #define WAVE_INLINE static inline
 #define WAVE_CONST const
@@ -100,26 +102,9 @@ typedef enum {
 
 typedef struct {
     WaveErrCode     code;
-    char*           message;
+    char            message[128];
     int             _is_literal;
 } WaveErr;
-
-typedef struct {
-    void*   (*malloc)(void *context, size_t size);
-    void*   (*realloc)(void *context, void *p, size_t size);
-    void    (*free)(void *context, void *p);
-} WaveAllocFuncs;
-
-void wave_set_allocator(void *context, WAVE_CONST WaveAllocFuncs *funcs);
-
-void* wave_malloc(size_t size);
-void* wave_realloc(void *p, size_t size);
-void wave_free(void *p);
-
-char* wave_strdup(WAVE_CONST char *str);
-char* wave_strndup(WAVE_CONST char *str, size_t n);
-int wave_vasprintf(char **str, WAVE_CONST char *format, va_list args);
-int wave_asprintf(char **str, WAVE_CONST char *format, ...);
 
 WAVE_API WAVE_CONST WaveErr* wave_err(void);
 WAVE_API void wave_err_clear(void);
@@ -128,7 +113,80 @@ WAVE_API void wave_err_clear(void);
 #define WAVE_OPEN_WRITE      2
 #define WAVE_OPEN_APPEND     4
 
+
+#pragma pack(push, 1)
+
+typedef struct {
+    WaveU32 id;
+    WaveU32 size;
+} WaveChunkHeader;
+
+typedef struct {
+    WaveChunkHeader header;
+
+    WaveU64 offset;
+
+    struct {
+        WaveU16 format_tag;
+        WaveU16 num_channels;
+        WaveU32 sample_rate;
+        WaveU32 avg_bytes_per_sec;
+        WaveU16 block_align;
+        WaveU16 bits_per_sample;
+
+        WaveU16 ext_size;
+        WaveU16 valid_bits_per_sample;
+        WaveU32 channel_mask;
+
+        WaveU8 sub_format[16];
+    } body;
+} WaveFormatChunk;
+
+typedef struct {
+    WaveChunkHeader header;
+
+    WaveU64 offset;
+
+    struct {
+        WaveU32 sample_length;
+    } body;
+} WaveFactChunk;
+
+typedef struct {
+    WaveChunkHeader header;
+    WaveU64 offset;
+} WaveDataChunk;
+
+typedef struct {
+    WaveU32 id;
+    WaveU32 size;
+    WaveU32 wave_id;
+    WaveU64 offset;
+} WaveMasterChunk;
+
+#pragma pack(pop)
+
+#define WAVE_CHUNK_MASTER    ((WaveU32)1)
+#define WAVE_CHUNK_FORMAT    ((WaveU32)2)
+#define WAVE_CHUNK_FACT      ((WaveU32)4)
+#define WAVE_CHUNK_DATA      ((WaveU32)8)
+
+#define WAVE_FILENAME_LEN 32
+
+struct _WaveFile {
+    FF_FILE*             fp;
+    char                 filename[WAVE_FILENAME_LEN];
+    WaveU32              mode;
+    WaveBool             is_a_new_file;
+
+    WaveMasterChunk      riff_chunk;
+    WaveFormatChunk      format_chunk;
+    WaveFactChunk        fact_chunk;
+    WaveDataChunk        data_chunk;
+};
+
 typedef struct _WaveFile WaveFile;
+
 
 /** Open a wav file
  *
@@ -136,8 +194,8 @@ typedef struct _WaveFile WaveFile;
  *  @param mode         The mode for open (same as {fopen})
  *  @return             NULL if the memory allocation for the {WaveFile} object failed. Non-NULL means the memory allocation succeeded, but there can be other errors, which can be obtained using {wave_err}.
  */
-WAVE_API WaveFile* wave_open(WAVE_CONST char* filename, WaveU32 mode);
-WAVE_API void     wave_close(WaveFile* self);
+WAVE_API void      wave_open(WaveFile *wf, WAVE_CONST char* filename, WaveU32 mode);
+WAVE_API void      wave_close(WaveFile* self);
 WAVE_API WaveFile* wave_reopen(WaveFile* self, WAVE_CONST char* filename, WaveU32 mode);
 
 /** Read a block of samples from the wav file
