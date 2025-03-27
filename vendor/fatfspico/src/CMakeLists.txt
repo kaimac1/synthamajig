@@ -17,6 +17,7 @@ target_sources(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}/sd_driver/SPI/sd_spi.c
     ${CMAKE_CURRENT_LIST_DIR}/src/crc.c
     ${CMAKE_CURRENT_LIST_DIR}/src/f_util.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/ff_stdio.c
     ${CMAKE_CURRENT_LIST_DIR}/src/glue.c
 )
 target_include_directories(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico INTERFACE

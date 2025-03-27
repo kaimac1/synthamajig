@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "libwave.h"
+#include "ff_stdio.h"
 
 #define WAVE_ENDIAN_ORDER_LITTLE    0x41424344UL
 #define WAVE_ENDIAN_ORDER_BIG       0x44434241UL
@@ -243,8 +244,8 @@ typedef struct {
 #define WAVE_CHUNK_DATA      ((WaveU32)8)
 
 struct _WaveFile {
-    FILE*               fp;
-    char*               filename;
+    FF_FILE*             fp;
+    char*                filename;
     WaveU32              mode;
     WaveBool             is_a_new_file;
 
@@ -263,7 +264,7 @@ void wave_parse_header(WaveFile* self)
 {
     size_t read_count;
 
-    read_count = fread(&self->riff_chunk, sizeof(WaveChunkHeader), 1, self->fp);
+    read_count = ff_fread(&self->riff_chunk, sizeof(WaveChunkHeader), 1, self->fp);
     if (read_count != 1) {
         wave_err_set_literal(WAVE_ERR_FORMAT, "Unexpected EOF");
         return;
@@ -274,7 +275,7 @@ void wave_parse_header(WaveFile* self)
         return;
     }
 
-    read_count = fread(&self->riff_chunk.wave_id, 4, 1, self->fp);
+    read_count = ff_fread(&self->riff_chunk.wave_id, 4, 1, self->fp);
     if (read_count != 1) {
         wave_err_set_literal(WAVE_ERR_FORMAT, "Unexpected EOF");
         return;
@@ -284,12 +285,12 @@ void wave_parse_header(WaveFile* self)
         return;
     }
 
-    self->riff_chunk.offset = (WaveU64)ftell(self->fp);
+    self->riff_chunk.offset = (WaveU64)ff_ftell(self->fp);
 
     while (self->data_chunk.header.id != WAVE_DATA_CHUNK_ID) {
         WaveChunkHeader header;
 
-        read_count = fread(&header, sizeof(WaveChunkHeader), 1, self->fp);
+        read_count = ff_fread(&header, sizeof(WaveChunkHeader), 1, self->fp);
         if (read_count != 1) {
             wave_err_set_literal(WAVE_ERR_FORMAT, "Unexpected EOF");
             return;
@@ -298,8 +299,8 @@ void wave_parse_header(WaveFile* self)
         switch (header.id) {
             case WAVE_FORMAT_CHUNK_ID:
                 self->format_chunk.header = header;
-                self->format_chunk.offset = (WaveU64)ftell(self->fp);
-                read_count = fread(&self->format_chunk.body, MIN(header.size, sizeof(self->format_chunk.body)), 1, self->fp);
+                self->format_chunk.offset = (WaveU64)ff_ftell(self->fp);
+                read_count = ff_fread(&self->format_chunk.body, MIN(header.size, sizeof(self->format_chunk.body)), 1, self->fp);
                 if (read_count != 1) {
                     wave_err_set_literal(WAVE_ERR_FORMAT, "Unexpected EOF");
                     return;
@@ -315,19 +316,19 @@ void wave_parse_header(WaveFile* self)
                 break;
             case WAVE_FACT_CHUNK_ID:
                 self->fact_chunk.header = header;
-                self->fact_chunk.offset = (WaveU64)ftell(self->fp);
-                read_count = fread(&self->fact_chunk.body, MIN(header.size, sizeof(self->fact_chunk.body)), 1, self->fp);
+                self->fact_chunk.offset = (WaveU64)ff_ftell(self->fp);
+                read_count = ff_fread(&self->fact_chunk.body, MIN(header.size, sizeof(self->fact_chunk.body)), 1, self->fp);
                 if (read_count != 1) {
                     wave_err_set(WAVE_ERR_FORMAT, "Unexpected EOF");
                 }
                 break;
             case WAVE_DATA_CHUNK_ID:
                 self->data_chunk.header = header;
-                self->data_chunk.offset = (WaveU64)ftell(self->fp);
+                self->data_chunk.offset = (WaveU64)ff_ftell(self->fp);
                 break;
             default:
-                if (fseek(self->fp, header.size, SEEK_CUR) < 0) {
-                    wave_err_set(WAVE_ERR_OS, "fseek() failed [errno %d: %s]", errno, strerror(errno));
+                if (ff_fseek(self->fp, header.size, FF_SEEK_CUR) < 0) {
+                    wave_err_set(WAVE_ERR_OS, "ff_fseek() failed [errno %d: %s]", errno, strerror(errno));
                     return;
                 }
                 break;
@@ -343,51 +344,51 @@ void wave_write_header(WaveFile* self)
         (self->fact_chunk.header.id == WAVE_FACT_CHUNK_ID ? (sizeof(WaveChunkHeader) + self->fact_chunk.header.size) : 0) +
         (self->data_chunk.header.id == WAVE_DATA_CHUNK_ID ? (sizeof(WaveChunkHeader) + self->data_chunk.header.size) : 0);
 
-    if (fseek(self->fp, 0, SEEK_SET) != 0) {
-        wave_err_set(WAVE_ERR_OS, "fseek() failed [errno %d: %s]", errno, strerror(errno));
+    if (ff_fseek(self->fp, 0, FF_SEEK_SET) != 0) {
+        wave_err_set(WAVE_ERR_OS, "ff_fseek() failed [errno %d: %s]", errno, strerror(errno));
         return;
     }
-    if (fwrite(&self->riff_chunk, sizeof(WaveChunkHeader) + 4, 1, self->fp) != 1) {
+    if (ff_fwrite(&self->riff_chunk, sizeof(WaveChunkHeader) + 4, 1, self->fp) != 1) {
         wave_err_set(WAVE_ERR_OS, "Error while writing to %s [errno %d: %s]", self->filename, errno, strerror(errno));
         return;
     }
 
     if (self->format_chunk.header.id == WAVE_FORMAT_CHUNK_ID) {
-        if (fseek(self->fp, (long)(self->format_chunk.offset - sizeof(WaveChunkHeader)), SEEK_SET) != 0) {
-            wave_err_set(WAVE_ERR_OS, "fseek() failed [errno %d: %s]", errno, strerror(errno));
+        if (ff_fseek(self->fp, (long)(self->format_chunk.offset - sizeof(WaveChunkHeader)), FF_SEEK_SET) != 0) {
+            wave_err_set(WAVE_ERR_OS, "ff_fseek() failed [errno %d: %s]", errno, strerror(errno));
             return;
         }
-        if (fwrite(&self->format_chunk.header, sizeof(WaveChunkHeader), 1, self->fp) != 1) {
+        if (ff_fwrite(&self->format_chunk.header, sizeof(WaveChunkHeader), 1, self->fp) != 1) {
             wave_err_set(WAVE_ERR_OS, "Error while writing to %s [errno %d: %s]", self->filename, errno, strerror(errno));
             return;
         }
-        if (fwrite(&self->format_chunk.body, self->format_chunk.header.size, 1, self->fp) != 1) {
+        if (ff_fwrite(&self->format_chunk.body, self->format_chunk.header.size, 1, self->fp) != 1) {
             wave_err_set(WAVE_ERR_OS, "Error while writing to %s [errno %d: %s]", self->filename, errno, strerror(errno));
             return;
         }
     }
 
     if (self->fact_chunk.header.id == WAVE_FACT_CHUNK_ID) {
-        if (fseek(self->fp, (long)(self->fact_chunk.offset - sizeof(WaveChunkHeader)), SEEK_SET) != 0) {
-            wave_err_set(WAVE_ERR_OS, "fseek() failed [errno %d: %s]", errno, strerror(errno));
+        if (ff_fseek(self->fp, (long)(self->fact_chunk.offset - sizeof(WaveChunkHeader)), FF_SEEK_SET) != 0) {
+            wave_err_set(WAVE_ERR_OS, "ff_fseek() failed [errno %d: %s]", errno, strerror(errno));
             return;
         }
-        if (fwrite(&self->fact_chunk.header, sizeof(WaveChunkHeader), 1, self->fp) != 1) {
+        if (ff_fwrite(&self->fact_chunk.header, sizeof(WaveChunkHeader), 1, self->fp) != 1) {
             wave_err_set(WAVE_ERR_OS, "Error while writing to %s [errno %d: %s]", self->filename, errno, strerror(errno));
             return;
         }
-        if (fwrite(&self->fact_chunk.body, self->fact_chunk.header.size, 1, self->fp) != 1) {
+        if (ff_fwrite(&self->fact_chunk.body, self->fact_chunk.header.size, 1, self->fp) != 1) {
             wave_err_set(WAVE_ERR_OS, "Error while writing to %s [errno %d: %s]", self->filename, errno, strerror(errno));
             return;
         }
     }
 
     if (self->data_chunk.header.id == WAVE_DATA_CHUNK_ID) {
-        if (fseek(self->fp, (long)(self->data_chunk.offset - sizeof(WaveChunkHeader)), SEEK_SET) != 0) {
-            wave_err_set(WAVE_ERR_OS, "fseek() failed [errno %d: %s]", errno, strerror(errno));
+        if (ff_fseek(self->fp, (long)(self->data_chunk.offset - sizeof(WaveChunkHeader)), FF_SEEK_SET) != 0) {
+            wave_err_set(WAVE_ERR_OS, "ff_fseek() failed [errno %d: %s]", errno, strerror(errno));
             return;
         }
-        if (fwrite(&self->data_chunk.header, sizeof(WaveChunkHeader), 1, self->fp) != 1) {
+        if (ff_fwrite(&self->data_chunk.header, sizeof(WaveChunkHeader), 1, self->fp) != 1) {
             wave_err_set(WAVE_ERR_OS, "Error while writing to %s [errno %d: %s]", self->filename, errno, strerror(errno));
             return;
         }
@@ -400,13 +401,13 @@ void wave_init(WaveFile* self, WAVE_CONST char* filename, WaveU32 mode)
 
     if (mode & WAVE_OPEN_READ) {
         if ((mode & WAVE_OPEN_WRITE) || (mode & WAVE_OPEN_APPEND)) {
-            self->fp = fopen(filename, "wb+");
+            self->fp = ff_fopen(filename, "w+");
         } else {
-            self->fp = fopen(filename, "rb");
+            self->fp = ff_fopen(filename, "r");
         }
     } else {
         if ((mode & WAVE_OPEN_WRITE) || (mode & WAVE_OPEN_APPEND)) {
-            self->fp = fopen(filename, "wb+");
+            self->fp = ff_fopen(filename, "w+");
         } else {
             wave_err_set_literal(WAVE_ERR_PARAM, "Invalid mode");
             return;
@@ -434,7 +435,8 @@ void wave_init(WaveFile* self, WAVE_CONST char* filename, WaveU32 mode)
         } else {
             // Header parsing failed. Regard it as a new file.
             wave_err_clear();
-            rewind(self->fp);
+            ff_fseek(self->fp, 0, FF_SEEK_SET);
+            //rewind(self->fp);
             self->is_a_new_file = WAVE_TRUE;
         }
     }
@@ -474,7 +476,7 @@ void wave_finalize(WaveFile* self)
         return;
     }
 
-    ret = fclose(self->fp);
+    ret = ff_fclose(self->fp);
     if (ret != 0) {
         fprintf(stderr, "[WARN] [libwav] fclose failed with code %d [errno %d: %s]", ret, errno, strerror(errno));
         return;
@@ -533,46 +535,46 @@ size_t wave_read(WaveFile* self, void *buffer, size_t count)
         return 0;
     }
 
-    read_count = fread(buffer, sample_size, n_channels * count, self->fp);
-    if (ferror(self->fp)) {
-        wave_err_set(WAVE_ERR_OS, "Error when reading %s [errno %d: %s]", self->filename, errno, strerror(errno));
-        return 0;
-    }
+    read_count = ff_fread(buffer, sample_size, n_channels * count, self->fp);
+    // if (ff_ferror(self->fp)) {
+    //     wave_err_set(WAVE_ERR_OS, "Error when reading %s [errno %d: %s]", self->filename, errno, strerror(errno));
+    //     return 0;
+    // }
 
     return read_count / n_channels;
 }
 
 WAVE_INLINE void wave_update_sizes(WaveFile *self)
 {
-    long int save_pos = ftell(self->fp);
-    if (fseek(self->fp, (long)(sizeof(WaveChunkHeader) - 4), SEEK_SET) != 0) {
-        wave_err_set(WAVE_ERR_OS, "fseek() failed [errno %d: %s]", errno, strerror(errno));
+    long int save_pos = ff_ftell(self->fp);
+    if (ff_fseek(self->fp, (long)(sizeof(WaveChunkHeader) - 4), SEEK_SET) != 0) {
+        wave_err_set(WAVE_ERR_OS, "ff_fseek() failed [errno %d: %s]", errno, strerror(errno));
         return;
     }
-    if (fwrite(&self->riff_chunk.size, 4, 1, self->fp) != 1) {
-        wave_err_set(WAVE_ERR_OS, "fwrite() failed [errno %d: %s]", errno, strerror(errno));
+    if (ff_fwrite(&self->riff_chunk.size, 4, 1, self->fp) != 1) {
+        wave_err_set(WAVE_ERR_OS, "ff_fwrite() failed [errno %d: %s]", errno, strerror(errno));
         return;
     }
     if (self->fact_chunk.header.id == WAVE_FACT_CHUNK_ID) {
-        if (fseek(self->fp, (long)self->fact_chunk.offset, SEEK_SET) != 0) {
-            wave_err_set(WAVE_ERR_OS, "fseek() failed [errno %d: %s]", errno, strerror(errno));
+        if (ff_fseek(self->fp, (long)self->fact_chunk.offset, SEEK_SET) != 0) {
+            wave_err_set(WAVE_ERR_OS, "ff_fseek() failed [errno %d: %s]", errno, strerror(errno));
             return;
         }
-        if (fwrite(&self->fact_chunk.body.sample_length, 4, 1, self->fp) != 1) {
-            wave_err_set(WAVE_ERR_OS, "fwrite() failed [errno %d: %s]", errno, strerror(errno));
+        if (ff_fwrite(&self->fact_chunk.body.sample_length, 4, 1, self->fp) != 1) {
+            wave_err_set(WAVE_ERR_OS, "ff_fwrite() failed [errno %d: %s]", errno, strerror(errno));
             return;
         }
     }
-    if (fseek(self->fp, (long)(self->data_chunk.offset - 4), SEEK_SET) != 0) {
-        wave_err_set(WAVE_ERR_OS, "fseek() failed [errno %d: %s]", errno, strerror(errno));
+    if (ff_fseek(self->fp, (long)(self->data_chunk.offset - 4), SEEK_SET) != 0) {
+        wave_err_set(WAVE_ERR_OS, "ff_fseek() failed [errno %d: %s]", errno, strerror(errno));
         return;
     }
-    if (fwrite(&self->data_chunk.header.size, 4, 1, self->fp) != 1) {
-        wave_err_set(WAVE_ERR_OS, "fwrite() failed [errno %d: %s]", errno, strerror(errno));
+    if (ff_fwrite(&self->data_chunk.header.size, 4, 1, self->fp) != 1) {
+        wave_err_set(WAVE_ERR_OS, "ff_fwrite() failed [errno %d: %s]", errno, strerror(errno));
         return;
     }
-    if (fseek(self->fp, save_pos, SEEK_SET) != 0) {
-        wave_err_set(WAVE_ERR_OS, "fseek() failed [errno %d: %s]", errno, strerror(errno));
+    if (ff_fseek(self->fp, save_pos, SEEK_SET) != 0) {
+        wave_err_set(WAVE_ERR_OS, "ff_fseek() failed [errno %d: %s]", errno, strerror(errno));
         return;
     }
 }
@@ -603,17 +605,17 @@ size_t wave_write(WaveFile* self, WAVE_CONST void *buffer, size_t count)
     }
 
     if (!(self->mode & WAVE_OPEN_READ) && !(self->mode & WAVE_OPEN_WRITE)) {
-        wave_seek(self, 0, SEEK_END);
+        wave_seek(self, 0, FF_SEEK_END);
         if (g_err.code != WAVE_OK) {
             return 0;
         }
     }
 
-    write_count = fwrite(buffer, sample_size, n_channels * count, self->fp);
-    if (ferror(self->fp)) {
-        wave_err_set(WAVE_ERR_OS, "Error when writing to %s [errno %d: %s]", self->filename, errno, strerror(errno));
-        return 0;
-    }
+    write_count = ff_fwrite(buffer, sample_size, n_channels * count, self->fp);
+    // if (ff_ferror(self->fp)) {
+    //     wave_err_set(WAVE_ERR_OS, "Error when writing to %s [errno %d: %s]", self->filename, errno, strerror(errno));
+    //     return 0;
+    // }
 
     self->riff_chunk.size += write_count * sample_size;
     if (self->fact_chunk.header.id == WAVE_FACT_CHUNK_ID) {
@@ -630,7 +632,7 @@ size_t wave_write(WaveFile* self, WAVE_CONST void *buffer, size_t count)
 
 long int wave_tell(WAVE_CONST WaveFile* self)
 {
-    long pos = ftell(self->fp);
+    long pos = ff_ftell(self->fp);
 
     if (pos == -1L) {
         wave_err_set(WAVE_ERR_OS, "ftell() failed [errno %d: %s]", errno, strerror(errno));
@@ -647,9 +649,9 @@ int wave_seek(WaveFile* self, long int offset, int origin)
     size_t length = wave_get_length(self);
     int    ret;
 
-    if (origin == SEEK_CUR) {
+    if (origin == FF_SEEK_CUR) {
         offset += (long)wave_tell(self);
-    } else if (origin == SEEK_END) {
+    } else if (origin == FF_SEEK_END) {
         offset += (long)length;
     }
 
@@ -661,10 +663,10 @@ int wave_seek(WaveFile* self, long int offset, int origin)
         return (int)g_err.code;
     }
 
-    ret = fseek(self->fp, (long)self->data_chunk.offset + offset, SEEK_SET);
+    ret = ff_fseek(self->fp, (long)self->data_chunk.offset + offset, FF_SEEK_SET);
 
     if (ret != 0) {
-        wave_err_set(WAVE_ERR_OS, "fseek() failed [errno %d: %s]", errno, strerror(errno));
+        wave_err_set(WAVE_ERR_OS, "ff_fseek() failed [errno %d: %s]", errno, strerror(errno));
         return (int)ret;
     }
 
@@ -673,23 +675,24 @@ int wave_seek(WaveFile* self, long int offset, int origin)
 
 void wave_rewind(WaveFile* self)
 {
-    wave_seek(self, 0, SEEK_SET);
+    wave_seek(self, 0, FF_SEEK_SET);
 }
 
 int wave_eof(WAVE_CONST WaveFile* self)
 {
-    return feof(self->fp) || ftell(self->fp) == (long)(self->data_chunk.offset + self->data_chunk.header.size);
+    return ff_feof(self->fp) || ff_ftell(self->fp) == (long)(self->data_chunk.offset + self->data_chunk.header.size);
 }
 
 int wave_flush(WaveFile* self)
 {
-    int ret = fflush(self->fp);
+    // int ret = fflush(self->fp);
 
-    if (ret != 0) {
-        wave_err_set(WAVE_ERR_OS, "fflush() failed [errno %d: %s]", errno, strerror(errno));
-    }
+    // if (ret != 0) {
+    //     wave_err_set(WAVE_ERR_OS, "fflush() failed [errno %d: %s]", errno, strerror(errno));
+    // }
 
-    return ret;
+    // return ret;
+    return 0;
 }
 
 void wave_set_format(WaveFile* self, WaveU16 format)
