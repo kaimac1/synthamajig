@@ -227,27 +227,36 @@ bool UI::process(RawInput in) {
 
 
 
-
-
-
+// The draw function for a debug menu item
+void debug_menu_item(const char *name, const char *value, int pos, bool selected) {
+    const int flags = selected ? TEXT_INVERT : 0;
+    const int ypos = 16 * pos;
+    if (selected) ngl_rect(0, 16+ypos, 128,16, 1);
+    draw_text(2, 18+ypos, flags, name);
+    if (value) {
+        draw_text(127, 18+ypos, flags | TEXT_ALIGN_RIGHT, value);
+    }
+}
 
 void UI::debug_menu() {
 
-    kmgui_menu_start("Debug menu");
-    if (kmgui_menu_item_int(&volume_percent, "Volume", 0, 100)) {
-        track.set_volume_percent(volume_percent);
+    kmgui_menu_start("Debug menu", 5);
+    kmgui_menu_item_draw_func(debug_menu_item);
+    if (kmgui_menu_item_int("Volume", volume_percent)) {
+        if (kmgui_menu_edit_int(&volume_percent, 0, 100)) {
+            track.set_volume_percent(volume_percent);    
+        }
     }
-    if (kmgui_menu_item_int(&brightness, "Brightness", 0, 10)) {
-        set_brightness(brightness);
+    if (kmgui_menu_item_int("Brightness", brightness)) {
+        if (kmgui_menu_edit_int(&brightness, 0, 10)) {
+            set_brightness(brightness);
+        }
     }
-    kmgui_menu_item_int_readonly(sizeof(Track), "sz.track");
-    kmgui_menu_item_int_readonly(sizeof(Track), "sz.track");
-    kmgui_menu_item_int_readonly(sizeof(Track), "sz.track");
-    // for (int i=0; i<5; i++) {
-    //     char strbuf[32];
-    //     sprintf(strbuf, "%d", i);
-    //     kmgui_menu_item_int_readonly(i, strbuf);
-    // }
+    kmgui_menu_item_int("Test", 1);
+    kmgui_menu_item_int("Testing", 2);
+    kmgui_menu_item_int("Tested", 3);
+    kmgui_menu_item_int("Testable", 4);
+    kmgui_menu_item_int("Testest", 5);
     kmgui_menu_end();    
 
     // soft keys

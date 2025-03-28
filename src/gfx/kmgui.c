@@ -14,6 +14,8 @@ typedef struct {
     int scan_item;
     int top_item;
     int num_visible_items;
+    ItemDrawFunc *draw_item;
+    char last_name[TXTLEN];
 } Menu;
 Menu menu;
 
@@ -45,7 +47,7 @@ static void menu_start(const char *title, int num_visible_items) {
         menu.num_visible_items = num_visible_items;
         strlcpy(menu.title, title, sizeof(menu.title));
     }
-    menu.scan_item = 0;
+    menu.scan_item = -1;
 
     if (knob_delta[SCROLL_KNOB]) {
         // Change selected item
@@ -60,39 +62,56 @@ static void menu_start(const char *title, int num_visible_items) {
     }    
 }
 
-void kmgui_menu_start(const char *title) {
-    menu_start(title, 5);
+void kmgui_menu_start(const char *title, int visible_items) {
+    menu_start(title, visible_items);
     draw_text(0,0,0, title);
 }
 
-bool kmgui_menu_item_int(int *value, const char *name, int min, int max) {
+void kmgui_menu_item_draw_func(ItemDrawFunc *func) {
+    menu.draw_item = func;
+}
+
+bool kmgui_menu_item_int(const char *name, int value) {
+    MENU_NEXT();
     if (!MENU_ITEM_VISIBLE()) {
-        MENU_NEXT();
         return false;
     }
 
     const bool selected = MENU_ITEM_SELECTED();
+    
+    char valuebuf[TXTLEN];
+    snprintf(valuebuf, sizeof(valuebuf), "%d", value);
+    menu.draw_item(name, valuebuf, MENU_ITEM_POS(), selected);
 
+    // Save name for if we need to redraw
+    strlcpy(menu.last_name, name, sizeof(menu.last_name));
+
+    return (menu.built && selected);
+}
+
+bool kmgui_menu_edit_int(int *value, int min, int max) {
     // Change value by delta_data
-    if (selected && knob_delta[DATA_KNOB]) {
+    bool changed = false;
+    if (MENU_ITEM_SELECTED() && knob_delta[DATA_KNOB]) {
         int newval = *value + knob_delta[DATA_KNOB];
         if (newval < min) newval = min;
         if (newval > max) newval = max;
         *value = newval;
+        changed = true;
+
+        // Redraw item
+        char valuebuf[TXTLEN];
+        snprintf(valuebuf, sizeof(valuebuf), "%d", newval);
+        menu.draw_item(menu.last_name, valuebuf, MENU_ITEM_POS(), true);
     }
-    
-    const int flags = selected ? TEXT_INVERT : 0;
-    const int ypos = 16*MENU_ITEM_POS();
 
-    if (selected) ngl_rect(0, 16+ypos, 128,16, 1);
-    draw_text(2,    18+ypos, flags, name);
-    draw_textf(127, 18+ypos, flags | TEXT_ALIGN_RIGHT, "%d", *value);
-
-    MENU_NEXT();
-    return (menu.built && selected && knob_delta[DATA_KNOB]);
+    return changed;
 }
 
-void kmgui_menu_item_int_readonly(int value, const char *name) {
+
+
+
+void kmgui_menu_item_int_readonly(const char *name, int value) {
     if (!MENU_ITEM_VISIBLE()) {
         MENU_NEXT();
         return;
