@@ -6,6 +6,9 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+#define PSRAM_BASE_ADDR 0x11000000
+#define PSRAM_SIZE      (16 * 1024 * 1024)
+
 #define NUM_KNOBS 4
 #define NUM_LEDS 16
 #define NUM_BUTTONS 32

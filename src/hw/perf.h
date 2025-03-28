@@ -12,6 +12,7 @@ typedef enum {
     PERF_MATRIX,
     PERF_DRAWTIME,
     PERF_OLED_WRITETIME,
+    PERF_TEST,
     NUM_PERFCOUNTERS
 } PerfMetric;
 

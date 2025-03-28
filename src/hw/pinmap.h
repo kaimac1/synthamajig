@@ -3,6 +3,8 @@
 
 #define PICO_LED_PIN 25
 
+#define PIN_PSRAM_CS 47
+
 // OLED
 #define OLED_I2C        i2c_default
 #define OLED_CLK_KHZ    1000

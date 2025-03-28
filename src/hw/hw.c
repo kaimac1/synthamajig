@@ -2,6 +2,8 @@
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "hardware/sync.h"
+#include "hardware/structs/xip.h"
+#include "hardware/regs/xip.h"
 #include "quadrature_encoder.pio.h"
 #include "hw.h"
 #include "oled.h"
@@ -40,6 +42,10 @@ void hw_init(void) {
     gpio_init(PICO_LED_PIN);
     gpio_set_dir(PICO_LED_PIN, GPIO_OUT);
 
+    // Enable PSRAM
+    gpio_set_function(PIN_PSRAM_CS, GPIO_FUNC_XIP_CS1);
+    xip_ctrl_hw->ctrl|=XIP_CTRL_WRITABLE_M1_BITS;    
+
     // Encoders
     pio_add_program(ENCODER_PIO, &quadrature_encoder_program);
     quadrature_encoder_program_init(ENCODER_PIO, 0, PIN_ENC0, 0);
@@ -47,12 +53,17 @@ void hw_init(void) {
     quadrature_encoder_program_init(ENCODER_PIO, 2, PIN_ENC2, 0);
     quadrature_encoder_program_init(ENCODER_PIO, 3, PIN_ENC3, 0);
 
+    // OLED & graphics library
     oled_init(ngl_framebuffer());
+    ngl_init();
 
+    // Input & LED matrix
     matrix_init();
 
+    // DAC
     audio_pool = init_audio(SAMPLE_RATE, PIN_I2S_DATA, PIN_I2S_BCLK, 0, AUDIO_DMA_CHANNEL);
 
+    // Disk
     sleep_ms(1000);
     disk_init();
 }
