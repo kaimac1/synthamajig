@@ -3,7 +3,7 @@
 #include "common.h"
 #include "hw/oled.h"
 #include "gfx/ngl.h"
-#include "gfx/kmgui.h"
+#include "gfx/widlib.h"
 #include "assets/assets.h"
 #include <cstdio>
 #include <string.h>
@@ -147,7 +147,7 @@ bool UI::process(RawInput in) {
     }
 
     // For gui widgets
-    kmgui_update_knobs(inputs.knob_delta);
+    wl_update_knobs(inputs.knob_delta);
 
     if (track.is_playing) update = true;
 
@@ -240,33 +240,28 @@ void debug_menu_item(const char *name, const char *value, int pos, bool selected
 
 void UI::debug_menu() {
 
-    kmgui_menu_start("Debug menu", 5);
-    kmgui_menu_item_draw_func(debug_menu_item);
-    if (kmgui_menu_item_int("Volume", volume_percent)) {
-        if (kmgui_menu_edit_int(&volume_percent, 0, 100)) {
+    wl_menu_start("Debug menu", 5);
+    wl_menu_item_draw_func(debug_menu_item);
+    if (wl_menu_item_int("Volume", volume_percent)) {
+        if (wl_menu_edit_int(&volume_percent, 0, 100)) {
             track.set_volume_percent(volume_percent);    
         }
     }
-    if (kmgui_menu_item_int("Brightness", brightness)) {
-        if (kmgui_menu_edit_int(&brightness, 0, 10)) {
+    if (wl_menu_item_int("Brightness", brightness)) {
+        if (wl_menu_edit_int(&brightness, 0, 10)) {
             set_brightness(brightness);
         }
     }
-    kmgui_menu_item_int("Test", 1);
-    kmgui_menu_item_int("Testing", 2);
-    kmgui_menu_item_int("Tested", 3);
-    kmgui_menu_item_int("Testable", 4);
-    kmgui_menu_item_int("Testest", 5);
-    kmgui_menu_end();    
-
-    // soft keys
-    // draw_text(64,50,TEXT_CENTRE, "Delete?");
-    // draw_text(120,82,TEXT_ALIGN_RIGHT, "Yes");
-    // draw_text(120,102,TEXT_ALIGN_RIGHT, "No");
-    // draw_line(125,60,127,60,1);
-    // draw_line(125,60,125,88,1);
-    // draw_line(125,88,123,88,1);
-    // draw_line(123,108,127,108,1);
+    for (int i=0; i<64; i++) {
+        char buf[32];
+        sprintf(buf, "Item %d", i);
+        wl_menu_item_int(buf, i);
+    }
+    wl_menu_item_int("Testing", 2);
+    wl_menu_item_int("Tested", 3);
+    wl_menu_item_int("Testable", 4);
+    wl_menu_item_int("Testest", 5);
+    wl_menu_end();    
 
     // worth exploring this as an idea - scrolling pages
     // offs += delta_scroll*4;

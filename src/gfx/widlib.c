@@ -1,5 +1,7 @@
-#include "kmgui.h"
-#include "ngl.h"
+// widlib
+// Immediate-mode widget library
+
+#include "widlib.h"
 #include "gfx_ext.h"
 #include <string.h>
 #include <stdio.h>
@@ -21,7 +23,7 @@ Menu menu;
 
 int knob_delta[NUM_KNOBS];
 
-void kmgui_update_knobs(int *delta) {
+void wl_update_knobs(int *delta) {
     for (int i=0; i<NUM_KNOBS; i++) {
         knob_delta[i] = delta[i];
     }
@@ -62,16 +64,16 @@ static void menu_start(const char *title, int num_visible_items) {
     }    
 }
 
-void kmgui_menu_start(const char *title, int visible_items) {
+void wl_menu_start(const char *title, int visible_items) {
     menu_start(title, visible_items);
     draw_text(0,0,0, title);
 }
 
-void kmgui_menu_item_draw_func(ItemDrawFunc *func) {
+void wl_menu_item_draw_func(ItemDrawFunc *func) {
     menu.draw_item = func;
 }
 
-bool kmgui_menu_item_int(const char *name, int value) {
+bool wl_menu_item_int(const char *name, int value) {
     MENU_NEXT();
     if (!MENU_ITEM_VISIBLE()) {
         return false;
@@ -89,7 +91,7 @@ bool kmgui_menu_item_int(const char *name, int value) {
     return (menu.built && selected);
 }
 
-bool kmgui_menu_edit_int(int *value, int min, int max) {
+bool wl_menu_edit_int(int *value, int min, int max) {
     // Change value by delta_data
     bool changed = false;
     if (MENU_ITEM_SELECTED() && knob_delta[DATA_KNOB]) {
@@ -108,27 +110,7 @@ bool kmgui_menu_edit_int(int *value, int min, int max) {
     return changed;
 }
 
-
-
-
-void kmgui_menu_item_int_readonly(const char *name, int value) {
-    if (!MENU_ITEM_VISIBLE()) {
-        MENU_NEXT();
-        return;
-    }
-
-    const bool selected = MENU_ITEM_SELECTED();
-    const int flags = selected ? TEXT_INVERT : 0;
-    const int ypos = 16*MENU_ITEM_POS();
-
-    if (selected) ngl_rect(0, 16+ypos, 128,16, 1);
-    draw_text(2,    18+ypos, flags, name);
-    draw_textf(127, 18+ypos, flags | TEXT_ALIGN_RIGHT, "%d", value);
-
-    MENU_NEXT();
-}
-
-void kmgui_menu_end(void) {
+void wl_menu_end(void) {
     MENU_END();
 }
 

@@ -25,7 +25,7 @@ add_executable(synth
 
     src/gfx/ngl.c
     src/gfx/gfx_ext.c
-    src/gfx/kmgui.c
+    src/gfx/widlib.c
     
     src/assets/assets.c
 
