@@ -12,6 +12,8 @@ typedef struct {
     int num_items;
     int selected_item;
     int scan_item;
+    int top_item;
+    int num_visible_items;
 } Menu;
 Menu menu;
 
@@ -27,27 +29,49 @@ void kmgui_update_knobs(int *delta) {
 /**************************************************************/
 // Menu
 
-void kmgui_menu_start(const char *title) {
+#define MENU_ITEM_SELECTED()    (menu.selected_item == menu.scan_item)
+#define MENU_ITEM_VISIBLE()     ((menu.scan_item >= menu.top_item) && (menu.scan_item < menu.top_item + menu.num_visible_items))
+#define MENU_ITEM_POS()         (menu.scan_item - menu.top_item)
+#define MENU_NEXT()             menu.scan_item++; if (!menu.built) menu.num_items++;
+#define MENU_END()              menu.built = true;
+
+static void menu_start(const char *title, int num_visible_items) {
     if (strcmp(menu.title, title)) {
-        // reset
-        menu.built = 0;
+        // Reset
+        menu.built = false;
         menu.num_items = 0;
         menu.selected_item = 0;
-        strcpy(menu.title, title);
+        menu.top_item = 0;
+        menu.num_visible_items = num_visible_items;
+        strlcpy(menu.title, title, sizeof(menu.title));
     }
     menu.scan_item = 0;
 
-    draw_text(0,0,0, title);
-
     if (knob_delta[SCROLL_KNOB]) {
+        // Change selected item
         menu.selected_item += knob_delta[SCROLL_KNOB];
         if (menu.selected_item < 0) menu.selected_item = 0;
-        if (menu.selected_item >= menu.num_items) menu.selected_item = menu.num_items-1;
-    }
+        if (menu.selected_item >= menu.num_items) menu.selected_item = menu.num_items - 1;
+        // Scroll window
+        if (menu.selected_item < menu.top_item) menu.top_item = menu.selected_item;
+        if (menu.selected_item >= menu.top_item + menu.num_visible_items) {
+            menu.top_item = menu.selected_item - menu.num_visible_items + 1;
+        }
+    }    
+}
+
+void kmgui_menu_start(const char *title) {
+    menu_start(title, 5);
+    draw_text(0,0,0, title);
 }
 
 bool kmgui_menu_item_int(int *value, const char *name, int min, int max) {
-    bool selected = menu.selected_item == menu.scan_item;
+    if (!MENU_ITEM_VISIBLE()) {
+        MENU_NEXT();
+        return false;
+    }
+
+    const bool selected = MENU_ITEM_SELECTED();
 
     // Change value by delta_data
     if (selected && knob_delta[DATA_KNOB]) {
@@ -57,30 +81,36 @@ bool kmgui_menu_item_int(int *value, const char *name, int min, int max) {
         *value = newval;
     }
     
-    int flags = selected ? TEXT_INVERT : 0;
-    if (selected) ngl_rect(0, 16+16*menu.scan_item, 128,16, 1);
-    draw_text(2,    18+16*menu.scan_item, flags, name);
-    draw_textf(127, 18+16*menu.scan_item, flags | TEXT_ALIGN_RIGHT, "%d", *value);
+    const int flags = selected ? TEXT_INVERT : 0;
+    const int ypos = 16*MENU_ITEM_POS();
 
-    menu.scan_item++;
-    if (!menu.built) menu.num_items++;
+    if (selected) ngl_rect(0, 16+ypos, 128,16, 1);
+    draw_text(2,    18+ypos, flags, name);
+    draw_textf(127, 18+ypos, flags | TEXT_ALIGN_RIGHT, "%d", *value);
+
+    MENU_NEXT();
     return (menu.built && selected && knob_delta[DATA_KNOB]);
 }
 
 void kmgui_menu_item_int_readonly(int value, const char *name) {
-    bool selected = menu.selected_item == menu.scan_item;
+    if (!MENU_ITEM_VISIBLE()) {
+        MENU_NEXT();
+        return;
+    }
 
-    int flags = selected ? TEXT_INVERT : 0;
-    if (selected) ngl_rect(0, 16+16*menu.scan_item, 128,16, 1);
-    draw_text(2,    18+16*menu.scan_item, flags, name);
-    draw_textf(127, 18+16*menu.scan_item, flags | TEXT_ALIGN_RIGHT, "%d", value);
+    const bool selected = MENU_ITEM_SELECTED();
+    const int flags = selected ? TEXT_INVERT : 0;
+    const int ypos = 16*MENU_ITEM_POS();
 
-    menu.scan_item++;
-    if (!menu.built) menu.num_items++;
+    if (selected) ngl_rect(0, 16+ypos, 128,16, 1);
+    draw_text(2,    18+ypos, flags, name);
+    draw_textf(127, 18+ypos, flags | TEXT_ALIGN_RIGHT, "%d", value);
+
+    MENU_NEXT();
 }
 
 void kmgui_menu_end(void) {
-    menu.built = true;
+    MENU_END();
 }
 
 

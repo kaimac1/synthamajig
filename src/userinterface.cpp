@@ -241,8 +241,13 @@ void UI::debug_menu() {
         set_brightness(brightness);
     }
     kmgui_menu_item_int_readonly(sizeof(Track), "sz.track");
-    kmgui_menu_item_int_readonly(sizeof(Instrument), "sz.inst");
-    kmgui_menu_item_int_readonly(sizeof(AcidBass), "sz.acidbass");
+    kmgui_menu_item_int_readonly(sizeof(Track), "sz.track");
+    kmgui_menu_item_int_readonly(sizeof(Track), "sz.track");
+    // for (int i=0; i<5; i++) {
+    //     char strbuf[32];
+    //     sprintf(strbuf, "%d", i);
+    //     kmgui_menu_item_int_readonly(i, strbuf);
+    // }
     kmgui_menu_end();    
 
     // soft keys
