@@ -64,11 +64,6 @@ typedef unsigned short      WaveU16;
 typedef int                 WaveI32;
 typedef unsigned int        WaveU32;
 
-enum {
-    WAVE_FALSE,
-    WAVE_TRUE
-};
-
 /* wave file format codes */
 
 // Windows already has these macros in mmreg.h
@@ -177,7 +172,7 @@ struct _WaveFile {
     FF_FILE*             fp;
     char                 filename[WAVE_FILENAME_LEN];
     WaveU32              mode;
-    WaveBool             is_a_new_file;
+    bool                 is_a_new_file;
 
     WaveMasterChunk      riff_chunk;
     WaveFormatChunk      format_chunk;

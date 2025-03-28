@@ -265,7 +265,7 @@ float Channel::process() {
 
     } else if (type == CHANNEL_SAMPLE) {
         if (cur_sample_id < 0) return 0.0f;
-        int16_t s = Sample::fetch(cur_sample_id, cur_sample_pos);
+        int16_t s = SampleManager::fetch(cur_sample_id, cur_sample_pos);
         cur_sample_pos++;
         
         return s/32768.0f;

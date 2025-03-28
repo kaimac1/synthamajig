@@ -277,8 +277,7 @@ void wave_init(WaveFile* self, WAVE_CONST char* filename, WaveU32 mode)
             // Header parsing failed. Regard it as a new file.
             wave_err_clear();
             ff_fseek(self->fp, 0, FF_SEEK_SET);
-            //rewind(self->fp);
-            self->is_a_new_file = WAVE_TRUE;
+            self->is_a_new_file = true;
         }
     }
 
