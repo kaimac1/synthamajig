@@ -1,2 +1,4 @@
-# starling
+# synthamajig
+
+devlog: https://synthamajig.com
 
