@@ -40,7 +40,7 @@ void wl_update_knobs(int *delta) {
 #define MENU_END()              menu.built = true;
 
 
-void wl_menu_start(const char *title, int visible_items, wlListDrawFuncs *draw_funcs) {
+void wl_list_start(const char *title, int visible_items, wlListDrawFuncs *draw_funcs) {
     if (strcmp(menu.title, title)) {
         // Reset
         menu.built = false;
@@ -68,7 +68,7 @@ void wl_menu_start(const char *title, int visible_items, wlListDrawFuncs *draw_f
     menu.funcs->draw_menu(menu.title, menu.num_visible_items);
 }
 
-bool wl_menu_item_int(const char *name, int value) {
+bool wl_list_item_int(const char *name, int value) {
     MENU_NEXT();
     if (!MENU_ITEM_VISIBLE()) return false;
 
@@ -82,7 +82,7 @@ bool wl_menu_item_int(const char *name, int value) {
     return (menu.built && selected);
 }
 
-bool wl_menu_item_str(const char *name, const char *value) {
+bool wl_list_item_str(const char *name, const char *value) {
     MENU_NEXT();
     if (!MENU_ITEM_VISIBLE()) return false;
 
@@ -92,7 +92,7 @@ bool wl_menu_item_str(const char *name, const char *value) {
     return (menu.built && selected);
 }
 
-bool wl_menu_edit_int(int *value, int min, int max) {
+bool wl_list_edit_int(int *value, int min, int max) {
     // Change value by delta_data
     bool changed = false;
     if (MENU_ITEM_SELECTED() && knob_delta[DATA_KNOB]) {
@@ -111,7 +111,7 @@ bool wl_menu_edit_int(int *value, int min, int max) {
     return changed;
 }
 
-void wl_menu_end(void) {
+void wl_list_end(void) {
     MENU_END();
     menu.funcs->draw_scrollbar(menu.num_items, menu.num_visible_items, menu.top_item);
 }

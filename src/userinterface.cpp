@@ -261,14 +261,14 @@ wlListDrawFuncs debug_menu_funcs = {
 
 void UI::debug_menu() {
 
-    wl_menu_start("Debug menu", 6, &debug_menu_funcs);
-    if (wl_menu_item_int("Volume", volume_percent)) {
-        if (wl_menu_edit_int(&volume_percent, 0, 100)) {
+    wl_list_start("Debug menu", 6, &debug_menu_funcs);
+    if (wl_list_item_int("Volume", volume_percent)) {
+        if (wl_list_edit_int(&volume_percent, 0, 100)) {
             track.set_volume_percent(volume_percent);    
         }
     }
-    if (wl_menu_item_int("Brightness", brightness)) {
-        if (wl_menu_edit_int(&brightness, 0, 10)) {
+    if (wl_list_item_int("Brightness", brightness)) {
+        if (wl_list_edit_int(&brightness, 0, 10)) {
             set_brightness(brightness);
         }
     }
@@ -277,7 +277,7 @@ void UI::debug_menu() {
         char value[32];
         SampleInfo *samp = &SampleManager::sample_list[i];
         snprintf(value, sizeof(value), "%dK", samp->size_bytes/1024);
-        wl_menu_item_str(samp->name, value);
+        wl_list_item_str(samp->name, value);
     }
     for (int i=0; i<15; i++) {
         char value[32];
@@ -285,9 +285,9 @@ void UI::debug_menu() {
         for (int n=0; n<i; n++) {
             strcat(value, "e");
         }
-        wl_menu_item_str(value, NULL);
+        wl_list_item_str(value, NULL);
     }
-    wl_menu_end();
+    wl_list_end();
 
     // worth exploring this as an idea - scrolling pages
     // offs += delta_scroll*4;

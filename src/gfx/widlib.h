@@ -32,22 +32,22 @@ void wl_update_knobs(int *delta);
 
 
 /////
-// Menu
+// List
 
-// Create a menu. Call this first.
-// title is stored and used to identify the menu, to see if we are a drawing a different one
+// Create a list. Call this first.
+// title is stored and used to identify the list, to see if we are a drawing a different one
 // visible_items is the number of items to show at once
-void wl_menu_start(const char *title, int visible_items, wlListDrawFuncs *draw_funcs);
+void wl_list_start(const char *title, int visible_items, wlListDrawFuncs *draw_funcs);
 
-// Then call these functions to create menu items. Returns true if the item is currently selected.
-bool wl_menu_item_int(const char *name, int value);
-bool wl_menu_item_str(const char *name, const char *value);
+// Then call these functions to create list items. Returns true if the item is currently selected.
+bool wl_list_item_int(const char *name, int value);
+bool wl_list_item_str(const char *name, const char *value);
 
 // If an item is selected, call these to edit the associated value. Returns true if the value was changed.
-bool wl_menu_edit_int(int *value, int min, int max);
+bool wl_list_edit_int(int *value, int min, int max);
 
-// Finally call this at the end of the menu. 
-void wl_menu_end(void);
+// Finally call this at the end of the list. 
+void wl_list_end(void);
 
 
 // Modify value (from min to max) by turning the given knob
