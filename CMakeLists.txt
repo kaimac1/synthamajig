@@ -39,6 +39,7 @@ add_executable(synth
     src/userinterface.cpp
 
     vendor/libwave/libwave.c
+    vendor/tlsf/tlsf.c
 )
 
 target_compile_options(synth PUBLIC -fno-exceptions)

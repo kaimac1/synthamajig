@@ -1,6 +1,8 @@
 #include "sample.hpp"
+#include "hw/hw.h"
 #include "common.h"
 #include "libwave/libwave.h"
+#include "tlsf/tlsf.h"
 #include "ff.h"
 #include <cstring>
 #include <vector>
@@ -10,9 +12,22 @@
 
 namespace SampleManager {
 
-std::vector<SampleDef> sample_list;
+tlsf_t sample_ram;
+
+std::vector<SampleInfo> sample_list;
 int sample_map[MAX_SAMPLES];
 int next_id = 0;
+
+static inline SampleInfo *get_sample_info(int sample_id) {
+    int idx = sample_map[sample_id];
+    if (idx < 0) return NULL;
+    return &sample_list[idx];
+}
+
+void init() {
+    sample_ram = tlsf_create_with_pool((void*)PSRAM_BASE_ADDR, PSRAM_SIZE);
+    build_list();
+}
     
 int build_list() {
 
@@ -37,10 +52,10 @@ int build_list() {
         *end = 0;
         const char *sample_name = filename;
 
-
+        // Read file and parse header
         wave_open(&wavefile, full_path, WAVE_OPEN_READ);
 
-        SampleDef samp;
+        SampleInfo samp;
         samp.sample_id = next_id;
         samp.length = wave_get_length(&wavefile);
         samp.data = NULL;
@@ -64,15 +79,53 @@ int build_list() {
 }
 
 int load(int sample_id) {
-    // currently a no-op
+    SampleInfo *samp = get_sample_info(sample_id);
+    if (!samp) return -1;
+
+    // Recreate full path from sample name
+    char full_path[128];
+    snprintf(full_path, sizeof(full_path), "%s/%s%s", SAMPLES_DIR, samp->name, SAMPLES_SUFFIX);
+
+    // Allocate memory in sample RAM
+    const size_t bytes_per_frame = 2;
+    const size_t data_size = samp->length * bytes_per_frame;
+    DEBUG_PRINTF("Allocating %d bytes\n", data_size);
+    void *data = tlsf_malloc(sample_ram, data_size);
+    samp->data = (int16_t*)data;
+
+    WaveFile wavefile;
+    wave_open(&wavefile, full_path, WAVE_OPEN_READ);
+    size_t frames_read = wave_read(&wavefile, (void*)samp->data, samp->length);
+    DEBUG_PRINTF("Read %d of %d frames\n", frames_read, samp->length);
+    wave_close(&wavefile);
+
+    samp->is_loaded = true;
+    return 0;
+}
+
+int unload(int sample_id) {
+    SampleInfo *samp = get_sample_info(sample_id);
+    if (!samp) return -1;
+
+    if (!samp->is_loaded) {
+        DEBUG_PRINTF("Tried to unload sample %d which is not loaded\n", sample_id);
+        return -1;
+    }
+    if (!samp->data) {
+        DEBUG_PRINTF("Null pointer for sample %d data\n", sample_id);
+        return -1;
+    }
+
+    tlsf_free(sample_ram, (void*)samp->data);
+    samp->is_loaded = false;
     return 0;
 }
 
 int16_t fetch(int sample_id, int pos) {
-    int idx = sample_map[sample_id];
-    if (idx < 0) return 0;
+    SampleInfo *samp = get_sample_info(sample_id);
+    if (!samp) return 0; // return silence
+    if (!samp->is_loaded) return 0;
 
-    SampleDef *samp = &sample_list[idx];
     if (pos >= samp->length) return 0;
 
     return samp->data[pos];

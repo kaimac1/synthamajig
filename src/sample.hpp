@@ -6,18 +6,28 @@
 
 #define SAMPLES_DIR "samples"
 
-struct SampleDef {
+struct SampleInfo {
     int sample_id;
     unsigned int length;
+    bool is_valid;
+    bool is_loaded;
     const int16_t *data;
     char name[SAMPLE_NAME_SIZE];
 };
 
 
 namespace SampleManager {
+    void init();
+
     // Read the disk and rebuild the sample list
     // Returns the total number of samples
     int build_list();
+
+    // Load a sample's data into sample RAM
+    int load(int sample_id);
+
+    // Unload a sample from RAM
+    int unload(int sample_id);
 
     // Fetch a single... sample from a sample
     int16_t fetch(int sample_id, int pos);
