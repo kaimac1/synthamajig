@@ -70,7 +70,7 @@ void ngl_fillscreen(bool colour) {
     memset(framebuffer, colour ? 0xFF : 0x00, sizeof(framebuffer));
 }
 
-void ngl_rect(int x, int y, int w, int h, bool fillcolour) {
+void ngl_rect(int x, int y, int w, int h, nglFillColour fillcolour) {
 
     if ((x >= NGL_DISPLAY_WIDTH) || (y >= NGL_DISPLAY_HEIGHT)) return;
     if (y+h > NGL_DISPLAY_HEIGHT) {
@@ -80,9 +80,17 @@ void ngl_rect(int x, int y, int w, int h, bool fillcolour) {
         w = NGL_DISPLAY_WIDTH - x - 1;
     }
 
-    for (int xp=x; xp<x+w; xp++) {
-        for (int yp=y; yp<y+h; yp++) {
-            ngl_setpixel(xp, yp, fillcolour);
+    if (fillcolour == FILLCOLOUR_HALF) {
+        for (int xp=x; xp<x+w; xp++) {
+            for (int yp=y; yp<y+h; yp++) {
+                ngl_setpixel(xp, yp, ((xp ^ yp) & 1));
+            }
+        }
+    } else {
+        for (int xp=x; xp<x+w; xp++) {
+            for (int yp=y; yp<y+h; yp++) {
+                ngl_setpixel(xp, yp, fillcolour);
+            }
         }
     }
 }

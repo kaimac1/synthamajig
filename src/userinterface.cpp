@@ -1,5 +1,6 @@
 #include "userinterface.hpp"
 #include "track.hpp"
+#include "sample.hpp"
 #include "common.h"
 #include "hw/oled.h"
 #include "gfx/ngl.h"
@@ -226,22 +227,41 @@ bool UI::process(RawInput in) {
 
 
 
+// Debug menu 
 
-// The draw function for a debug menu item
-void debug_menu_item(const char *name, const char *value, int pos, bool selected) {
+void draw_debug_menu(const char *title, int num_items) {
+    draw_text(0,0,0, title);
+}
+
+void draw_debug_menu_item(const char *name, const char *value, int pos, bool selected) {
     const int flags = selected ? TEXT_INVERT : 0;
     const int ypos = 16 * pos;
-    if (selected) ngl_rect(0, 16+ypos, 128,16, 1);
-    draw_text(2, 18+ypos, flags, name);
+    if (selected) ngl_rect(3, 16+ypos, 125,16, FILLCOLOUR_WHITE);
+    draw_text(5, 18+ypos, flags, name);
     if (value) {
         draw_text(127, 18+ypos, flags | TEXT_ALIGN_RIGHT, value);
     }
 }
 
+void draw_debug_menu_scrollbar(int total_items, int visible_items, int top_item) {
+    const int yoffset = 16;
+    const int total_height = 16*visible_items;
+    const int bar_top = total_height * top_item/total_items;
+    const int bar_height = total_height * visible_items/total_items;
+
+    ngl_rect(0, yoffset, 2, total_height, FILLCOLOUR_HALF);
+    ngl_rect(0, yoffset+bar_top, 3, bar_height, FILLCOLOUR_WHITE);
+}
+
+wlListDrawFuncs debug_menu_funcs = {
+    .draw_menu = draw_debug_menu,
+    .draw_item = draw_debug_menu_item,
+    .draw_scrollbar = draw_debug_menu_scrollbar
+};
+
 void UI::debug_menu() {
 
-    wl_menu_start("Debug menu", 5);
-    wl_menu_item_draw_func(debug_menu_item);
+    wl_menu_start("Debug menu", 6, &debug_menu_funcs);
     if (wl_menu_item_int("Volume", volume_percent)) {
         if (wl_menu_edit_int(&volume_percent, 0, 100)) {
             track.set_volume_percent(volume_percent);    
@@ -252,16 +272,22 @@ void UI::debug_menu() {
             set_brightness(brightness);
         }
     }
-    for (int i=0; i<64; i++) {
-        char buf[32];
-        sprintf(buf, "Item %d", i);
-        wl_menu_item_int(buf, i);
+    const int nsamps = SampleManager::sample_list.size();
+    for (int i=0; i<nsamps; i++) {
+        char value[32];
+        SampleInfo *samp = &SampleManager::sample_list[i];
+        snprintf(value, sizeof(value), "%dK", samp->size_bytes/1024);
+        wl_menu_item_str(samp->name, value);
     }
-    wl_menu_item_int("Testing", 2);
-    wl_menu_item_int("Tested", 3);
-    wl_menu_item_int("Testable", 4);
-    wl_menu_item_int("Testest", 5);
-    wl_menu_end();    
+    for (int i=0; i<15; i++) {
+        char value[32];
+        snprintf(value, sizeof(value), "wee");
+        for (int n=0; n<i; n++) {
+            strcat(value, "e");
+        }
+        wl_menu_item_str(value, NULL);
+    }
+    wl_menu_end();
 
     // worth exploring this as an idea - scrolling pages
     // offs += delta_scroll*4;
@@ -273,6 +299,14 @@ void UI::debug_menu() {
 
     //draw_bitmap(0,0,testimg,offs,128-offs,128);
     //draw_bitmap(119-offs,0,testimg,0,MIN(offs,120),128);    
+}
+
+
+void UI::draw_header() {
+    char buf[32] = {0};
+    if (recording) strcat(buf, "Rec ");
+    if (track.keyboard_enabled) strcat(buf, "Kb ");
+    draw_textf(0,0,0, "%sCh%d %s", buf, track.active_channel+1, track.is_over_limit ? "[!]" : "");
 }
 
 void UI::track_page() {
@@ -370,11 +404,6 @@ void UI::view_channel() {
 
 void UI::draw_debug_info(void) {
 
-    char buf[32] = {0};
-    if (recording) strcat(buf, "Rec ");
-    if (track.keyboard_enabled) strcat(buf, "Kb ");
-
-    draw_textf(0,0,0, "%sCh%d %s", buf, track.active_channel+1, track.is_over_limit ? "[!]" : "");
     //draw_textf(70,0,0, "P%02d", track.pattern_idx+1);
     draw_textf(127,0,TEXT_ALIGN_RIGHT, "%d/%d",
         track.channels[track.active_channel].step+1, track.channels[track.active_channel].pattern.length);

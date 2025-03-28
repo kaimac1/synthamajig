@@ -13,7 +13,6 @@
 namespace SampleManager {
 
 tlsf_t sample_ram;
-
 std::vector<SampleInfo> sample_list;
 int sample_map[MAX_SAMPLES];
 int next_id = 0;
@@ -58,6 +57,7 @@ int build_list() {
         SampleInfo samp;
         samp.sample_id = next_id;
         samp.length = wave_get_length(&wavefile);
+        samp.size_bytes = samp.length * 2;
         samp.data = NULL;
         strlcpy(samp.name, sample_name, sizeof(samp.name));
 
@@ -87,8 +87,7 @@ int load(int sample_id) {
     snprintf(full_path, sizeof(full_path), "%s/%s%s", SAMPLES_DIR, samp->name, SAMPLES_SUFFIX);
 
     // Allocate memory in sample RAM
-    const size_t bytes_per_frame = 2;
-    const size_t data_size = samp->length * bytes_per_frame;
+    const size_t data_size = samp->size_bytes;
     DEBUG_PRINTF("Allocating %d bytes\n", data_size);
     void *data = tlsf_malloc(sample_ram, data_size);
     samp->data = (int16_t*)data;

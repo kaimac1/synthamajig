@@ -45,5 +45,6 @@ public:
     Step *selected_step;
 
 private:
+    void draw_header();
     void channel_modes_common();
 };

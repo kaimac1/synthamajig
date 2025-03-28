@@ -26,6 +26,12 @@ typedef struct {
     const uint8_t *data;
 } nglBitmap;
 
+typedef enum {
+    FILLCOLOUR_BLACK = 0,
+    FILLCOLOUR_WHITE,
+    FILLCOLOUR_HALF
+} nglFillColour;
+
 
 void ngl_init(void);
 
@@ -39,7 +45,7 @@ void ngl_setpixel(int x, int y, bool colour);
 void ngl_fillscreen(bool colour);
 
 // Draw filled rectangle
-void ngl_rect(int x, int y, int w, int h, bool fillcolour);
+void ngl_rect(int x, int y, int w, int h, nglFillColour fillcolour);
 
 // Draw line (Bresenham)
 void ngl_line(int x0, int y0, int x1, int y1, bool colour);

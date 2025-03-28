@@ -16,7 +16,7 @@ typedef struct {
     int scan_item;
     int top_item;
     int num_visible_items;
-    ItemDrawFunc *draw_item;
+    wlListDrawFuncs *funcs;
     char last_name[TXTLEN];
 } Menu;
 Menu menu;
@@ -39,15 +39,17 @@ void wl_update_knobs(int *delta) {
 #define MENU_NEXT()             menu.scan_item++; if (!menu.built) menu.num_items++;
 #define MENU_END()              menu.built = true;
 
-static void menu_start(const char *title, int num_visible_items) {
+
+void wl_menu_start(const char *title, int visible_items, wlListDrawFuncs *draw_funcs) {
     if (strcmp(menu.title, title)) {
         // Reset
         menu.built = false;
         menu.num_items = 0;
         menu.selected_item = 0;
         menu.top_item = 0;
-        menu.num_visible_items = num_visible_items;
+        menu.num_visible_items = visible_items;
         strlcpy(menu.title, title, sizeof(menu.title));
+        menu.funcs = draw_funcs;
     }
     menu.scan_item = -1;
 
@@ -61,33 +63,32 @@ static void menu_start(const char *title, int num_visible_items) {
         if (menu.selected_item >= menu.top_item + menu.num_visible_items) {
             menu.top_item = menu.selected_item - menu.num_visible_items + 1;
         }
-    }    
-}
+    }
 
-void wl_menu_start(const char *title, int visible_items) {
-    menu_start(title, visible_items);
-    draw_text(0,0,0, title);
-}
-
-void wl_menu_item_draw_func(ItemDrawFunc *func) {
-    menu.draw_item = func;
+    menu.funcs->draw_menu(menu.title, menu.num_visible_items);
 }
 
 bool wl_menu_item_int(const char *name, int value) {
     MENU_NEXT();
-    if (!MENU_ITEM_VISIBLE()) {
-        return false;
-    }
+    if (!MENU_ITEM_VISIBLE()) return false;
 
     const bool selected = MENU_ITEM_SELECTED();
-    
     char valuebuf[TXTLEN];
     snprintf(valuebuf, sizeof(valuebuf), "%d", value);
-    menu.draw_item(name, valuebuf, MENU_ITEM_POS(), selected);
+    menu.funcs->draw_item(name, valuebuf, MENU_ITEM_POS(), selected);
 
     // Save name for if we need to redraw
     strlcpy(menu.last_name, name, sizeof(menu.last_name));
+    return (menu.built && selected);
+}
 
+bool wl_menu_item_str(const char *name, const char *value) {
+    MENU_NEXT();
+    if (!MENU_ITEM_VISIBLE()) return false;
+
+    const bool selected = MENU_ITEM_SELECTED();
+    menu.funcs->draw_item(name, value, MENU_ITEM_POS(), selected);
+    strlcpy(menu.last_name, name, sizeof(menu.last_name));
     return (menu.built && selected);
 }
 
@@ -104,7 +105,7 @@ bool wl_menu_edit_int(int *value, int min, int max) {
         // Redraw item
         char valuebuf[TXTLEN];
         snprintf(valuebuf, sizeof(valuebuf), "%d", newval);
-        menu.draw_item(menu.last_name, valuebuf, MENU_ITEM_POS(), true);
+        menu.funcs->draw_item(menu.last_name, valuebuf, MENU_ITEM_POS(), true);
     }
 
     return changed;
@@ -112,6 +113,7 @@ bool wl_menu_edit_int(int *value, int min, int max) {
 
 void wl_menu_end(void) {
     MENU_END();
+    menu.funcs->draw_scrollbar(menu.num_items, menu.num_visible_items, menu.top_item);
 }
 
 
