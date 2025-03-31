@@ -42,6 +42,7 @@ public:
     void play(bool start);
     void schedule();
     void mute(bool mute);
+    void silence();
     float process();
 
     ChannelType type;

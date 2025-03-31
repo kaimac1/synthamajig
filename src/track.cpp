@@ -53,7 +53,7 @@ void Track::set_volume_percent(int vol) {
 void Track::enable_keyboard(bool en) {
     keyboard_enabled = en;
     if (!en) {
-        channels[active_channel].inst->silence();
+        channels[active_channel].silence();
     }    
 }
 
@@ -256,6 +256,12 @@ void Channel::mute(bool mute) {
     is_muted = mute;
     if (mute && type == CHANNEL_INSTRUMENT) {
         inst->gate = false;
+    }
+}
+
+void Channel::silence() {
+    if (type == CHANNEL_INSTRUMENT) {
+        inst->silence();
     }
 }
 
