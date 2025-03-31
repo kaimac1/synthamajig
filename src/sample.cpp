@@ -59,6 +59,7 @@ int build_list() {
         samp.length = wave_get_length(&wavefile);
         samp.size_bytes = samp.length * 2;
         samp.data = NULL;
+        samp.root_midi_note = DEFAULT_SAMPLE_ROOT_NOTE;
         strlcpy(samp.name, sample_name, sizeof(samp.name));
 
         wave_close(&wavefile);

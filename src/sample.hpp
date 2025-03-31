@@ -4,8 +4,8 @@
 
 #define SAMPLE_NAME_SIZE 32
 #define MAX_SAMPLES 64
-
 #define SAMPLES_DIR "samples"
+#define DEFAULT_SAMPLE_ROOT_NOTE 60
 
 struct SampleInfo {
     int sample_id;
@@ -13,6 +13,7 @@ struct SampleInfo {
     size_t size_bytes;
     bool is_valid;
     bool is_loaded;
+    unsigned int root_midi_note;
     const int16_t *data;
     char name[SAMPLE_NAME_SIZE];
 };

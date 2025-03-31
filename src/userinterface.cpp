@@ -75,6 +75,7 @@ void UI::init() {
     p = &track.channels[2].pattern;
     p->length = 4;
     p->step[0].on = true;
+    p->step[0].note.midi_note = 60;
     p->step[0].sample_id = 0;
 }
 
@@ -374,14 +375,14 @@ void UI::view_pattern() {
 void UI::view_step() {
     led_mode = LEDS_SHOW_STEPS;
     draw_header();
-    draw_text(32,32,0, "Step edit");
     if (selected_step == NULL) return;
-    draw_textf(16,48,0, "Note: %d", selected_step->note.midi_note);
-    draw_textf(16,64,0, "Trig: %d", selected_step->note.trigger);
-    draw_textf(16,80,0, "Samp: %d", selected_step->sample_id);
+    
     char buf[32];
     midi_note_to_str(buf, sizeof(buf), selected_step->note.midi_note);
-    draw_textf(16,96,0, "%s", buf);
+    draw_textf(16,48,0, "%s", buf);
+
+    draw_textf(16,64,0, "Trig: %d", selected_step->note.trigger);
+    draw_textf(16,80,0, "Samp: %d", selected_step->sample_id);
 }
 
 
