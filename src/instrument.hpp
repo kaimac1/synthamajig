@@ -21,7 +21,9 @@ public:
     virtual void draw(InstrumentPage page) {}
     virtual void silence() { gate = 0; }
 
-    Note note;
+    uint32_t note_freq;
+    bool trigger;
+    bool accent;
     bool gate;
 
 };

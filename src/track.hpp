@@ -9,6 +9,12 @@
 #define GATE_LENGTH_BITS 7
 
 
+struct Note {
+    unsigned int midi_note;
+    bool trigger;
+    bool accent;
+};
+
 struct Step {
     Note note;
     int sample_id {-1};
@@ -88,7 +94,7 @@ public:
     int active_channel;
 
     InstrumentPage instrument_page {INSTRUMENT_PAGE_FILTER};
-    uint32_t last_played_freq {0};
+    uint32_t last_played_midi_note {0};
     bool keyboard_enabled {false};
     bool keyboard_inhibited {false};
 

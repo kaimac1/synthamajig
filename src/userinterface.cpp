@@ -64,7 +64,7 @@ void UI::init() {
         p->step[i].on = on[i];
         p->step[i].gate_length = 96;
         if (on[i]) {
-            p->step[i].note.freq = note_table[notes[i]];
+            p->step[i].note.midi_note = notes[i];
             p->step[i].note.trigger = 1;
             p->step[i].note.accent  = accts[i];
         }        
@@ -335,7 +335,7 @@ void UI::view_pattern() {
                     if (step) {
                         step->on ^= 1;
                         if (!shift && step->on) {
-                            step->note.freq = track.last_played_freq;
+                            step->note.midi_note = track.last_played_midi_note;
                             step->note.trigger = 1;
                             step->note.accent = 0;
                         }
@@ -376,7 +376,7 @@ void UI::view_step() {
     draw_header();
     draw_text(32,32,0, "Step edit");
     if (selected_step == NULL) return;
-    draw_textf(16,48,0, "Freq: %d", selected_step->note.freq);
+    draw_textf(16,48,0, "Note: %d", selected_step->note.midi_note);
     draw_textf(16,64,0, "Trig: %d", selected_step->note.trigger);
     draw_textf(16,80,0, "Samp: %d", selected_step->sample_id);
 }

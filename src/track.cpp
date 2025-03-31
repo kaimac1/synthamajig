@@ -13,7 +13,14 @@ AcidBass acid;
 TestSynth testsynth;
 
 
+uint32_t freq_from_midi_note(unsigned int midi_note) {
+    if (midi_note >= MIDI_NOTE_TABLE_LEN) return 0;
+    return note_table[midi_note];
+}
 
+void set_note_on_instrument(Instrument *inst, Note *note) {
+
+}
 
 
 void Track::reset() {
@@ -109,17 +116,16 @@ void Track::play_active_channel(InputState *input) {
         if (input->button_state[b] == BTN_PRESSED) {
             any_triggered = true;
             current_key = b;
-            int note = map(b, shift);
-            if (note > 0) {
-                uint32_t freq = note_table[note];
-                channels[active_channel].inst->note.trigger = 1;
-                channels[active_channel].inst->note.accent = btn_down(input, BTN_SHIFT);
-                channels[active_channel].inst->note.glide = 0;
+            int midi_note = map(b, shift);
+            if (midi_note > 0) {
+                uint32_t freq = freq_from_midi_note(midi_note);
+                channels[active_channel].inst->trigger = 1;
+                channels[active_channel].inst->accent = btn_down(input, BTN_SHIFT);
                 channels[active_channel].inst->gate = 1;
-                channels[active_channel].inst->note.freq = freq;
+                channels[active_channel].inst->note_freq = freq;
 
                 // Store last played note for the sequencer
-                last_played_freq = freq;
+                last_played_midi_note = midi_note;
             }
         }
     }
@@ -155,11 +161,15 @@ void Track::fill_buffer(AudioBuffer buffer) {
             if (channels[v].is_muted) continue;
             if (channels[v].type == CHANNEL_INSTRUMENT) {
                 if (sampletick == channels[v].next_note.on_time) {
+                    // Set up instrument to play next note now
+                    //set_note_on_instrument(channels[v].inst, &channels[v].next_note);
                     channels[v].inst->gate = channels[v].next_note.note.trigger; // NOTE: trigger becomes gate
-                    channels[v].inst->note = channels[v].next_note.note;
+                    channels[v].inst->accent = channels[v].next_note.note.accent;
+                    uint32_t freq = freq_from_midi_note(channels[v].next_note.note.midi_note);
+                    channels[v].inst->note_freq = freq;
                 } else if (sampletick == channels[v].next_note.off_time) {
                     channels[v].inst->gate = 0;
-                    channels[v].inst->note.trigger = 0;
+                    channels[v].inst->trigger = 0;
                 }
 
             } else if (channels[v].type == CHANNEL_SAMPLE) {

@@ -41,14 +41,14 @@ float AcidBass::process() {
     // // LFO goes from -ISCALE to +ISCALE    
 
     // Envelope retrigger
-    if (gate && note.trigger) {
-        note.trigger = false;
+    if (gate && trigger) {
+        trigger = false;
         env.state = ENV_ATTACK;
     }
-    bool envgate = gate || note.glide; // ??
+    bool envgate = gate; //|| note.glide; // ??
 
     // Modulation (testing)
-    uint32_t freq = note.freq;
+    uint32_t freq = note_freq;
     int newcutoff = cutoff;
     int newresonance = resonance;
     // const int depth_n = 3;  // scale numerator
@@ -69,7 +69,7 @@ float AcidBass::process() {
 
     // Filter
     int32_t mod = env_mod * envelope;
-    if (note.accent) mod = mod + mod;
+    if (accent) mod = mod + mod;
     filter.cutoff = svfreq_map(newcutoff + mod);
     filter.res = (float)newresonance / PARAM_SCALE;
     (void)process_svfilter(&filter, s); // oversample

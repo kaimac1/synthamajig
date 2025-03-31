@@ -6,6 +6,7 @@
 #define CLAMP(x, xmin, xmax) if ((x)>(xmax)) x=(xmax); else if ((x)<(xmin)) x=(xmin);
 #define CLAMP127(x) CLAMP(x, 0, 127)
 
+#define MIDI_NOTE_TABLE_LEN 128
 #define PARAM_SCALE 128
 #define PARAM_BITS 7
 
@@ -15,16 +16,7 @@
 
 void create_lookup_tables(void);
 float exp_lookup(float arg);
-extern uint32_t note_table[128];
-
-
-// Note data sent from keyboard/sequencer/MIDI
-struct Note {
-    uint32_t freq;
-    bool trigger;
-    bool accent;
-    bool glide;    
-};
+extern uint32_t note_table[MIDI_NOTE_TABLE_LEN];
 
 
 
