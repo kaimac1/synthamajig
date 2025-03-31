@@ -229,28 +229,33 @@ bool UI::process(RawInput in) {
 
 // Debug menu 
 
+const int debug_item_height = 14;
+
 void draw_debug_menu(const char *title, int num_items) {
     draw_text(0,0,0, title);
 }
 
 void draw_debug_menu_item(const char *name, const char *value, int pos, bool selected) {
     const int flags = selected ? TEXT_INVERT : 0;
-    const int ypos = 16 * pos;
-    if (selected) ngl_rect(3, 16+ypos, 125,16, FILLCOLOUR_WHITE);
-    draw_text(5, 18+ypos, flags, name);
+    const int yoffset = 16;
+    const int ypos = debug_item_height * pos;
+    if (selected) ngl_rect(3, yoffset+ypos, 125,debug_item_height, FILLCOLOUR_WHITE);
+    draw_text(5, yoffset+ypos+1, flags, name);
     if (value) {
-        draw_text(127, 18+ypos, flags | TEXT_ALIGN_RIGHT, value);
+        draw_text(127, yoffset+ypos+1, flags | TEXT_ALIGN_RIGHT, value);
     }
 }
 
 void draw_debug_menu_scrollbar(int total_items, int visible_items, int top_item) {
     const int yoffset = 16;
-    const int total_height = 16*visible_items;
+    const int total_height = debug_item_height*visible_items;
     const int bar_top = total_height * top_item/total_items;
     const int bar_height = total_height * visible_items/total_items;
 
     ngl_rect(0, yoffset, 2, total_height, FILLCOLOUR_HALF);
-    ngl_rect(0, yoffset+bar_top, 3, bar_height, FILLCOLOUR_WHITE);
+    ngl_rect(0, yoffset+bar_top-2, 2, 2, FILLCOLOUR_BLACK);
+    ngl_rect(0, yoffset+bar_top+bar_height, 2, 2, FILLCOLOUR_BLACK);
+    ngl_rect(0, yoffset+bar_top, 2, bar_height, FILLCOLOUR_WHITE);
 }
 
 wlListDrawFuncs debug_menu_funcs = {
@@ -346,6 +351,8 @@ void UI::view_pattern() {
         }
     }
 
+    draw_header();
+
     // Pattern length 
     kmgui_gauge(0, &PATTERN.length, 1, 64, "Len=$");
 
@@ -366,6 +373,7 @@ void UI::view_pattern() {
 
 void UI::view_step() {
     led_mode = LEDS_SHOW_STEPS;
+    draw_header();
     draw_text(32,32,0, "Step edit");
     if (selected_step == NULL) return;
     draw_textf(16,48,0, "Freq: %d", selected_step->note.freq);
@@ -387,6 +395,8 @@ void UI::channel_modes_common() {
             }
         }
     }
+
+    draw_header();
 }
 
 // Channel overview
