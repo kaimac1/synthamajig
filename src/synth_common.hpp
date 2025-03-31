@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define CLAMP(x, xmin, xmax) if ((x)>(xmax)) x=(xmax); else if ((x)<(xmin)) x=(xmin);
 #define CLAMP127(x) CLAMP(x, 0, 127)
@@ -17,6 +18,9 @@
 void create_lookup_tables(void);
 float exp_lookup(float arg);
 extern uint32_t note_table[MIDI_NOTE_TABLE_LEN];
+
+uint32_t midi_note_to_freq(unsigned int midi_note);
+int midi_note_to_str(char *buf, size_t bufsize, unsigned int midi_note);
 
 
 

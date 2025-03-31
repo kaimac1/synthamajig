@@ -138,7 +138,7 @@ void create_lookup_tables(void) {
     }
 
     // MIDI note table
-    const float freq[128] = {
+    const float freq[MIDI_NOTE_TABLE_LEN] = {
         0,8.6620,9.1770,9.7227,10.3009,10.9134,11.5623,12.2499,12.9783,
         13.7500,14.5676,15.4339,16.3516,17.3239,18.3540,19.4454,20.6017,21.8268,23.1247,24.4997,25.9565,
         27.5000,29.1352,30.8677,32.7032,34.6478,36.7081,38.8909,41.2034,43.6535,46.2493,48.9994,51.9131,
@@ -151,8 +151,26 @@ void create_lookup_tables(void) {
         3520.0000,3729.3101,3951.0664,4186.0090,4434.9221,4698.6363,4978.0317,5274.0409,5587.6517,5919.9108,6271.9270,6644.8752,
         7040.0000,7458.6202,7902.1328,8372.0181,8869.8442,9397.2726,9956.0635,10548.0818,11175.3034,11839.8215,12543.8540,
     };
-    for (int i=0; i<128; i++) {
+    for (int i=0; i<MIDI_NOTE_TABLE_LEN; i++) {
         note_table[i] = UINT32_MAX * (freq[i] / SAMPLE_RATE);
     }
 }
 
+uint32_t midi_note_to_freq(unsigned int midi_note) {
+    if (midi_note >= MIDI_NOTE_TABLE_LEN) return 0;
+    return note_table[midi_note];
+}
+
+int midi_note_to_str(char *buf, size_t bufsize, unsigned int midi_note) {
+    if (midi_note < 21 || midi_note >= MIDI_NOTE_TABLE_LEN) {
+        snprintf(buf, bufsize, "-");
+        return -1;
+    }
+
+    const char *notestr[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+
+    const int note = midi_note % 12;
+    const int octave = midi_note / 12 - 1;
+    snprintf(buf, bufsize, "%s%d", notestr[note], octave);
+    return 0;
+}

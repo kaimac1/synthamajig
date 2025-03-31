@@ -13,11 +13,6 @@ AcidBass acid;
 TestSynth testsynth;
 
 
-uint32_t freq_from_midi_note(unsigned int midi_note) {
-    if (midi_note >= MIDI_NOTE_TABLE_LEN) return 0;
-    return note_table[midi_note];
-}
-
 void set_note_on_instrument(Instrument *inst, Note *note) {
 
 }
@@ -118,7 +113,7 @@ void Track::play_active_channel(InputState *input) {
             current_key = b;
             int midi_note = map(b, shift);
             if (midi_note > 0) {
-                uint32_t freq = freq_from_midi_note(midi_note);
+                uint32_t freq = midi_note_to_freq(midi_note);
                 channels[active_channel].inst->trigger = 1;
                 channels[active_channel].inst->accent = btn_down(input, BTN_SHIFT);
                 channels[active_channel].inst->gate = 1;
@@ -165,7 +160,7 @@ void Track::fill_buffer(AudioBuffer buffer) {
                     //set_note_on_instrument(channels[v].inst, &channels[v].next_note);
                     channels[v].inst->gate = channels[v].next_note.note.trigger; // NOTE: trigger becomes gate
                     channels[v].inst->accent = channels[v].next_note.note.accent;
-                    uint32_t freq = freq_from_midi_note(channels[v].next_note.note.midi_note);
+                    uint32_t freq = midi_note_to_freq(channels[v].next_note.note.midi_note);
                     channels[v].inst->note_freq = freq;
                 } else if (sampletick == channels[v].next_note.off_time) {
                     channels[v].inst->gate = 0;

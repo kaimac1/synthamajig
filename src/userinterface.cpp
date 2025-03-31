@@ -379,6 +379,9 @@ void UI::view_step() {
     draw_textf(16,48,0, "Note: %d", selected_step->note.midi_note);
     draw_textf(16,64,0, "Trig: %d", selected_step->note.trigger);
     draw_textf(16,80,0, "Samp: %d", selected_step->sample_id);
+    char buf[32];
+    midi_note_to_str(buf, sizeof(buf), selected_step->note.midi_note);
+    draw_textf(16,96,0, "%s", buf);
 }
 
 
