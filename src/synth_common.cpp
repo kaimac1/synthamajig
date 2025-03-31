@@ -162,7 +162,7 @@ uint32_t midi_note_to_freq(unsigned int midi_note) {
 }
 
 int midi_note_to_str(char *buf, size_t bufsize, unsigned int midi_note) {
-    if (midi_note < 21 || midi_note >= MIDI_NOTE_TABLE_LEN) {
+    if (midi_note < 21 || midi_note >= MIDI_NOTE_TABLE_LEN) { // 21 = A0
         snprintf(buf, bufsize, "-");
         return -1;
     }
