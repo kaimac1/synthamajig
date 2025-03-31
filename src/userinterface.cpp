@@ -123,7 +123,11 @@ bool UI::process(RawInput in) {
             } else {
                 pattern_page = next_pattern_page();
             }
-            
+        }
+
+        // Don't control instrument except in VIEW_INSTRUMENT
+        if (view != VIEW_INSTRUMENT) {
+            track.instrument_page = INSTRUMENT_PAGE_OFF;
         }
 
         // Play/stop

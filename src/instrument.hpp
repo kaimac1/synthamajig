@@ -5,6 +5,7 @@
 #include "gfx/gfx_ext.h"
 
 enum InstrumentPage {
+    INSTRUMENT_PAGE_OFF,
     INSTRUMENT_PAGE_OSC,
     INSTRUMENT_PAGE_AMP,
     INSTRUMENT_PAGE_FILTER

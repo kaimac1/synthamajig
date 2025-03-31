@@ -93,7 +93,7 @@ public:
     Channel channels[NUM_CHANNELS];
     int active_channel;
 
-    InstrumentPage instrument_page {INSTRUMENT_PAGE_FILTER};
+    InstrumentPage instrument_page {INSTRUMENT_PAGE_OFF};
     uint32_t last_played_midi_note {0};
     bool keyboard_enabled {false};
     bool keyboard_inhibited {false};
