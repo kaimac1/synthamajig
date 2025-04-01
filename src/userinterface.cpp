@@ -77,7 +77,13 @@ void UIFSM::react(InputEvent const & evt) {
     } else if (PRESSED(BTN_CHAN)) {
         transit<ChannelsOverview>();
     } else if (PRESSED(BTN_PATTERN)) {
-        transit<PatternView>();
+        if (!is_in_state<PatternView>()) {
+            pattern_page = 0;
+            transit<PatternView>();    
+        } else {
+            pattern_page = next_pattern_page();
+        }
+        
     } else if (PRESSED(BTN_PLAY)) {
         track.play(!track.is_playing);
     }
@@ -271,14 +277,6 @@ bool process(RawInput in) {
     //         } else if (MOD_PRESSED(BTN_CHAN, MODBTN_AMP)) {
     //             change_view(VIEW_INSTRUMENT);
     //             track.instrument_page = INSTRUMENT_PAGE_AMP;
-    //         } else if (PRESSED(BTN_PATTERN)) {
-    //             if (view != VIEW_PATTERN) {
-    //                 change_view(VIEW_PATTERN);
-    //                 pattern_page = 0;
-    //             } else {
-    //                 pattern_page = next_pattern_page();
-    //             }
-    //         }
     //         // Record
     //         if (PRESSED(BTN_REC)) {
     //             recording = !recording;
