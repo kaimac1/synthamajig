@@ -50,6 +50,12 @@ inline bool btn_release(InputState *input, int btn) {
 }
 
 
+
+// These functions "consume" a successful check, so subsequent checks don't fire
+bool check_pressed(InputState *input, int btn);
+
+
+
 #ifdef __cplusplus
 }
 #endif

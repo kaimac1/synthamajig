@@ -28,6 +28,8 @@ public:
     void init();
     bool process(RawInput in);
 
+    void change_view(UIView new_view);
+
     void view_all_channels();
     void view_channel();
     void view_pattern();
@@ -47,4 +49,5 @@ public:
 private:
     void draw_header();
     void channel_modes_common();
+    bool view_changed {false};
 };

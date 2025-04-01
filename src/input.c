@@ -66,3 +66,11 @@ bool input_process(InputState *input_state, RawInput in) {
     return changed;
 }
 
+bool check_pressed(InputState *input, int btn) {
+    bool pressed = false;
+    if (input->button_state[btn] == BTN_PRESSED) {
+        pressed = true;
+        input->button_state[btn] = BTN_DOWN;
+    }
+    return pressed;
+}
