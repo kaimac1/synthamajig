@@ -1,20 +1,11 @@
 #pragma once
 #include "input.h"
 #include "track.hpp"
+#include "tinyfsm/tinyfsm.hpp"
 
 // Shifted button functions
 #define MODBTN_FILTER     BTN_STEP_9
 #define MODBTN_AMP        BTN_STEP_10
-
-enum UIView {
-    VIEW_DEBUG_MENU,
-    VIEW_INSTRUMENT,
-    VIEW_TRACK,
-    VIEW_PATTERN,
-    VIEW_CHANNELS,
-    VIEW_CHANNEL_EDIT,
-    VIEW_STEP_EDIT
-};
 
 enum LEDMode {
     LEDS_OVERRIDDEN,
@@ -23,31 +14,52 @@ enum LEDMode {
 };
 
 
-class UI {
-public:
+namespace UI {
     void init();
     bool process(RawInput in);
 
-    void change_view(UIView new_view);
-
-    void view_all_channels();
-    void view_channel();
-    void view_pattern();
-    void view_step();
-    void track_page();
     void debug_menu();
     void draw_debug_info();
 
-    InputState inputs {};
-    int brightness {1}; // 0-10
-    int volume_percent {50};
-    bool recording {false};
-    LEDMode led_mode {LEDS_SHOW_CHANNELS};
-    UIView view;
-    Step *selected_step;
 
-private:
-    void draw_header();
-    void channel_modes_common();
-    bool view_changed {false};
-};
+
+
+    struct DrawEvent : tinyfsm::Event {};
+    struct InputEvent : tinyfsm::Event {};
+
+    class UIFSM : public tinyfsm::Fsm<UIFSM> {
+    public:
+        void react(tinyfsm::Event const &) {};
+        virtual void react(DrawEvent const & evt) {};
+        virtual void react(InputEvent const & evt);
+        virtual void entry() {react(DrawEvent {});};
+        void exit() {};
+    };    
+
+    class TrackView : public UIFSM {
+        void react(InputEvent const &) override;
+        void react(DrawEvent const &) override;
+    };
+
+    class ChannelsOverview : public UIFSM {
+    public:
+        void react(InputEvent const &) override;
+        void react(DrawEvent const &) override;    
+    };
+
+    class ChannelView : public ChannelsOverview {
+        // Input handled by ChannelsOverview
+        void react(DrawEvent const &) override;
+    };
+
+    class PatternView : public UIFSM {
+    public:
+        void react(InputEvent const &) override;
+        void react(DrawEvent const &) override;
+    };
+
+    class StepView : public PatternView {
+        // Input events handled by PatternView
+        void react(DrawEvent const &) override;
+    };
+}

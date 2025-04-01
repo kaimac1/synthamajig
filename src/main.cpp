@@ -38,8 +38,7 @@ int main() {
     int64_t tt = perf_end(PERF_TEST);
     printf("Load took %lld us\n", tt);
 
-    UI ui;
-    ui.init();
+    UI::init();
 
     hw_audio_start();
 
@@ -52,7 +51,7 @@ int main() {
         // Update device state & draw UI
         //time_loop_us = perf_loop(PERF_MAINLOOP);
         perf_start(PERF_UI_UPDATE);
-        if (ui.process(raw_input)) {
+        if (UI::process(raw_input)) {
             update_display = true;
         }
         int64_t time_ui = perf_end(PERF_UI_UPDATE);

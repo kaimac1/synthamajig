@@ -9,46 +9,197 @@
 #include <cstdio>
 #include <string.h>
 
+FSM_INITIAL_STATE(UI::UIFSM, UI::TrackView);
+
+// Macros for readability
+#define PRESSED(btn) check_pressed(&inputs, (btn))
+#define RELEASED(btn) btn_release(&inputs, (btn))
+#define MOD_PRESSED(mod, btn) (btn_down(&inputs, (mod)) && btn_press(&inputs, (btn)))
+
 #define CHANNEL (track.channels[track.active_channel])
 #define PATTERN (CHANNEL.pattern)
+
 
 // Contains channels, instruments, parameters, pattern data
 Track track;
 
+
+
+namespace UI {
+
+InputState inputs {};
+int brightness {1}; // 0-10
+int volume_percent {50};
+bool recording {false};
+LEDMode led_mode {LEDS_SHOW_CHANNELS};
+Step *selected_step;
+bool view_changed {false};
 bool keys_pressed;
 int pattern_page;           // Which page of the pattern we can currently see
 
 
-
-
-static void set_brightness(int level) {
+void set_brightness(int level) {
     oled_set_brightness(25 * level);
 }
 
-static void set_channel(int ch) {
+void set_channel(int ch) {
     track.active_channel = ch;
 }
 
-static int next_pattern_page(void) {
+int next_pattern_page(void) {
     int num_pages = (PATTERN.length + NUM_STEPKEYS-1) / NUM_STEPKEYS; // round up
     return (pattern_page + 1) % num_pages;
 }
 
 // Get the step in the pattern corresponding to the given key.
 // May return null, as the key could be beyond the end of the pattern.
-static Step *get_step_from_key(int key) {
+Step *get_step_from_key(int key) {
     int stepidx = pattern_page*NUM_STEPKEYS + key;
     if (stepidx >= PATTERN.length) return NULL;
     return &PATTERN.step[stepidx];
 }
 
+void draw_header() {
+    char buf[32] = {0};
+    if (recording) strcat(buf, "Rec ");
+    if (track.keyboard_enabled) strcat(buf, "Kb ");
+    draw_textf(0,0,0, "%sCh%d %s", buf, track.active_channel+1, track.is_over_limit ? "[!]" : "");
+}
 
 
 
-void UI::init() {
+
+
+// Default handler
+void UIFSM::react(InputEvent const & evt) {
+    if (PRESSED(BTN_TRACK)) {
+        transit<TrackView>();
+    } else if (PRESSED(BTN_CHAN)) {
+        transit<ChannelsOverview>();
+    } else if (PRESSED(BTN_PATTERN)) {
+        transit<PatternView>();
+    } else if (PRESSED(BTN_PLAY)) {
+        track.play(!track.is_playing);
+    }
+}
+
+
+// Track
+
+void TrackView::react(InputEvent const & ievt) {
+    react(DrawEvent {});
+    UIFSM::react(ievt);
+}
+
+void TrackView::react(DrawEvent const & devt) {
+    led_mode = LEDS_SHOW_CHANNELS;
+    ngl_fillscreen(0);
+    kmgui_gauge(0, &track.bpm, 5, 240, "$ bpm");
+}
+
+
+// Channels
+
+void ChannelsOverview::react(InputEvent const & ievt) {
+    if (!track.keyboard_enabled) {
+        for (int i=0; i<NUM_CHANNELS; i++) {
+            if (MOD_PRESSED(BTN_SHIFT, i)) {
+                track.channels[i].mute(!track.channels[i].is_muted);
+            } else if (PRESSED(i)) {
+                set_channel(i);
+                transit<ChannelView>();
+                return;
+            }
+        }
+    }
+
+    react(DrawEvent {});
+    UIFSM::react(ievt);    
+}
+
+void ChannelsOverview::react(DrawEvent const & devt) {
+    led_mode = LEDS_SHOW_CHANNELS;
+    ngl_fillscreen(0);
+    draw_header();
+}
+
+
+// Channel
+
+void ChannelView::react(DrawEvent const & devt) {
+    ChannelsOverview::react(DrawEvent {});
+    draw_text(32,32,0, "Chan edit");
+    draw_textf(16,80,0, "Samp: %d", track.channels[track.active_channel].cur_sample_id);
+}
+
+
+// Pattern
+
+void PatternView::react(InputEvent const & ievt) {
+    if (track.keyboard_enabled) {
+        // Play notes. Enter them into the pattern if in write mode
+
+    } else {
+        // Select or toggle steps
+        bool shift = btn_down(&inputs, BTN_SHIFT);
+        for (int i=0; i<NUM_STEPKEYS; i++) {
+            if (btn_press(&inputs, i)) {
+                if (recording) {
+                    Step *step = get_step_from_key(i);
+                    if (step) {
+                        step->on ^= 1;
+                        if (!shift && step->on) {
+                            step->note.midi_note = track.last_played_midi_note;
+                            step->note.trigger = 1;
+                            step->note.accent = 0;
+                        }
+                    }
+                } else {
+                    Step *step = get_step_from_key(i);
+                    if (step) {
+                        selected_step = step;
+                        transit<StepView>();
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    react(DrawEvent {});
+    UIFSM::react(ievt);
+}
+
+void PatternView::react(DrawEvent const& devt) {
+    led_mode = LEDS_SHOW_STEPS;
+    ngl_fillscreen(0);
+    draw_header();
+    kmgui_gauge(0, &PATTERN.length, 1, 64, "Len=$");
+}
+
+
+// Step
+
+void StepView::react(DrawEvent const& devt) {
+    led_mode = LEDS_SHOW_STEPS;
+    ngl_fillscreen(0);
+    draw_header();
+    if (selected_step == NULL) return;
+    
+    char buf[32];
+    midi_note_to_str(buf, sizeof(buf), selected_step->note.midi_note);
+    draw_textf(16,48,0, "%s", buf);
+
+    draw_textf(16,64,0, "Trig: %d", selected_step->note.trigger);
+    draw_textf(16,80,0, "Samp: %d", selected_step->sample_id);
+}
+
+
+
+
+
+void init() {
     set_brightness(brightness);
-
-    view = VIEW_TRACK;
 
     track.reset();
     track.set_volume_percent(volume_percent);
@@ -77,15 +228,11 @@ void UI::init() {
     p->step[0].on = true;
     p->step[0].note.midi_note = 60;
     p->step[0].sample_id = 0;
+
+    UIFSM::start();
 }
 
-
-// Button macros for readability
-#define PRESSED(btn) check_pressed(&inputs, (btn))
-#define RELEASED(btn) btn_release(&inputs, (btn))
-#define MOD_PRESSED(mod, btn) (btn_down(&inputs, (mod)) && btn_press(&inputs, (btn)))
-
-bool UI::process(RawInput in) {
+bool process(RawInput in) {
 
     bool update = false;
 
@@ -99,102 +246,62 @@ bool UI::process(RawInput in) {
     }
 
     // For gui widgets
-    wl_update_knobs(inputs.knob_delta);    
+    wl_update_knobs(inputs.knob_delta);
 
     if (update) {
         perf_start(PERF_DRAWTIME);
-        do {
-            view_changed = false;
-            ngl_fillscreen(0);
-
-            switch (view) {
-            case VIEW_INSTRUMENT:
-                track.channels[track.active_channel].inst->draw(track.instrument_page);
-                break;
-
-            case VIEW_DEBUG_MENU:
-                debug_menu();
-                break;
-
-            case VIEW_TRACK:
-                track_page();
-                break;
-            
-            case VIEW_PATTERN:
-                view_pattern();
-                break;
-
-            case VIEW_STEP_EDIT:
-                view_step();
-                break;
-
-            case VIEW_CHANNELS:
-                view_all_channels();
-                break;
-
-            case VIEW_CHANNEL_EDIT:
-                view_channel();
-                break;
-            }
-
-
-            for (int i=0; i<NUM_STEPKEYS; i++) {
-                if (PRESSED(i)) {
-                    keys_pressed = true;
-                    break;
-                }
-            }
-
-            // Instrument pages
-            if (MOD_PRESSED(BTN_CHAN, MODBTN_FILTER)) {
-                change_view(VIEW_INSTRUMENT);
-                track.instrument_page = INSTRUMENT_PAGE_FILTER;
-            } else if (MOD_PRESSED(BTN_CHAN, MODBTN_AMP)) {
-                change_view(VIEW_INSTRUMENT);
-                track.instrument_page = INSTRUMENT_PAGE_AMP;
-
-            } else if (PRESSED(BTN_TRACK)) {
-                change_view(VIEW_TRACK);
-            } else if (PRESSED(BTN_MENU)) {
-                change_view(VIEW_DEBUG_MENU);
-            } else if (PRESSED(BTN_CHAN)) {
-                change_view(VIEW_CHANNELS);
-            } else if (PRESSED(BTN_PATTERN)) {
-                if (view != VIEW_PATTERN) {
-                    change_view(VIEW_PATTERN);
-                    pattern_page = 0;
-                } else {
-                    pattern_page = next_pattern_page();
-                }
-            }
-
-            // Play/stop
-            if (PRESSED(BTN_PLAY)) {
-                track.play(!track.is_playing);
-            }
-
-            // Record
-            if (PRESSED(BTN_REC)) {
-                recording = !recording;
-            }
-
-            // Keyboard
-            if (PRESSED(BTN_KEYBOARD)) {
-                track.enable_keyboard(!track.keyboard_enabled);
-                keys_pressed = false;
-            } else if (RELEASED(BTN_KEYBOARD)) {
-                // Quick mode
-                if (track.keyboard_enabled && keys_pressed) {
-                    track.enable_keyboard(false);
-                }
-            }
-
-        } while (view_changed);
-
-        draw_debug_info();
+        UIFSM::dispatch(InputEvent {});
         perf_end(PERF_DRAWTIME);
+        draw_debug_info();
     }
 
+    //         case VIEW_INSTRUMENT:
+    //             track.channels[track.active_channel].inst->draw(track.instrument_page);
+    //             break;
+    //         for (int i=0; i<NUM_STEPKEYS; i++) {
+    //             if (PRESSED(i)) {
+    //                 keys_pressed = true;
+    //                 break;
+    //             }
+    //         }
+    //         // Instrument pages
+    //         if (MOD_PRESSED(BTN_CHAN, MODBTN_FILTER)) {
+    //             change_view(VIEW_INSTRUMENT);
+    //             track.instrument_page = INSTRUMENT_PAGE_FILTER;
+    //         } else if (MOD_PRESSED(BTN_CHAN, MODBTN_AMP)) {
+    //             change_view(VIEW_INSTRUMENT);
+    //             track.instrument_page = INSTRUMENT_PAGE_AMP;
+    //         } else if (PRESSED(BTN_PATTERN)) {
+    //             if (view != VIEW_PATTERN) {
+    //                 change_view(VIEW_PATTERN);
+    //                 pattern_page = 0;
+    //             } else {
+    //                 pattern_page = next_pattern_page();
+    //             }
+    //         }
+    //         // Record
+    //         if (PRESSED(BTN_REC)) {
+    //             recording = !recording;
+    //         }
+    //         // Keyboard
+    //         if (PRESSED(BTN_KEYBOARD)) {
+    //             track.enable_keyboard(!track.keyboard_enabled);
+    //             keys_pressed = false;
+    //         } else if (RELEASED(BTN_KEYBOARD)) {
+    //             // Quick mode
+    //             if (track.keyboard_enabled && keys_pressed) {
+    //                 track.enable_keyboard(false);
+    //             }
+    //         }
+    // void change_view(UIView new_view) {
+    //     view = new_view;
+    //     view_changed = true;
+
+    //     // Don't control instrument except in VIEW_INSTRUMENT
+    //     if (view != VIEW_INSTRUMENT) {
+    //         track.instrument_page = INSTRUMENT_PAGE_OFF;
+    //     }
+    // }
 
 
 
@@ -229,15 +336,6 @@ bool UI::process(RawInput in) {
 
 }
 
-void UI::change_view(UIView new_view) {
-    view = new_view;
-    view_changed = true;
-
-    // Don't control instrument except in VIEW_INSTRUMENT
-    if (view != VIEW_INSTRUMENT) {
-        track.instrument_page = INSTRUMENT_PAGE_OFF;
-    }
-}
 
 
 
@@ -245,70 +343,6 @@ void UI::change_view(UIView new_view) {
 
 
 
-
-void UI::draw_header() {
-    char buf[32] = {0};
-    if (recording) strcat(buf, "Rec ");
-    if (track.keyboard_enabled) strcat(buf, "Kb ");
-    draw_textf(0,0,0, "%sCh%d %s", buf, track.active_channel+1, track.is_over_limit ? "[!]" : "");
-}
-
-void UI::track_page() {
-    led_mode = LEDS_SHOW_CHANNELS;
-    kmgui_gauge(0, &track.bpm, 5, 240, "$ bpm");
-}
-
-void UI::view_pattern() {
-    led_mode = LEDS_SHOW_STEPS;
-
-    if (track.keyboard_enabled) {
-        // Play notes. Enter them into the pattern if in write mode
-
-    } else {
-        // Select or toggle steps
-        bool shift = btn_down(&inputs, BTN_SHIFT);
-        for (int i=0; i<NUM_STEPKEYS; i++) {
-            if (btn_press(&inputs, i)) {
-                if (recording) {
-                    Step *step = get_step_from_key(i);
-                    if (step) {
-                        step->on ^= 1;
-                        if (!shift && step->on) {
-                            step->note.midi_note = track.last_played_midi_note;
-                            step->note.trigger = 1;
-                            step->note.accent = 0;
-                        }
-                    }
-                } else {
-                    Step *step = get_step_from_key(i);
-                    if (step) {
-                        selected_step = step;
-                        change_view(VIEW_STEP_EDIT);
-                    }
-                }
-            }
-        }
-    }
-
-    draw_header();
-
-    // Pattern length 
-    kmgui_gauge(0, &PATTERN.length, 1, 64, "Len=$");
-
-    // for (int i=0; i<16; i++) {
-    //     char buf[2];
-    //     buf[0] = '?';//track.pattern.step[i].note.accent ? 'X' : '.';
-    //     buf[1] = 0;
-    //     int x = 64 - 4*xsp+xsp/2 + (i%8)*xsp;
-    //     int y = 32 + ysp*(i/8);
-    //     int opt = TEXT_CENTRE;
-    //     // if (i == track.stepidx[0]) {
-    //     //     opt |= TEXT_INVERT;
-    //     //     draw_rect(x-8,y-2,16,16,1);
-    //     // }
-    //     draw_text(x,y,opt,buf);
-    // }
-}
 
 
 const int sample_browser_item_height = 14;
@@ -348,52 +382,9 @@ wlListDrawFuncs sample_browser_funcs = {
 
 
 
-void UI::view_step() {
-    led_mode = LEDS_SHOW_STEPS;
-    draw_header();
-    if (selected_step == NULL) return;
-    
-    char buf[32];
-    midi_note_to_str(buf, sizeof(buf), selected_step->note.midi_note);
-    draw_textf(16,48,0, "%s", buf);
-
-    draw_textf(16,64,0, "Trig: %d", selected_step->note.trigger);
-    draw_textf(16,80,0, "Samp: %d", selected_step->sample_id);
-
-}
 
 
-void UI::channel_modes_common() {
-    led_mode = LEDS_SHOW_CHANNELS;
-
-    if (!track.keyboard_enabled) {
-        for (int i=0; i<NUM_CHANNELS; i++) {
-            if (MOD_PRESSED(BTN_SHIFT, i)) {
-                track.channels[i].mute(!track.channels[i].is_muted);
-            } else if (PRESSED(i)) {
-                set_channel(i);
-                change_view(VIEW_CHANNEL_EDIT);
-            }
-        }
-    }
-
-    draw_header();
-}
-
-// Channel overview
-// Show channel activity on LEDs
-void UI::view_all_channels() {
-    channel_modes_common();
-}
-
-void UI::view_channel() {
-    channel_modes_common();
-    draw_text(32,32,0, "Chan edit");
-    draw_textf(16,80,0, "Samp: %d", track.channels[track.active_channel].cur_sample_id);
-
-}
-
-void UI::draw_debug_info(void) {
+void draw_debug_info(void) {
 
     //draw_textf(70,0,0, "P%02d", track.pattern_idx+1);
     draw_textf(127,0,TEXT_ALIGN_RIGHT, "%d/%d",
@@ -463,7 +454,7 @@ wlListDrawFuncs debug_menu_funcs = {
     .draw_scrollbar = draw_debug_menu_scrollbar
 };
 
-void UI::debug_menu() {
+void debug_menu() {
 
     wl_list_start("Debug menu", 6, &debug_menu_funcs);
     if (wl_list_item_int("Volume", volume_percent)) {
@@ -504,3 +495,5 @@ void UI::debug_menu() {
     //draw_bitmap(0,0,testimg,offs,128-offs,128);
     //draw_bitmap(119-offs,0,testimg,0,MIN(offs,120),128);    
 }
+
+} //namespace UI
