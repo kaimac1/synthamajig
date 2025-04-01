@@ -3,6 +3,9 @@
 #include "track.hpp"
 #include "tinyfsm/tinyfsm.hpp"
 
+#define DEFAULT_BRIGHTNESS 1
+#define DEFAULT_VOLUME 50
+
 // Shifted button functions
 #define MODBTN_FILTER     BTN_STEP_9
 #define MODBTN_AMP        BTN_STEP_10
@@ -17,11 +20,6 @@ enum LEDMode {
 namespace UI {
     void init();
     bool process(RawInput in);
-
-    void debug_menu();
-    void draw_debug_info();
-
-
 
 
     struct DrawEvent : tinyfsm::Event {};

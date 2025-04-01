@@ -9,6 +9,20 @@
 #include <cstdio>
 #include <string.h>
 
+/*
+    Our user interface is based around tinyfsm states.
+    The currently active state receives an InputEvent when the inputs (buttons or knobs) have
+    changed. When handling an InputEvent, states should fire a DrawEvent to themselves to redraw.
+    A DrawEvent is fired automatically on state entry. States should also fire the InputEvent to
+    the default handler (UIFSM::react), if desired, which handles buttons common to all modes.
+    States can inherit from other states and get them to handle their input.
+
+    The function check_pressed (used through the macro PRESSED) checks if a button is pressed,
+    and *consumes* that button press if it is, to ensure that a button press is only handled once.
+    So for example a state can implement a function on the PLAY button, and the default handler will
+    not detect PLAY presses.
+*/
+
 FSM_INITIAL_STATE(UI::UIFSM, UI::TrackView);
 
 // Macros for readability
@@ -16,34 +30,36 @@ FSM_INITIAL_STATE(UI::UIFSM, UI::TrackView);
 #define RELEASED(btn) btn_release(&inputs, (btn))
 #define MOD_PRESSED(mod, btn) (btn_down(&inputs, (mod)) && btn_press(&inputs, (btn)))
 
+// The current channel and pattern
 #define CHANNEL (track.channels[track.active_channel])
 #define PATTERN (CHANNEL.pattern)
 
-
+// The current track/project.
 // Contains channels, instruments, parameters, pattern data
+// Basically everything that isn't the UI is contained in here.
 Track track;
 
 
 
 namespace UI {
 
+// UI state:
 InputState inputs {};
-int brightness {1}; // 0-10
-int volume_percent {50};
-bool recording {false};
 LEDMode led_mode {LEDS_SHOW_CHANNELS};
-Step *selected_step;
-bool view_changed {false};
+int brightness {DEFAULT_BRIGHTNESS};
+int volume_percent {DEFAULT_VOLUME};
+bool recording;
 bool keys_pressed;
 int pattern_page;           // Which page of the pattern we can currently see
+Step *selected_step;
+
+void control_leds();
+void draw_debug_info();
 
 
 void set_brightness(int level) {
+    // We use 0-10, the OLED code wants 0-255
     oled_set_brightness(25 * level);
-}
-
-void set_channel(int ch) {
-    track.active_channel = ch;
 }
 
 int next_pattern_page(void) {
@@ -68,9 +84,9 @@ void draw_header() {
 
 
 
+/************************************************************/
+// Default input handler
 
-
-// Default handler
 void UIFSM::react(InputEvent const & evt) {
     if (PRESSED(BTN_TRACK)) {
         transit<TrackView>();
@@ -90,6 +106,7 @@ void UIFSM::react(InputEvent const & evt) {
 }
 
 
+/************************************************************/
 // Track
 
 void TrackView::react(InputEvent const & ievt) {
@@ -104,6 +121,7 @@ void TrackView::react(DrawEvent const & devt) {
 }
 
 
+/************************************************************/
 // Channels
 
 void ChannelsOverview::react(InputEvent const & ievt) {
@@ -112,7 +130,7 @@ void ChannelsOverview::react(InputEvent const & ievt) {
             if (MOD_PRESSED(BTN_SHIFT, i)) {
                 track.channels[i].mute(!track.channels[i].is_muted);
             } else if (PRESSED(i)) {
-                set_channel(i);
+                track.active_channel = i;
                 transit<ChannelView>();
                 return;
             }
@@ -130,6 +148,7 @@ void ChannelsOverview::react(DrawEvent const & devt) {
 }
 
 
+/************************************************************/
 // Channel
 
 void ChannelView::react(DrawEvent const & devt) {
@@ -139,6 +158,7 @@ void ChannelView::react(DrawEvent const & devt) {
 }
 
 
+/************************************************************/
 // Pattern
 
 void PatternView::react(InputEvent const & ievt) {
@@ -184,6 +204,7 @@ void PatternView::react(DrawEvent const& devt) {
 }
 
 
+/************************************************************/
 // Step
 
 void StepView::react(DrawEvent const& devt) {
@@ -201,6 +222,8 @@ void StepView::react(DrawEvent const& devt) {
 }
 
 
+/************************************************************/
+
 
 
 
@@ -209,7 +232,6 @@ void init() {
 
     track.reset();
     track.set_volume_percent(volume_percent);
-    track.bpm = 120;
 
     // demo pattern
     #define PATTERN_LEN 16
@@ -248,6 +270,7 @@ bool process(RawInput in) {
         update = true;
     }
     if (track.is_playing) {
+        // debug for now, always redraw while playing
         update = true;
     }
 
@@ -260,6 +283,12 @@ bool process(RawInput in) {
         perf_end(PERF_DRAWTIME);
         draw_debug_info();
     }
+
+    control_leds();
+
+    return update;
+}
+
 
     //         case VIEW_INSTRUMENT:
     //             track.channels[track.active_channel].inst->draw(track.instrument_page);
@@ -291,9 +320,6 @@ bool process(RawInput in) {
     //                 track.enable_keyboard(false);
     //             }
     //         }
-    // void change_view(UIView new_view) {
-    //     view = new_view;
-    //     view_changed = true;
 
     //     // Don't control instrument except in VIEW_INSTRUMENT
     //     if (view != VIEW_INSTRUMENT) {
@@ -301,10 +327,7 @@ bool process(RawInput in) {
     //     }
     // }
 
-
-
-    // Set step LEDs
-    //if (ui.msg) led_mode = LEDS_OVERRIDDEN;
+void control_leds() {
     if (led_mode != LEDS_OVERRIDDEN) {
         for (int i=0; i<NUM_STEPKEYS; i++) {
             uint8_t led = LED_OFF;
@@ -328,13 +351,28 @@ bool process(RawInput in) {
             hw_set_led(i, led);
         }
     }
-
-    return update;
-
-
 }
 
+void draw_debug_info(void) {
 
+    //draw_textf(70,0,0, "P%02d", track.pattern_idx+1);
+    draw_textf(127,0,TEXT_ALIGN_RIGHT, "%d/%d",
+        track.channels[track.active_channel].step+1, track.channels[track.active_channel].pattern.length);
+    
+    // audio CPU usage
+    int64_t time_audio_us = perf_get(PERF_AUDIO);
+    float audio_percent = 100.0f * time_audio_us/5805.0f;
+    draw_textf(0,115,0,"%.1f%%",  audio_percent);
+
+    //float fps_display = 1E6 / perf_get(PERF_DISPLAY_UPDATE);
+    //draw_textf(0,0,0,"%.1f fps", fps_display);
+    draw_textf(127,115,TEXT_ALIGN_RIGHT,"draw %d", perf_get(PERF_DRAWTIME));
+
+    #ifdef DEBUG_AMPLITUDE
+    draw_textf(64,64,TEXT_CENTRE,"(%d, %d)", samplemin, samplemax);
+    samplemin = 0; samplemax = 0;
+    #endif
+}
 
 
 
@@ -382,28 +420,7 @@ wlListDrawFuncs sample_browser_funcs = {
 
 
 
-void draw_debug_info(void) {
 
-    //draw_textf(70,0,0, "P%02d", track.pattern_idx+1);
-    draw_textf(127,0,TEXT_ALIGN_RIGHT, "%d/%d",
-        track.channels[track.active_channel].step+1, track.channels[track.active_channel].pattern.length);
-    
-    // audio CPU usage
-    int64_t time_audio_us = perf_get(PERF_AUDIO);
-    float audio_percent = 100.0f * time_audio_us/5805.0f;
-    draw_textf(0,115,0,"%.1f%%",  audio_percent);
-
-    //float fps_display = 1E6 / perf_get(PERF_DISPLAY_UPDATE);
-    //draw_textf(0,0,0,"%.1f fps", fps_display);
-    draw_textf(127,115,TEXT_ALIGN_RIGHT,"draw %d", perf_get(PERF_DRAWTIME));
-
-    //ngl_bitmap(16,16, gauge_test);
-
-    #ifdef DEBUG_AMPLITUDE
-    draw_textf(64,64,TEXT_CENTRE,"(%d, %d)", samplemin, samplemax);
-    samplemin = 0; samplemax = 0;
-    #endif
-}
 
 
 
