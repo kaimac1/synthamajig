@@ -207,6 +207,16 @@ void PatternView::react(DrawEvent const& devt) {
 /************************************************************/
 // Step
 
+void StepView::react(InputEvent const &ievt) {
+    if (inputs.knob_delta[0]) {
+        transit<SampleSelector>();
+        return;
+    }
+
+    react(DrawEvent {});
+    PatternView::react(ievt);
+}
+
 void StepView::react(DrawEvent const& devt) {
     led_mode = LEDS_SHOW_STEPS;
     ngl_fillscreen(0);
@@ -223,6 +233,58 @@ void StepView::react(DrawEvent const& devt) {
 
 
 /************************************************************/
+// Sample select
+
+const int sample_browser_item_height = 14;
+
+void draw_sample_browser(const char *title, int num_items) {
+    draw_text(0,0,0, title);
+}
+
+void draw_sample_browser_item(const char *name, const char *value, int pos, bool selected) {
+    const int flags = selected ? TEXT_INVERT : 0;
+    const int yoffset = 16;
+    const int ypos = sample_browser_item_height * pos;
+    if (selected) ngl_rect(3, yoffset+ypos, 125,sample_browser_item_height, FILLCOLOUR_WHITE);
+    draw_text(5, yoffset+ypos+1, flags, name);
+    if (value) {
+        draw_text(127, yoffset+ypos+1, flags | TEXT_ALIGN_RIGHT, value);
+    }
+}
+
+void draw_sample_browser_scrollbar(int total_items, int visible_items, int top_item) {
+    const int yoffset = 16;
+    const int total_height = sample_browser_item_height*visible_items;
+    const int bar_top = total_height * top_item/total_items;
+    const int bar_height = total_height * visible_items/total_items;
+
+    ngl_rect(0, yoffset, 2, total_height, FILLCOLOUR_HALF);
+    ngl_rect(0, yoffset+bar_top-2, 2, 2, FILLCOLOUR_BLACK);
+    ngl_rect(0, yoffset+bar_top+bar_height, 2, 2, FILLCOLOUR_BLACK);
+    ngl_rect(0, yoffset+bar_top, 2, bar_height, FILLCOLOUR_WHITE);
+}
+
+wlListDrawFuncs sample_browser_funcs = {
+    .draw_menu = draw_sample_browser,
+    .draw_item = draw_sample_browser_item,
+    .draw_scrollbar = draw_sample_browser_scrollbar
+};
+
+void SampleSelector::react(DrawEvent const& devt) {
+    const int numsamps = SampleManager::sample_list.size();
+    
+    ngl_fillscreen(0);
+    wl_list_start("Samples", 6, &sample_browser_funcs);
+    for (int i=0; i<numsamps; i++) {
+        char value[32];
+        SampleInfo *samp = &SampleManager::sample_list[i];
+        snprintf(value, sizeof(value), "%dK", samp->size_bytes/1024);
+        wl_list_item_str(samp->name, value);
+    }
+    wl_list_end();    
+}
+
+
 
 
 
@@ -377,44 +439,6 @@ void draw_debug_info(void) {
 
 
 
-
-
-
-
-const int sample_browser_item_height = 14;
-
-void draw_sample_browser(const char *title, int num_items) {
-    draw_text(0,0,0, title);
-}
-
-void draw_sample_browser_item(const char *name, const char *value, int pos, bool selected) {
-    const int flags = selected ? TEXT_INVERT : 0;
-    const int yoffset = 16;
-    const int ypos = sample_browser_item_height * pos;
-    if (selected) ngl_rect(3, yoffset+ypos, 125,sample_browser_item_height, FILLCOLOUR_WHITE);
-    draw_text(5, yoffset+ypos+1, flags, name);
-    if (value) {
-        draw_text(127, yoffset+ypos+1, flags | TEXT_ALIGN_RIGHT, value);
-    }
-}
-
-void draw_sample_browser_scrollbar(int total_items, int visible_items, int top_item) {
-    const int yoffset = 16;
-    const int total_height = sample_browser_item_height*visible_items;
-    const int bar_top = total_height * top_item/total_items;
-    const int bar_height = total_height * visible_items/total_items;
-
-    ngl_rect(0, yoffset, 2, total_height, FILLCOLOUR_HALF);
-    ngl_rect(0, yoffset+bar_top-2, 2, 2, FILLCOLOUR_BLACK);
-    ngl_rect(0, yoffset+bar_top+bar_height, 2, 2, FILLCOLOUR_BLACK);
-    ngl_rect(0, yoffset+bar_top, 2, bar_height, FILLCOLOUR_WHITE);
-}
-
-wlListDrawFuncs sample_browser_funcs = {
-    .draw_menu = draw_sample_browser,
-    .draw_item = draw_sample_browser_item,
-    .draw_scrollbar = draw_sample_browser_scrollbar
-};
 
 
 

@@ -57,7 +57,12 @@ namespace UI {
     };
 
     class StepView : public PatternView {
-        // Input events handled by PatternView
+        void react(InputEvent const &ievt) override;
         void react(DrawEvent const &) override;
     };
+
+    class SampleSelector : public PatternView {
+        // Input events handled by PatternView
+        void react(DrawEvent const &) override;
+    };    
 }
