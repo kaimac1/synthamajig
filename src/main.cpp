@@ -32,11 +32,7 @@ int main() {
     hw_init();
 
     SampleManager::init();
-
-    perf_start(PERF_TEST);
     SampleManager::load(0);
-    int64_t tt = perf_end(PERF_TEST);
-    printf("Load took %lld us\n", tt);
 
     UI::init();
 
@@ -55,7 +51,7 @@ int main() {
             update_display = true;
         }
         int64_t time_ui = perf_end(PERF_UI_UPDATE);
-        if (ctr % 256 == 0) {
+        if (time_ui > 500) {
             printf("time ui: %lld us\n", time_ui);
         }
 

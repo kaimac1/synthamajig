@@ -118,6 +118,7 @@ void TrackView::react(DrawEvent const & devt) {
     led_mode = LEDS_SHOW_CHANNELS;
     ngl_fillscreen(0);
     kmgui_gauge(0, &track.bpm, 5, 240, "$ bpm");
+    draw_debug_info();
 }
 
 
@@ -272,16 +273,29 @@ wlListDrawFuncs sample_browser_funcs = {
 
 void SampleSelector::react(DrawEvent const& devt) {
     const int numsamps = SampleManager::sample_list.size();
+    bool exit = false;
     
     ngl_fillscreen(0);
     wl_list_start("Samples", 6, &sample_browser_funcs);
     for (int i=0; i<numsamps; i++) {
         char value[32];
         SampleInfo *samp = &SampleManager::sample_list[i];
-        snprintf(value, sizeof(value), "%dK", samp->size_bytes/1024);
-        wl_list_item_str(samp->name, value);
+        if (wl_list_item_str(samp->name, NULL)) {
+            // Item selected
+            if (PRESSED(BTN_SHIFT)) {
+                printf("loading sample %d...", samp->sample_id);
+                SampleManager::load(samp->sample_id);
+                printf("done\n");
+                selected_step->sample_id = samp->sample_id;
+                exit = true;
+            }
+        }
     }
-    wl_list_end();    
+    wl_list_end();
+
+    if (exit) {
+        transit<StepView>();
+    }
 }
 
 
@@ -343,7 +357,6 @@ bool process(RawInput in) {
         perf_start(PERF_DRAWTIME);
         UIFSM::dispatch(InputEvent {});
         perf_end(PERF_DRAWTIME);
-        draw_debug_info();
     }
 
     control_leds();

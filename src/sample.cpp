@@ -53,25 +53,32 @@ int build_list() {
 
         // Read file and parse header
         wave_open(&wavefile, full_path, WAVE_OPEN_READ);
+        bool valid = false;
+        if (wave_get_num_channels(&wavefile) == 1 && wave_get_sample_size(&wavefile) == 2) {
+            valid = true;
+        } else {
+            DEBUG_PRINTF("Sample %s not in right format\n", sample_name);
+        }
 
-        SampleInfo samp;
-        samp.sample_id = next_id;
-        samp.length = wave_get_length(&wavefile);
-        samp.size_bytes = samp.length * 2;
-        samp.data = NULL;
-        samp.root_midi_note = DEFAULT_SAMPLE_ROOT_NOTE;
-        strlcpy(samp.name, sample_name, sizeof(samp.name));
+        if (valid) {
+            SampleInfo samp;
+            samp.sample_id = next_id;
+            samp.length = wave_get_length(&wavefile);
+            samp.size_bytes = samp.length * 2;
+            samp.data = NULL;
+            samp.root_midi_note = DEFAULT_SAMPLE_ROOT_NOTE;
+            strlcpy(samp.name, sample_name, sizeof(samp.name));
+
+            sample_list.push_back(samp);
+            sample_map[samp.sample_id] = sample_list.size() - 1; // Map stores index of sample in list
+
+            DEBUG_PRINTF("Added sample %s, id=%d len=%d idx=%d\n", sample_name, samp.sample_id, samp.length, sample_map[samp.sample_id]);
+
+            next_id++;
+            num_samples++;
+        }
 
         wave_close(&wavefile);
-        
-        sample_list.push_back(samp);
-        sample_map[samp.sample_id] = sample_list.size() - 1; // Map stores index of sample in list
-
-        DEBUG_PRINTF("Added sample %s, id=%d len=%d idx=%d\n", sample_name, samp.sample_id, samp.length, sample_map[samp.sample_id]);
-
-        next_id++;
-        num_samples++;
-
         fr = f_findnext(&dir, &finfo);
     }
 
@@ -79,9 +86,31 @@ int build_list() {
     return num_samples;
 }
 
+int load_sample_data(const char *path, SampleInfo *samp) {
+    int error = 0;
+    WaveFile wavefile;
+    wave_open(&wavefile, path, WAVE_OPEN_READ);
+    DEBUG_PRINTF("Reading data...");
+    size_t frames_read = wave_read(&wavefile, (void*)samp->data, samp->length);
+    if (frames_read != samp->length) {
+        DEBUG_PRINTF("file read error, read %d/%d frames\n", frames_read, samp->length);
+        error = -1;
+    } else {
+        DEBUG_PRINTF("ok\n");
+    }
+    
+    wave_close(&wavefile);
+    return error;
+}
+
 int load(int sample_id) {
     SampleInfo *samp = get_sample_info(sample_id);
     if (!samp) return -1;
+
+    if (samp->is_loaded) {
+        DEBUG_PRINTF("Sample %d already loaded!\n", sample_id);
+        return 0;
+    }
 
     // Recreate full path from sample name
     char full_path[128];
@@ -89,18 +118,19 @@ int load(int sample_id) {
 
     // Allocate memory in sample RAM
     const size_t data_size = samp->size_bytes;
-    DEBUG_PRINTF("Allocating %d bytes\n", data_size);
     void *data = tlsf_malloc(sample_ram, data_size);
+    if (data == NULL) {
+        DEBUG_PRINTF("Allocation of %d bytes failed\n", data_size);
+        return -1;
+    }
     samp->data = (int16_t*)data;
 
-    WaveFile wavefile;
-    wave_open(&wavefile, full_path, WAVE_OPEN_READ);
-    size_t frames_read = wave_read(&wavefile, (void*)samp->data, samp->length);
-    DEBUG_PRINTF("Read %d of %d frames\n", frames_read, samp->length);
-    wave_close(&wavefile);
-
-    samp->is_loaded = true;
-    return 0;
+    if (load_sample_data(full_path, samp) == 0) {
+        samp->is_loaded = true;
+        return 0;
+    } else {
+        return -1;
+    }
 }
 
 int unload(int sample_id) {
