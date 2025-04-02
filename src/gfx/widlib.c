@@ -53,7 +53,7 @@ void wl_list_start(const char *title, int visible_items, wlListDrawFuncs *draw_f
     }
     menu.scan_item = -1;
 
-    if (knob_delta[SCROLL_KNOB]) {
+    if (menu.built && knob_delta[SCROLL_KNOB]) {
         // Change selected item
         menu.selected_item += knob_delta[SCROLL_KNOB];
         if (menu.selected_item < 0) menu.selected_item = 0;
@@ -121,8 +121,6 @@ void wl_list_end(void) {
 
 /**************************************************************/
 // Gauges
-
-//bool update_int_from_knob()
 
 // Replace $ in text with value
 void format_text_int(char *out, int size, const char *in, int value) {
