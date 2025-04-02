@@ -31,8 +31,15 @@ namespace UI {
         virtual void react(DrawEvent const & evt) {};
         virtual void react(InputEvent const & evt);
         virtual void entry() {react(DrawEvent {});};
-        void exit() {};
-    };    
+        virtual void exit() {};
+    };
+
+    class Screensaver : public UIFSM {
+        void entry() override;
+        void exit() override;
+        void react(InputEvent const &) override;
+        void react(DrawEvent const &) override;        
+    };
 
     class TrackView : public UIFSM {
         void react(InputEvent const &) override;
@@ -64,5 +71,5 @@ namespace UI {
     class SampleSelector : public PatternView {
         // Input events handled by PatternView
         void react(DrawEvent const &) override;
-    };    
+    };
 }

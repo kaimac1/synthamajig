@@ -49,6 +49,7 @@ LEDMode led_mode {LEDS_SHOW_CHANNELS};
 int brightness {DEFAULT_BRIGHTNESS};
 int volume_percent {DEFAULT_VOLUME};
 bool recording;
+bool screensaver_active;
 bool keys_pressed;
 int pattern_page;           // Which page of the pattern we can currently see
 Step *selected_step;
@@ -102,6 +103,8 @@ void UIFSM::react(InputEvent const & evt) {
         
     } else if (PRESSED(BTN_PLAY)) {
         track.play(!track.is_playing);
+    } else if (PRESSED(BTN_MENU)) {
+        transit<Screensaver>();
     }
 }
 
@@ -299,7 +302,49 @@ void SampleSelector::react(DrawEvent const& devt) {
 }
 
 
+/************************************************************/
+// Screensaver
 
+void Screensaver::entry() {
+    screensaver_active = true;
+    react(DrawEvent {});
+}
+void Screensaver::exit() {
+    screensaver_active = false;
+}
+
+void Screensaver::react(InputEvent const& ievt) {
+    react(DrawEvent {});
+    UIFSM::react(ievt);
+}
+
+void Screensaver::react(DrawEvent const& devt) {
+    static float x = 24.0;
+    static float y = 32.0;
+    static float dx = 0.3;
+    static float dy = 0.25;
+
+    ngl_fillscreen(0);
+    ngl_bitmap(x, y, dvdlogo);
+    x += dx;
+    y += dy;
+    if (x+dvdlogo.width > NGL_DISPLAY_WIDTH) {
+        x = NGL_DISPLAY_WIDTH - dvdlogo.width;
+        dx = -dx;
+    }
+    if (x < 0) {
+        x = 0;
+        dx = -dx;
+    }
+    if (y+dvdlogo.height > NGL_DISPLAY_HEIGHT) {
+        y = NGL_DISPLAY_HEIGHT - dvdlogo.height;
+        dy = -dy;
+    }
+    if (y < 0) {
+        y = 0;
+        dy = -dy;
+    }    
+}
 
 
 
@@ -345,10 +390,8 @@ bool process(RawInput in) {
     if (input_process(&inputs, in)) {
         update = true;
     }
-    if (track.is_playing) {
-        // debug for now, always redraw while playing
-        update = true;
-    }
+    if (screensaver_active) update = true;
+    if (track.is_playing) update = true; // debug for now, always redraw while playing
 
     // For gui widgets
     wl_update_knobs(inputs.knob_delta);
