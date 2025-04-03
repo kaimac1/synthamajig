@@ -8,13 +8,13 @@
 #include "ngl.h"
 #include "font.h"
 
-#define CHAR_SPACING 1  // space between text characters
-
 uint8_t framebuffer[NGL_FRAMEBUFFER_SIZE];
-uint16_t font_index[FONT_CHARS];
+
+nglFont font_minipixel = {32, 96, 12, 1, font_minipixel_index, font_minipixel_data};
+
 
 void ngl_init(void) {
-    build_font_index();
+    //
 }
 
 uint8_t *ngl_framebuffer(void) {
@@ -156,19 +156,9 @@ void ngl_bitmap_xclip(int x, int y, nglBitmap bitmap) {
 
 // Text
 
-void build_font_index(void) {
-
-    uint16_t idx = 0;
-
-    for (int i=0; i<FONT_CHARS; i++) {
-        font_index[i] = idx;
-        idx += font_widths[i]*2;
-    }
-
-}
-
 void draw_textf(int x, int y, uint8_t flags, const char *fmt, ...) {
-    char str[64];
+    const size_t TEXTF_BUFFER_SIZE = 128;
+    char str[TEXTF_BUFFER_SIZE];
     va_list args;
     va_start (args, fmt);
     vsnprintf(str, sizeof(str), fmt, args);
@@ -178,14 +168,17 @@ void draw_textf(int x, int y, uint8_t flags, const char *fmt, ...) {
 
 void draw_text(int x, int y, uint8_t flags, const char* text) {
 
+    nglFont *font = &font_minipixel;
+
     int xoffs = x;
     int len = strlen(text);
 
     if (flags & TEXT_CENTRE || flags & TEXT_ALIGN_RIGHT) {
         int xlen = 0;
         for (int i=0; i<len; i++) {
-            uint8_t c = text[i] - FONT_FIRST_CHAR;
-            xlen += font_widths[c] + CHAR_SPACING;
+            uint8_t c = text[i] - font->first_char;
+            const uint8_t char_width = (font->index[c+1] - font->index[c]) / 2;
+            xlen += char_width + font->char_spacing;
         }
         if (flags & TEXT_CENTRE) {
             xoffs -= xlen/2;
@@ -195,20 +188,20 @@ void draw_text(int x, int y, uint8_t flags, const char* text) {
     }
 
     for (int i=0; i<len; i++) {
-        uint8_t c = text[i] - FONT_FIRST_CHAR;
-        uint8_t char_width = font_widths[c];
+        uint8_t c = text[i] - font->first_char;
+        const uint8_t char_width = (font->index[c+1] - font->index[c]) / 2;
 
         for (int px=0; px<char_width; px++) {
             uint8_t data[2];
-            data[0] = font_data[font_index[c] + px]; // top 8 pixels
-            data[1] = font_data[font_index[c] + char_width + px] >> 4; // bottom 4 pixels
+            data[0] = font->data[font->index[c] + px]; // top 8 pixels
+            data[1] = font->data[font->index[c] + char_width + px] >> 4; // bottom 4 pixels
             if (flags & TEXT_INVERT) {
                 data[0] = ~data[0];
                 data[1] = ~data[1];
             }
-            draw_column(xoffs+px, y, &data[0], FONT_HEIGHT);
+            draw_column(xoffs+px, y, &data[0], font->height);
         }
 
-        xoffs += char_width + CHAR_SPACING;
+        xoffs += char_width + font->char_spacing;
     }
 }

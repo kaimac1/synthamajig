@@ -19,6 +19,14 @@ extern "C" {
 #define TEXT_CENTRE         0x02
 #define TEXT_ALIGN_RIGHT    0x04
 
+typedef struct {
+    uint8_t first_char;
+    uint8_t num_chars;
+    uint8_t height;
+    uint8_t char_spacing;
+    const uint16_t *index;
+    const uint8_t *data;
+} nglFont;
 
 typedef struct {
     int32_t width;

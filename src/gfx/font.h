@@ -1,50 +1,17 @@
-// Font: ""
-// Data created with FontCreator
+#pragma once
 
-/* Font size in bytes  : 6330
- * Font width          : 10
- * Font height         : 12
- * Font first char     : 32
- * Font last char      : 128
- * Font used chars     : 96
- *
- * The font data are defined as
- *
- * struct _FONT_ {
- *     uint16_t   font_Size_in_Bytes_over_all_included_Size_it_self;
- *     uint8_t    font_Width_in_Pixel_for_fixed_drawing;
- *     uint8_t    font_Height_in_Pixel_for_all_characters;
- *     unit8_t    font_First_Char;
- *     uint8_t    font_Char_Count;
- *
- *     uint8_t    font_Char_Widths[font_Last_Char - font_First_Char +1];
- *                  // for each character the separate width in pixels,
- *                  // characters < 128 have an implicit virtual right empty row
- *
- *     uint8_t    font_data[];
- *                  // bit field of all characters
- */
-
-#define FONT_WIDTH 10
-#define FONT_HEIGHT 12
-#define FONT_FIRST_CHAR 32
-#define FONT_CHARS 96
-
-const uint8_t font_widths[] = {
-    // char widths
-    0x01, 0x02, 0x05, 0x07, 0x07, 0x06, 0x07, 0x02, 0x04, 0x04, 
-    0x05, 0x06, 0x03, 0x06, 0x02, 0x06, 0x06, 0x04, 0x06, 0x06, 
-    0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x02, 0x03, 0x05, 0x06, 
-    0x05, 0x06, 0x07, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 
-    0x06, 0x06, 0x06, 0x07, 0x06, 0x07, 0x07, 0x06, 0x06, 0x06, 
-    0x06, 0x06, 0x06, 0x06, 0x06, 0x07, 0x06, 0x06, 0x06, 0x04, 
-    0x06, 0x04, 0x07, 0x06, 0x03, 0x06, 0x06, 0x06, 0x06, 0x06, 
-    0x05, 0x06, 0x06, 0x02, 0x04, 0x06, 0x02, 0x07, 0x06, 0x06, 
-    0x06, 0x06, 0x06, 0x06, 0x05, 0x06, 0x06, 0x07, 0x06, 0x06, 
-    0x06, 0x05, 0x02, 0x05, 0x07, 0x00, 
+const uint16_t font_minipixel_index[] = {
+    0, 2, 6, 16, 30, 44, 56, 70, 74, 82, 90, 100, 112, 118, 130, 
+    134, 146, 158, 166, 178, 190, 202, 214, 226, 238, 250, 262, 266, 
+    272, 282, 294, 304, 316, 330, 342, 354, 366, 378, 390, 402, 414, 
+    426, 438, 450, 464, 476, 490, 504, 516, 528, 540, 552, 564, 576, 
+    588, 600, 614, 626, 638, 650, 658, 670, 678, 692, 704, 710, 722, 
+    734, 746, 758, 770, 780, 792, 804, 808, 816, 828, 832, 846, 858, 
+    870, 882, 894, 906, 918, 928, 940, 952, 966, 978, 990, 1002, 1012, 
+    1016, 1026, 1040, 
 };
 
-const uint8_t font_data[] = {
+const uint8_t font_minipixel_data[] = {
     // font data
     0x00, 0x00, //space
     0xFE, 0xFE, 0x60, 0x60, // 33
