@@ -64,7 +64,6 @@ void hw_init(void) {
     audio_pool = init_audio(SAMPLE_RATE, PIN_I2S_DATA, PIN_I2S_BCLK, 0, AUDIO_DMA_CHANNEL);
 
     // Disk
-    sleep_ms(1000);
     disk_init();
 }
 
