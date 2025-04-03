@@ -1,8 +1,7 @@
 #pragma once
 #include "synth_common.hpp"
 #include "input.h"
-#include "gfx/ngl.h"
-#include "gfx/gfx_ext.h"
+#include "gfx/gfx.h"
 
 enum InstrumentPage {
     INSTRUMENT_PAGE_OFF,

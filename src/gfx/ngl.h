@@ -64,11 +64,9 @@ void ngl_bitmap(int x, int y, nglBitmap bitmap);
 // (x may be negative, and x+width may be beyond the display width)
 void ngl_bitmap_xclip(int x, int y, nglBitmap bitmap);
 
-
-void build_font_index(void);
-
-void draw_text(int x, int y, uint8_t flags, const char* text);
-void draw_textf(int x, int y, uint8_t flags, const char *fmt, ...);
+// draw text
+void ngl_text(nglFont *font, int x, int y, uint8_t flags, const char* text);
+void ngl_textf(nglFont *font, int x, int y, uint8_t flags, const char *fmt, ...);
 
 
 #ifdef __cplusplus

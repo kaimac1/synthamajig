@@ -156,19 +156,17 @@ void ngl_bitmap_xclip(int x, int y, nglBitmap bitmap) {
 
 // Text
 
-void draw_textf(int x, int y, uint8_t flags, const char *fmt, ...) {
+void ngl_textf(nglFont *font, int x, int y, uint8_t flags, const char *fmt, ...) {
     const size_t TEXTF_BUFFER_SIZE = 128;
     char str[TEXTF_BUFFER_SIZE];
     va_list args;
     va_start (args, fmt);
     vsnprintf(str, sizeof(str), fmt, args);
-    draw_text(x, y, flags, str);
+    ngl_text(font, x, y, flags, str);
     va_end(args);
 }
 
-void draw_text(int x, int y, uint8_t flags, const char* text) {
-
-    nglFont *font = &font_minipixel;
+void ngl_text(nglFont *font, int x, int y, uint8_t flags, const char* text) {
 
     int xoffs = x;
     int len = strlen(text);

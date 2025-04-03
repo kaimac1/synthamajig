@@ -125,7 +125,7 @@ void AcidBass::draw(InstrumentPage page) {
 }
 
 void AcidBass::draw_osc(void) {
-    draw_text(64,64, TEXT_CENTRE, "osc page");
+    ngl_text(FONT_A, 64,64, TEXT_CENTRE, "osc page");
 }
 
 void AcidBass::draw_filter(void) {
@@ -218,7 +218,7 @@ void TestSynth::draw(InstrumentPage page) {
 }
 
 void TestSynth::draw_osc(void) {
-    draw_text(64,64, TEXT_CENTRE, "osc page");
+    ngl_text(FONT_A, 64,64, TEXT_CENTRE, "osc page");
 }
 
 void TestSynth::draw_filter(void) {

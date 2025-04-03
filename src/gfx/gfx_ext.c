@@ -1,7 +1,6 @@
 // Extra graphics routines
 
-#include "gfx_ext.h"
-#include "assets/assets.h"
+#include "gfx.h"
 #include <math.h>
 
 #define PI 3.141593f
@@ -15,7 +14,7 @@ void draw_gauge_xy(int x, int y, int value, int minval, int maxval, const char* 
     
     ngl_bitmap(x-16,y-16, gauge_arc);
     ngl_line(x,y, x+radius*cos(theta),y+radius*sin(theta), 1);
-    draw_text(x,y+16,TEXT_CENTRE,text);
+    ngl_text(FONT_A, x,y+16,TEXT_CENTRE,text);
 }
 
 void draw_gauge_custom(int pos, int value, int minval, int maxval, const char *text) {

@@ -3,9 +3,7 @@
 #include "sample.hpp"
 #include "common.h"
 #include "hw/oled.h"
-#include "gfx/ngl.h"
-#include "gfx/widlib.h"
-#include "assets/assets.h"
+#include "gfx/gfx.h"
 #include <cstdio>
 #include <string.h>
 
@@ -80,7 +78,7 @@ void draw_header() {
     char buf[32] = {0};
     if (recording) strcat(buf, "Rec ");
     if (track.keyboard_enabled) strcat(buf, "Kb ");
-    draw_textf(0,0,0, "%sCh%d %s", buf, track.active_channel+1, track.is_over_limit ? "[!]" : "");
+    ngl_textf(FONT_A, 0,0,0, "%sCh%d %s", buf, track.active_channel+1, track.is_over_limit ? "[!]" : "");
 }
 
 
@@ -157,8 +155,8 @@ void ChannelsOverview::react(DrawEvent const & devt) {
 
 void ChannelView::react(DrawEvent const & devt) {
     ChannelsOverview::react(DrawEvent {});
-    draw_text(32,32,0, "Chan edit");
-    draw_textf(16,80,0, "Samp: %d", track.channels[track.active_channel].cur_sample_id);
+    ngl_text(FONT_A,  32,32,0, "Chan edit");
+    ngl_textf(FONT_A, 16,80,0, "Samp: %d", track.channels[track.active_channel].cur_sample_id);
 }
 
 
@@ -229,10 +227,10 @@ void StepView::react(DrawEvent const& devt) {
     
     char buf[32];
     midi_note_to_str(buf, sizeof(buf), selected_step->note.midi_note);
-    draw_textf(16,48,0, "%s", buf);
+    ngl_textf(FONT_A, 16,48,0, "%s", buf);
 
-    draw_textf(16,64,0, "Trig: %d", selected_step->note.trigger);
-    draw_textf(16,80,0, "Samp: %d", selected_step->sample_id);
+    ngl_textf(FONT_A, 16,64,0, "Trig: %d", selected_step->note.trigger);
+    ngl_textf(FONT_A, 16,80,0, "Samp: %d", selected_step->sample_id);
 }
 
 
@@ -242,7 +240,7 @@ void StepView::react(DrawEvent const& devt) {
 const int sample_browser_item_height = 14;
 
 void draw_sample_browser(const char *title, int num_items) {
-    draw_text(0,0,0, title);
+    ngl_text(FONT_A, 0,0,0, title);
 }
 
 void draw_sample_browser_item(const char *name, const char *value, int pos, bool selected) {
@@ -250,9 +248,9 @@ void draw_sample_browser_item(const char *name, const char *value, int pos, bool
     const int yoffset = 16;
     const int ypos = sample_browser_item_height * pos;
     if (selected) ngl_rect(3, yoffset+ypos, 125,sample_browser_item_height, FILLCOLOUR_WHITE);
-    draw_text(5, yoffset+ypos+1, flags, name);
+    ngl_text(FONT_A, 5, yoffset+ypos+1, flags, name);
     if (value) {
-        draw_text(127, yoffset+ypos+1, flags | TEXT_ALIGN_RIGHT, value);
+        ngl_text(FONT_A, 127, yoffset+ypos+1, flags | TEXT_ALIGN_RIGHT, value);
     }
 }
 
@@ -474,20 +472,20 @@ void control_leds() {
 void draw_debug_info(void) {
 
     //draw_textf(70,0,0, "P%02d", track.pattern_idx+1);
-    draw_textf(127,0,TEXT_ALIGN_RIGHT, "%d/%d",
+    ngl_textf(FONT_A, 127,0,TEXT_ALIGN_RIGHT, "%d/%d",
         track.channels[track.active_channel].step+1, track.channels[track.active_channel].pattern.length);
     
     // audio CPU usage
     int64_t time_audio_us = perf_get(PERF_AUDIO);
     float audio_percent = 100.0f * time_audio_us/5805.0f;
-    draw_textf(0,115,0,"%.1f%%",  audio_percent);
+    ngl_textf(FONT_A, 0,115,0,"%.1f%%",  audio_percent);
 
     //float fps_display = 1E6 / perf_get(PERF_DISPLAY_UPDATE);
     //draw_textf(0,0,0,"%.1f fps", fps_display);
-    draw_textf(127,115,TEXT_ALIGN_RIGHT,"draw %d", perf_get(PERF_DRAWTIME));
+    ngl_textf(FONT_A, 127,115,TEXT_ALIGN_RIGHT,"draw %lld", perf_get(PERF_DRAWTIME));
 
     #ifdef DEBUG_AMPLITUDE
-    draw_textf(64,64,TEXT_CENTRE,"(%d, %d)", samplemin, samplemax);
+    ngl_textf(FONT_A, 64,64,TEXT_CENTRE,"(%d, %d)", samplemin, samplemax);
     samplemin = 0; samplemax = 0;
     #endif
 }
@@ -517,7 +515,7 @@ void draw_debug_info(void) {
 const int debug_item_height = 14;
 
 void draw_debug_menu(const char *title, int num_items) {
-    draw_text(0,0,0, title);
+    ngl_text(FONT_A, 0,0,0, title);
 }
 
 void draw_debug_menu_item(const char *name, const char *value, int pos, bool selected) {
@@ -525,9 +523,9 @@ void draw_debug_menu_item(const char *name, const char *value, int pos, bool sel
     const int yoffset = 16;
     const int ypos = debug_item_height * pos;
     if (selected) ngl_rect(3, yoffset+ypos, 125,debug_item_height, FILLCOLOUR_WHITE);
-    draw_text(5, yoffset+ypos+1, flags, name);
+    ngl_text(FONT_A, 5, yoffset+ypos+1, flags, name);
     if (value) {
-        draw_text(127, yoffset+ypos+1, flags | TEXT_ALIGN_RIGHT, value);
+        ngl_text(FONT_A, 127, yoffset+ypos+1, flags | TEXT_ALIGN_RIGHT, value);
     }
 }
 
