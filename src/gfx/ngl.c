@@ -37,32 +37,35 @@ void ngl_setpixel(int x, int y, bool colour) {
 }
 
 // Draw a vertical column of up to 128 pixels starting at x,y
-void draw_column(int x, int y, uint8_t *data, int num) {
-    const int py = y%8; // starting y-pixel within page
-    const int bits = 8-py;
-    int idx = NGL_DISPLAY_WIDTH * (y/8) + x;
-    int b = 0;
+void draw_column(unsigned int x, unsigned int y, uint8_t *data, int num) {
+    const uint8_t py = y & 0b111; // starting y-pixel within page
+    const uint8_t bits = 8 - py;
+    size_t idx = NGL_DISPLAY_WIDTH * (y >> 3) + x;
+    size_t b = 0;
 
+    // First page (full or partial)
     if (bits <= 8) {
-        // Initial page (full or partial)
-        framebuffer[idx] &= 0xFF >> bits;
+        framebuffer[idx] &= 0xFF >> bits;   // clear bottom [bits] pixels ([bits] MSBs)
         framebuffer[idx] |= data[b] << py;
         num -= bits;
         idx += NGL_DISPLAY_WIDTH;
     }
 
+    // Full pages
     while (num >= 8) {
-        // Full page
         framebuffer[idx] = (data[b] >> bits) | (data[b+1] << py);
         b++;
         num -= 8;
         idx += NGL_DISPLAY_WIDTH;
     }
 
+    // Final partial page, if required
     if (num > 0) {
-        // Final partial page
         uint8_t mask = 0xFF << num;
-        framebuffer[idx] &= mask;
+        framebuffer[idx] &= mask;   // clear top [num] pixels ([num] LSBs)
+        // Note that data[b+1] is possibly beyond the range of the input data.
+        // It seems to be faster to access it anyway and mask it off, than check
+        // if it needs to be accessed (if num>py).
         framebuffer[idx] |= ((data[b] >> bits) | (data[b+1] << py)) & ~mask;
     }
 }
