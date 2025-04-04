@@ -25,6 +25,7 @@ typedef struct {
     uint8_t height;
     uint8_t char_spacing;
     const uint16_t *index;
+    const uint8_t *widths;
     const uint8_t *data;
 } nglFont;
 
