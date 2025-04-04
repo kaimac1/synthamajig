@@ -11,6 +11,7 @@
 uint8_t framebuffer[NGL_FRAMEBUFFER_SIZE];
 
 nglFont font_minipixel = {32, 96, 12, 1, font_minipixel_index, font_minipixel_data};
+nglFont font_notalot = {32, 96, 9, 1, font_notalot_index, font_notalot_data};
 
 
 void ngl_init(void) {
@@ -37,10 +38,10 @@ void ngl_setpixel(int x, int y, bool colour) {
 
 // Draw a vertical column of up to 128 pixels starting at x,y
 void draw_column(int x, int y, uint8_t *data, int num) {
+    const int py = y%8; // starting y-pixel within page
+    const int bits = 8-py;
     int idx = NGL_DISPLAY_WIDTH * (y/8) + x;
-    int py = y%8; // starting y-pixel within page
-    int bits = 8-py;
-    int b=0;
+    int b = 0;
 
     if (bits <= 8) {
         // Initial page (full or partial)
@@ -96,9 +97,9 @@ void ngl_rect(int x, int y, int w, int h, nglFillColour fillcolour) {
 }
 
 void ngl_line(int x0, int y0, int x1, int y1, bool colour) {
-    int dx = abs(x1 - x0), dy = -abs(y1 - y0);
-    int sx = x0 < x1 ? 1 : -1;
-    int sy = y0 < y1 ? 1 : -1;
+    const int dx = abs(x1 - x0), dy = -abs(y1 - y0);
+    const int sx = x0 < x1 ? 1 : -1;
+    const int sy = y0 < y1 ? 1 : -1;
     int error = dx + dy;
 
     while (1) {
@@ -168,14 +169,15 @@ void ngl_textf(nglFont *font, int x, int y, uint8_t flags, const char *fmt, ...)
 
 void ngl_text(nglFont *font, int x, int y, uint8_t flags, const char* text) {
 
+    const int len = strlen(text);
+    const size_t bytes_per_col = (font->height+7)/8;
     int xoffs = x;
-    int len = strlen(text);
 
     if (flags & TEXT_CENTRE || flags & TEXT_ALIGN_RIGHT) {
         int xlen = 0;
         for (int i=0; i<len; i++) {
             uint8_t c = text[i] - font->first_char;
-            const uint8_t char_width = (font->index[c+1] - font->index[c]) / 2;
+            const uint8_t char_width = (font->index[c+1] - font->index[c]) / bytes_per_col;
             xlen += char_width + font->char_spacing;
         }
         if (flags & TEXT_CENTRE) {
@@ -186,16 +188,18 @@ void ngl_text(nglFont *font, int x, int y, uint8_t flags, const char* text) {
     }
 
     for (int i=0; i<len; i++) {
-        uint8_t c = text[i] - font->first_char;
-        const uint8_t char_width = (font->index[c+1] - font->index[c]) / 2;
+        const uint8_t c = text[i] - font->first_char;
+        const uint8_t char_width = (font->index[c+1] - font->index[c]) / bytes_per_col;
 
         for (int px=0; px<char_width; px++) {
-            uint8_t data[2];
-            data[0] = font->data[font->index[c] + px]; // top 8 pixels
-            data[1] = font->data[font->index[c] + char_width + px] >> 4; // bottom 4 pixels
-            if (flags & TEXT_INVERT) {
-                data[0] = ~data[0];
-                data[1] = ~data[1];
+            uint8_t data[bytes_per_col];
+            for (int b=0; b<bytes_per_col; b++) {
+                data[b] = font->data[font->index[c] + b*char_width + px];
+                if (b == bytes_per_col - 1) {
+                    // Shift data in last byte
+                    data[b] >>= 8 - (font->height % 8);
+                }
+                if (flags & TEXT_INVERT) data[b] = ~data[b];
             }
             draw_column(xoffs+px, y, &data[0], font->height);
         }

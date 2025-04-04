@@ -6,5 +6,6 @@
 #include "assets/assets.h"
 
 extern nglFont font_minipixel;
+extern nglFont font_notalot;
 
 #define FONT_A &font_minipixel

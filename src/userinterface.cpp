@@ -248,9 +248,9 @@ void draw_sample_browser_item(const char *name, const char *value, int pos, bool
     const int yoffset = 16;
     const int ypos = sample_browser_item_height * pos;
     if (selected) ngl_rect(3, yoffset+ypos, 125,sample_browser_item_height, FILLCOLOUR_WHITE);
-    ngl_text(FONT_A, 5, yoffset+ypos+1, flags, name);
+    ngl_text(&font_notalot, 5, yoffset+ypos+1, flags, name);
     if (value) {
-        ngl_text(FONT_A, 127, yoffset+ypos+1, flags | TEXT_ALIGN_RIGHT, value);
+        ngl_text(&font_notalot, 127, yoffset+ypos+1, flags | TEXT_ALIGN_RIGHT, value);
     }
 }
 
