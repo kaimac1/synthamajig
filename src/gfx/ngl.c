@@ -8,6 +8,8 @@
 #include "ngl.h"
 #include "font.h"
 
+//#define USE_SLOW_DRAW_COLUMN
+
 uint8_t framebuffer[NGL_FRAMEBUFFER_SIZE];
 
 nglFont font_minipixel = {32, 96, 12, 1, font_minipixel_index, font_minipixel_widths, font_minipixel_data};
@@ -36,39 +38,79 @@ void ngl_setpixel(int x, int y, bool colour) {
     }
 }
 
+#ifdef USE_SLOW_DRAW_COLUMN
+// slow!
+static inline void draw_column(unsigned int x, unsigned int y, uint8_t *data, int num) {
+    for (unsigned int dy=0; dy<num; dy++) {
+        bool bit = data[dy/8] & (1 << (dy & 0x07));
+        ngl_setpixel(x, y+dy, bit);
+    }
+}
+
+#else
+// fast!
 // Draw a vertical column of up to 128 pixels starting at x,y
-void draw_column(unsigned int x, unsigned int y, uint8_t *data, int num) {
-    const uint8_t py = y & 0b111; // starting y-pixel within page
-    const uint8_t bits = 8 - py;
+static inline void draw_column(unsigned int x, unsigned int y, uint8_t *data, int num) {
+    const unsigned int py = y & 0b111; // starting y-pixel within page
+    const unsigned int bits = 8 - py;
     size_t idx = NGL_DISPLAY_WIDTH * (y >> 3) + x;
     size_t b = 0;
 
-    // First page (full or partial)
-    if (bits <= 8) {
-        framebuffer[idx] &= 0xFF >> bits;   // clear bottom [bits] pixels ([bits] MSBs)
-        framebuffer[idx] |= data[b] << py;
-        num -= bits;
-        idx += NGL_DISPLAY_WIDTH;
+    // TODO: handle num < 8
+
+    if (py == 0) {
+        // Page-aligned
+        while (num >= 8) {
+            framebuffer[idx] = data[b++];
+            num -= 8;
+            idx += NGL_DISPLAY_WIDTH;
+        }
+        if (num > 0) {
+            const uint8_t mask = 0xFF << num;
+            framebuffer[idx] &= mask;
+            framebuffer[idx] |= data[b] & ~mask;
+        }
+        return;
     }
+
+    // Not page-aligned so we have to shift everything
+
+    union {
+        struct {
+            uint8_t lo;
+            uint8_t hi;
+        };
+        uint16_t b16;
+    } bytes;    
+
+    // First page
+    bytes.b16 = data[b++] << py;
+    const uint8_t mask = 0xFF >> bits;
+    framebuffer[idx] = (framebuffer[idx] & mask) | bytes.lo;
+    num -= bits;
+    idx += NGL_DISPLAY_WIDTH;
 
     // Full pages
     while (num >= 8) {
-        framebuffer[idx] = (data[b] >> bits) | (data[b+1] << py);
-        b++;
+        bytes.b16 >>= py;
+        bytes.hi = data[b++];
+        bytes.b16 >>= bits;
+        framebuffer[idx] = bytes.lo;
         num -= 8;
         idx += NGL_DISPLAY_WIDTH;
     }
 
     // Final partial page, if required
     if (num > 0) {
-        uint8_t mask = 0xFF << num;
+        bytes.b16 >>= py;
+        if (num > py) bytes.hi = data[b++];
+        bytes.b16 >>= bits;
+        const uint8_t mask = 0xFF << num;
         framebuffer[idx] &= mask;   // clear top [num] pixels ([num] LSBs)
-        // Note that data[b+1] is possibly beyond the range of the input data.
-        // It seems to be faster to access it anyway and mask it off, than check
-        // if it needs to be accessed (if num>py).
-        framebuffer[idx] |= ((data[b] >> bits) | (data[b+1] << py)) & ~mask;
+        framebuffer[idx] |= bytes.lo & ~mask;
     }
 }
+#endif
 
 void ngl_fillscreen(bool colour) {
     memset(framebuffer, colour ? 0xFF : 0x00, sizeof(framebuffer));
@@ -126,9 +168,9 @@ void ngl_line(int x0, int y0, int x1, int y1, bool colour) {
 
 void ngl_bitmap(int x, int y, nglBitmap bitmap) {
     // //slow way for reference
-    // for (int px=0; px<w; px++) {
-    //     for (int py=0; py<h; py++) {
-    //         draw_pixel(x+px, y+py, data[px*h/8 + py/8] & (1<<(py%8)));
+    // for (int px=0; px<bitmap.width; px++) {
+    //     for (int py=0; py<bitmap.height; py++) {
+    //         ngl_setpixel(x+px, y+py, bitmap.data[px*bitmap.height/8 + py/8] & (1<<(py%8)));
     //     }
     // }
 
