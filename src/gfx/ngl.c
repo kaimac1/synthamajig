@@ -77,11 +77,12 @@ static inline void draw_column(unsigned int x, unsigned int y, uint8_t *data, in
 
     union {
         struct {
+            // NOTE: assuming little-endian here
             uint8_t lo;
             uint8_t hi;
         };
         uint16_t b16;
-    } bytes;    
+    } bytes;
 
     // First page
     bytes.b16 = data[b++] << py;
