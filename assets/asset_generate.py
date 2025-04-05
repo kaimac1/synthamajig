@@ -8,6 +8,8 @@ ASSET_LIST_FILE = 'asset_list.txt'
 OUTPUT_C_FILE = '../src/assets/assets.c'
 OUTPUT_H_FILE = '../src/assets/assets.h'
 
+COLUMNWISE = False
+
 assets = []
 
 class Bitmap:
@@ -62,17 +64,32 @@ def create_bitmap(width, height, data):
     threshold = get_average_pixel_intensity(width, height, data, invert=False)
     output = []
 
-    # Generate columnwise data
-    for x in range(width):
-        byte = 0
-        colheight = next_multiple(height, 8)
-        for y in range(colheight):
-            if y>0 and (y % 8 == 0 or y == colheight-1):
-                output.append(byte)
-                byte = 0
+    if COLUMNWISE:
+        # Generate columnwise data
+        for x in range(width):
+            byte = 0
+            colheight = next_multiple(height, 8)
+            for y in range(colheight):
+                if y>0 and (y % 8 == 0 or y == colheight-1):
+                    output.append(byte)
+                    byte = 0
 
-            if y<height and get_pixel_intensity(data[x, y], False) > threshold:
-                byte += 2 ** (0 + (y%8))
+                if y<height and get_pixel_intensity(data[x, y], False) > threshold:
+                    byte += 2 ** (0 + (y%8))
+    else:
+        colheight = next_multiple(height, 8)
+        for by in range(colheight//8):
+            for x in range(width):
+                byte = 0
+                for bit in range(8):
+                    y = by*8 + bit
+                    if y >= height:
+                        val = False
+                    else:
+                        val = get_pixel_intensity(data[x, y], False) > threshold
+                    if val:
+                        byte += 2 ** bit
+                output.append(byte)
 
     bitmap = Bitmap(width, height, output)
     return bitmap

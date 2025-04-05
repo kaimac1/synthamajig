@@ -1,16 +1,16 @@
 from PIL import ImageFont, ImageDraw, Image
 import math
 
-# FONT_NAME = 'notalot'
-# FONT_FILE = 'notalot35.ttf'
-# FONT_SIZE = 16
-# BITMAP_HEIGHT = 9
-# Y_OFFSET = -2
-FONT_NAME = 'minipixel'
-FONT_FILE = 'minipixel7.ttf'
-FONT_SIZE = 20
-BITMAP_HEIGHT = 12
-Y_OFFSET = -4
+FONT_NAME = 'notalot'
+FONT_FILE = 'notalot35.ttf'
+FONT_SIZE = 16
+BITMAP_HEIGHT = 9
+Y_OFFSET = -2
+# FONT_NAME = 'minipixel'
+# FONT_FILE = 'minipixel7.ttf'
+# FONT_SIZE = 20
+# BITMAP_HEIGHT = 12
+# Y_OFFSET = -4
 
 
 
@@ -39,8 +39,8 @@ def get_char_data(char):
     data = []
 
     bytes_per_col = math.ceil(BITMAP_HEIGHT / 8)
-    for x in range(char_width):
-        for col_byte in range(bytes_per_col):
+    for col_byte in range(bytes_per_col):
+        for x in range(char_width):
             byteout = 0
             for by in range(8):
                 y = 8*col_byte + by

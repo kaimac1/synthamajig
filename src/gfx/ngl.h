@@ -30,8 +30,8 @@ typedef struct {
 } nglFont;
 
 typedef struct {
-    int32_t width;
-    int32_t height;
+    uint32_t width;
+    uint32_t height;
     const uint8_t *data;
 } nglBitmap;
 
@@ -48,7 +48,7 @@ void ngl_init(void);
 uint8_t *ngl_framebuffer(void);
 
 // Draw single pixel
-void ngl_setpixel(int x, int y, bool colour);
+void ngl_setpixel(unsigned int x, unsigned int y, bool colour);
 
 // Fill whole screen with colour
 void ngl_fillscreen(bool colour);
@@ -60,10 +60,6 @@ void ngl_rect(int x, int y, int w, int h, nglFillColour fillcolour);
 void ngl_line(int x0, int y0, int x1, int y1, bool colour);
 
 void ngl_bitmap(int x, int y, nglBitmap bitmap);
-
-// draw bitmap that can be partially off either side of the screen
-// (x may be negative, and x+width may be beyond the display width)
-void ngl_bitmap_xclip(int x, int y, nglBitmap bitmap);
 
 // draw text
 void ngl_text(nglFont *font, int x, int y, uint8_t flags, const char* text);
