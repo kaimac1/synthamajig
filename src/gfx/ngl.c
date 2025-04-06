@@ -86,13 +86,17 @@ void ngl_line(int x0, int y0, int x1, int y1, bool colour) {
     }
 }
 
+static inline __attribute__((always_inline)) void fb_and_or(size_t offset, uint8_t mask, uint8_t data) {
+    framebuffer[offset] &= mask;
+    framebuffer[offset] |= data;
+}
+
 static inline __attribute__((always_inline)) void fast_bitmap_loop(unsigned int x, unsigned int y, unsigned int width, unsigned int height, uint8_t *data, 
 unsigned int colbytes, int lastrowy, int shift) {
 
     for (unsigned int by=0; by<colbytes; by++) {
         const bool final_partial_row = (by == colbytes-1) && lastrowy;
-        const size_t rowstart = by * width;
-        uint8_t *rowdata = &data[rowstart];
+        uint8_t *rowdata = &data[by*width];
         size_t fbrow = NGL_DISPLAY_WIDTH * (y/8) + x;
 
         if (shift == 0) {
@@ -100,11 +104,11 @@ unsigned int colbytes, int lastrowy, int shift) {
             if (final_partial_row) {
                 const uint8_t mask = 0xFF << lastrowy;
                 for (int px=0; px<width; px++) {
-                    framebuffer[fbrow + px] &= mask; // clear top num pixels
-                    framebuffer[fbrow + px] |= rowdata[px] & ~mask;
+                    fb_and_or(fbrow + px, mask, rowdata[px] & ~mask);
                 }
             } else {
                 for (int px=0; px<width; px++) {
+                    uint8_t pdata = rowdata[px];
                     framebuffer[fbrow + px] = rowdata[px];
                 }
             }
@@ -113,30 +117,25 @@ unsigned int colbytes, int lastrowy, int shift) {
             const uint8_t mask = 0xFF << shift;
             if (!final_partial_row) {
                 for (int px=0; px<width; px++) {
-                    uint16_t buf = rowdata[px] << shift;
-                    framebuffer[fbrow + px] &= ~mask;
-                    framebuffer[fbrow + px] |= buf & 0xFF;
-                    framebuffer[fbrow + NGL_DISPLAY_WIDTH + px] &= mask;
-                    framebuffer[fbrow + NGL_DISPLAY_WIDTH + px] |= buf >> 8;                    
+                    uint32_t buf = rowdata[px] << shift;
+                    fb_and_or(fbrow + px, ~mask, buf);
+                    fb_and_or(fbrow + NGL_DISPLAY_WIDTH + px, mask, buf >> 8);
                 }
             } else {
                 if (lastrowy + shift <= 8) {
                     // Final partial row fits on a single page
                     const uint8_t endmask = ~(0xFF >> (8 - shift - lastrowy)) | ~mask;
                     for (int px=0; px<width; px++) {
-                        uint8_t buf = rowdata[px] << shift;
-                        framebuffer[fbrow + px] &= endmask;
-                        framebuffer[fbrow + px] |= buf & ~endmask;
+                        uint32_t buf = rowdata[px] << shift;
+                        fb_and_or(fbrow + px, endmask, buf & ~endmask);
                     }
                 } else {
                     // Final partial row covers two pages
                     const uint8_t endmask = 0xFF << (shift + lastrowy - 8);
                     for (int px=0; px<width; px++) {
-                        uint16_t buf = rowdata[px] << shift;
-                        framebuffer[fbrow + px] &= ~mask;
-                        framebuffer[fbrow + px] |= buf & 0xFF;
-                        framebuffer[fbrow + NGL_DISPLAY_WIDTH + px] &= endmask;
-                        framebuffer[fbrow + NGL_DISPLAY_WIDTH + px] |= (buf >> 8) & ~endmask;
+                        uint32_t buf = rowdata[px] << shift;
+                        fb_and_or(fbrow + px, ~mask, buf);
+                        fb_and_or(fbrow + NGL_DISPLAY_WIDTH + px, endmask, (buf >> 8) & ~endmask);
                     }
                 }
             }
@@ -176,6 +175,14 @@ void ngl_bitmap(int x, int y, nglBitmap bitmap) {
 
 // Text
 
+static inline __attribute__((always_inline)) void fast_font_loop(unsigned int x, unsigned int y, unsigned int width, unsigned int height, uint8_t *data, 
+unsigned int colbytes, int lastrowy, int shift) {
+
+
+}
+
+
+
 void ngl_textf(nglFont *font, int x, int y, uint8_t flags, const char *fmt, ...) {
     const size_t TEXTF_BUFFER_SIZE = 128;
     char str[TEXTF_BUFFER_SIZE];
@@ -186,15 +193,17 @@ void ngl_textf(nglFont *font, int x, int y, uint8_t flags, const char *fmt, ...)
     va_end(args);
 }
 
+#define GET_C()      const uint8_t c = text[i] - font->first_char;
+#define CHAR_WIDTH() const uint8_t char_width = font->widths[c];
+#define DATA()       uint8_t *data = (uint8_t *)&font->data[font->index[c] + by*char_width];
+#define GET_CHAR()   GET_C(); CHAR_WIDTH(); DATA();
+#define NEXT_CHAR()  fbidx += char_width + font->char_spacing;
+
+
 void ngl_text(nglFont *font, int x, int y, uint8_t flags, const char* text) {
 
     const int len = strlen(text);
-    const size_t bytes_per_col = (font->height+7)/8;
-    const int last_row_y_pixels = font->height & 0x07; 
-    const int shift = y & 0b111; 
-    const bool invert = flags & TEXT_INVERT;
-
-    int xoffs = x;
+    int xstart = x;
 
     if (flags & TEXT_CENTRE || flags & TEXT_ALIGN_RIGHT) {
         // Need to get total text length
@@ -206,70 +215,73 @@ void ngl_text(nglFont *font, int x, int y, uint8_t flags, const char* text) {
         }
         // Adjust start position
         if (flags & TEXT_CENTRE) {
-            xoffs -= xlen/2;
+            xstart -= xlen/2;
         } else {
-            xoffs -= xlen;
+            xstart -= xlen;
         }
     }
 
-    for (int i=0; i<len; i++) {
-        const uint8_t c = text[i] - font->first_char;
-        const uint8_t char_width = font->widths[c];
-        size_t idx = font->index[c];        
+    const size_t bytes_per_col = (font->height+7)/8;
+    const int last_row_y_pixels = font->height & 0x07; 
+    const int shift = y & 0b111;
+    const uint8_t datainv = flags & TEXT_INVERT ? 0xFF : 0x00;
 
-        fast_bitmap_loop(xoffs, y, char_width, font->height, (uint8_t*)&font->data[idx],
-            bytes_per_col, last_row_y_pixels, shift);
+    for (unsigned int by=0; by<bytes_per_col; by++) {
+        const bool final_partial_row = (by == bytes_per_col-1) && last_row_y_pixels;
+        size_t fbidx = NGL_DISPLAY_WIDTH * (y/8) + xstart;
 
-        xoffs += char_width + font->char_spacing;
+        if (shift == 0) {
+            // Page-aligned
+            uint8_t fbmask = 0xFF;
+            uint8_t datamask = 0xFF;
+            if (final_partial_row) {
+                fbmask = 0xFF << last_row_y_pixels;
+                datamask = ~fbmask;
+            }
+            for (int i=0; i<len; i++) {
+                GET_CHAR();
+                for (int px=0; px<char_width; px++) {
+                    fb_and_or(fbidx + px, fbmask, (data[px] ^ datainv) & datamask);
+                }
+                NEXT_CHAR();
+            }
+
+        } else {
+            // Not aligned, need to shift
+            const uint8_t mask = 0xFF << shift;
+            if (!final_partial_row) {
+                for (int i=0; i<len; i++) {
+                    GET_CHAR();
+                    for (int px=0; px<char_width; px++) {
+                        uint32_t buf = (data[px] ^ datainv) << shift;
+                        fb_and_or(fbidx + px, ~mask, buf);
+                        fb_and_or(fbidx + NGL_DISPLAY_WIDTH + px, mask, buf >> 8);
+                    }
+                    NEXT_CHAR();
+                }
+            } else {
+                for (int i=0; i<len; i++) {
+                    GET_CHAR();
+                    if (last_row_y_pixels + shift <= 8) {
+                        // Final partial row fits on a single page
+                        const uint8_t endmask = ~(0xFF >> (8 - shift - last_row_y_pixels)) | ~mask;
+                        for (int px=0; px<char_width; px++) {
+                            uint32_t buf = (data[px] ^ datainv) << shift;
+                            fb_and_or(fbidx + px, endmask, buf & ~endmask);
+                        }
+                    } else {
+                        // Final partial row covers two pages
+                        const uint8_t endmask = 0xFF << (shift + last_row_y_pixels - 8);
+                        for (int px=0; px<char_width; px++) {
+                            uint32_t buf = (data[px] ^ datainv) << shift;
+                            fb_and_or(fbidx + px, ~mask, buf);
+                            fb_and_or(fbidx + NGL_DISPLAY_WIDTH + px, endmask, (buf >> 8) & ~endmask);
+                        }
+                    }
+                    NEXT_CHAR();
+                }
+            }
+        }
+        y += 8;
     }
 }
-
-// void ngl_text_old(nglFont *font, int x, int y, uint8_t flags, const char* text) {
-
-//     const int len = strlen(text);
-//     const size_t bytes_per_col = (font->height+7)/8;
-//     const bool invert = flags & TEXT_INVERT;
-
-//     int xoffs = x;
-
-//     if (flags & TEXT_CENTRE || flags & TEXT_ALIGN_RIGHT) {
-//         // Need to get total text length
-//         int xlen = 0;
-//         for (int i=0; i<len; i++) {
-//             const uint8_t c = text[i] - font->first_char;
-//             const uint8_t char_width = font->widths[c];
-//             xlen += char_width + font->char_spacing;
-//         }
-//         // Adjust start position
-//         if (flags & TEXT_CENTRE) {
-//             xoffs -= xlen/2;
-//         } else {
-//             xoffs -= xlen;
-//         }
-//     }
-
-//     for (int i=0; i<len; i++) {
-//         const uint8_t c = text[i] - font->first_char;
-//         const uint8_t char_width = font->widths[c];
-//         size_t idx = font->index[c];
-
-//         if (invert) {
-//             for (int px=0; px<char_width; px++) {
-//                 uint8_t data[bytes_per_col];
-//                 for (int b=0; b<bytes_per_col; b++) {
-//                     data[b] = ~font->data[idx + b];
-//                 }
-//                 draw_column(xoffs+px, y, &data[0], font->height);
-//                 idx += bytes_per_col;
-//             }
-//         } else {
-//             for (int px=0; px<char_width; px++) {
-//                 // draw directly from font data
-//                 draw_column(xoffs+px, y, (uint8_t*)&font->data[idx], font->height);
-//                 idx += bytes_per_col;
-//             }
-//         }
-
-//         xoffs += char_width + font->char_spacing;
-//     }
-// }
