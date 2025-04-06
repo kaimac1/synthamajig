@@ -225,6 +225,7 @@ void ngl_text(nglFont *font, int x, int y, uint8_t flags, const char* text) {
     const int last_row_y_pixels = font->height & 0x07; 
     const int shift = y & 0b111;
     const uint8_t datainv = flags & TEXT_INVERT ? 0xFF : 0x00;
+    const uint32_t mask = 0xFF << shift;
 
     for (unsigned int by=0; by<bytes_per_col; by++) {
         const bool final_partial_row = (by == bytes_per_col-1) && last_row_y_pixels;
@@ -232,8 +233,8 @@ void ngl_text(nglFont *font, int x, int y, uint8_t flags, const char* text) {
 
         if (shift == 0) {
             // Page-aligned
-            uint8_t fbmask = 0xFF;
-            uint8_t datamask = 0xFF;
+            uint32_t fbmask = 0xFF;
+            uint32_t datamask = 0xFF;
             if (final_partial_row) {
                 fbmask = 0xFF << last_row_y_pixels;
                 datamask = ~fbmask;
@@ -248,7 +249,6 @@ void ngl_text(nglFont *font, int x, int y, uint8_t flags, const char* text) {
 
         } else {
             // Not aligned, need to shift
-            const uint8_t mask = 0xFF << shift;
             if (!final_partial_row) {
                 for (int i=0; i<len; i++) {
                     GET_CHAR();
@@ -264,14 +264,14 @@ void ngl_text(nglFont *font, int x, int y, uint8_t flags, const char* text) {
                     GET_CHAR();
                     if (last_row_y_pixels + shift <= 8) {
                         // Final partial row fits on a single page
-                        const uint8_t endmask = ~(0xFF >> (8 - shift - last_row_y_pixels)) | ~mask;
+                        const uint32_t endmask = ~(0xFF >> (8 - shift - last_row_y_pixels)) | ~mask;
                         for (int px=0; px<char_width; px++) {
                             uint32_t buf = (data[px] ^ datainv) << shift;
                             fb_and_or(fbidx + px, endmask, buf & ~endmask);
                         }
                     } else {
                         // Final partial row covers two pages
-                        const uint8_t endmask = 0xFF << (shift + last_row_y_pixels - 8);
+                        const uint32_t endmask = 0xFF << (shift + last_row_y_pixels - 8);
                         for (int px=0; px<char_width; px++) {
                             uint32_t buf = (data[px] ^ datainv) << shift;
                             fb_and_or(fbidx + px, ~mask, buf);
