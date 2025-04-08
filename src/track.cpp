@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <cstdint>
+#include <cstring>
 #include "common.h"
 #include "track.hpp"
 #include "keyboard.h"
@@ -139,21 +140,19 @@ void Track::play_active_channel(InputState *input) {
 void Track::fill_buffer(AudioBuffer buffer) {
     int16_t *samples = (int16_t *) buffer.samples;
     int count = buffer.sample_count;
+    uint32_t tick_start = sampletick;
 
     is_over_limit = false;
 
-    // See if note events will occur during this buffer
-    //bool note_events = false;
-    //if (voice[0].next_note.on_time >= sampletick && voice[0].next_note.on_time < sampletick+count) note_events = true;
-    //if (voice[0].next_note.off_time >= sampletick && voice[0].next_note.off_time < sampletick+count) note_events = true;
+    memset(samples, 0, 2*count);
 
-    for (int sn=0; sn<count; sn++) {
-        // TODO: see if it's faster to fill a whole buffer for each instrument separately,
-        // then combine
+    // For each channel
+    for (int v=0; v<NUM_CHANNELS; v++) {
+        if (channels[v].is_muted) continue;
 
-        float sample = 0.0f;
-        for (int v=0; v<NUM_CHANNELS; v++) {
-            if (channels[v].is_muted) continue;
+        sampletick = tick_start;
+
+        for (int sn=0; sn<count; sn++) {
             if (channels[v].type == CHANNEL_INSTRUMENT) {
                 if (sampletick == channels[v].next_note.on_time) {
                     // Set up instrument to play next note now
@@ -168,31 +167,41 @@ void Track::fill_buffer(AudioBuffer buffer) {
                 }
 
             } else if (channels[v].type == CHANNEL_SAMPLE) {
-
                 if (sampletick == channels[v].next_note.on_time) {
                     channels[v].cur_sample_id = channels[v].next_note.sample_id;
                     channels[v].cur_sample_pos = 0;
+                    if (channels[v].cur_sample_id >= 0) {
+                        uint32_t play_freq = midi_note_to_freq(channels[v].next_note.note.midi_note);
+                        SampleInfo *samp = SampleManager::get_info(channels[v].cur_sample_id);
+                        uint32_t root_freq = midi_note_to_freq(samp->root_midi_note);
+                        channels[v].cur_sample_ratio = (float)play_freq / root_freq;
+                    }
                 }
             }
 
-            sample += channels[v].process();
-        }
+            float sample = channels[v].process();
 
-        sample *= volume * 0.2f * 32767;
-        
-        // TODO: a proper limiter
-        const float vlimit = 20000.0f;
-        if (sample > vlimit) { 
-            sample = vlimit;
-            is_over_limit = true;
-        } 
-        else if (sample < -vlimit) {
-            sample = -vlimit;
-            is_over_limit = true;
+            sample *= volume * 0.2f * 32767;
+
+            // TODO: a proper limiter
+            const float vlimit = 20000.0f;
+            if (sample > vlimit) { 
+                sample = vlimit;
+                is_over_limit = true;
+            } 
+            else if (sample < -vlimit) {
+                sample = -vlimit;
+                is_over_limit = true;
+            }
+            samples[sn] += (int16_t)sample;
+            sampletick++;            
         }
-        samples[sn] = (int16_t)sample;
-        sampletick++;
     }
+
+    // // See if note events will occur during this buffer
+    // //bool note_events = false;
+    // //if (voice[0].next_note.on_time >= sampletick && voice[0].next_note.on_time < sampletick+count) note_events = true;
+    // //if (voice[0].next_note.off_time >= sampletick && voice[0].next_note.off_time < sampletick+count) note_events = true;
 }
 
 
@@ -277,7 +286,7 @@ float Channel::process() {
     } else if (type == CHANNEL_SAMPLE) {
         if (cur_sample_id < 0) return 0.0f;
         int16_t s = SampleManager::fetch(cur_sample_id, cur_sample_pos);
-        cur_sample_pos++;
+        cur_sample_pos += cur_sample_ratio;
         
         return s/32768.0f;
     }

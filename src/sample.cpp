@@ -161,6 +161,9 @@ int16_t fetch(int sample_id, int pos) {
     return samp->data[pos];
 }
 
+SampleInfo *get_info(int sample_id) {
+    return get_sample_info(sample_id);
+}
 
 } // namespace Sample
 

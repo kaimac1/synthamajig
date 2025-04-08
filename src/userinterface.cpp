@@ -51,6 +51,7 @@ bool screensaver_active;
 bool keys_pressed;
 int pattern_page;           // Which page of the pattern we can currently see
 Step *selected_step;
+Step new_step;
 
 void control_leds();
 void draw_debug_info();
@@ -101,6 +102,8 @@ void UIFSM::react(InputEvent const & evt) {
         
     } else if (PRESSED(BTN_PLAY)) {
         track.play(!track.is_playing);
+    } else if (PRESSED(BTN_REC)) {
+        recording = !recording;
     } else if (PRESSED(BTN_MENU)) {
         transit<Screensaver>();
     }
@@ -163,6 +166,12 @@ void ChannelView::react(DrawEvent const & devt) {
 /************************************************************/
 // Pattern
 
+void write_to_step(Step *step) {
+    if (!selected_step) return;
+    memcpy(step, selected_step, sizeof(Step));
+    step->on = true;
+}
+
 void PatternView::react(InputEvent const & ievt) {
     if (track.keyboard_enabled) {
         // Play notes. Enter them into the pattern if in write mode
@@ -174,14 +183,7 @@ void PatternView::react(InputEvent const & ievt) {
             if (btn_press(&inputs, i)) {
                 if (recording) {
                     Step *step = get_step_from_key(i);
-                    if (step) {
-                        step->on ^= 1;
-                        if (!shift && step->on) {
-                            step->note.midi_note = track.last_played_midi_note;
-                            step->note.trigger = 1;
-                            step->note.accent = 0;
-                        }
-                    }
+                    write_to_step(step);
                 } else {
                     Step *step = get_step_from_key(i);
                     if (step) {
@@ -209,10 +211,24 @@ void PatternView::react(DrawEvent const& devt) {
 /************************************************************/
 // Step
 
+void change_step_note(int delta) {
+    if (selected_step == NULL) return;
+    const int min_note = 21;
+    const int max_note = 80;
+
+    int note = selected_step->note.midi_note + delta;
+    if (note < min_note) note = min_note;
+    if (note > max_note) note = max_note;
+    selected_step->note.midi_note = note;
+}
+
 void StepView::react(InputEvent const &ievt) {
     if (inputs.knob_delta[0]) {
         transit<SampleSelector>();
         return;
+    }
+    if (inputs.knob_delta[1]) {
+        change_step_note(inputs.knob_delta[1]);
     }
 
     react(DrawEvent {});

@@ -60,7 +60,8 @@ public:
     int samples_per_step;
 
     int cur_sample_id {-1};
-    int cur_sample_pos;
+    float cur_sample_pos;
+    float cur_sample_ratio;
 
     
 private:

@@ -34,6 +34,8 @@ namespace SampleManager {
     // Unload a sample from RAM
     int unload(int sample_id);
 
+    SampleInfo *get_info(int sample_id);
+
     // Fetch a single... sample from a sample
     int16_t fetch(int sample_id, int pos);
 }
