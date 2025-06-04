@@ -42,29 +42,29 @@ void hw_init(void) {
     gpio_init(PICO_LED_PIN);
     gpio_set_dir(PICO_LED_PIN, GPIO_OUT);
 
-    // Enable PSRAM
-    gpio_set_function(PIN_PSRAM_CS, GPIO_FUNC_XIP_CS1);
-    xip_ctrl_hw->ctrl|=XIP_CTRL_WRITABLE_M1_BITS;    
+    // // Enable PSRAM
+    // gpio_set_function(PIN_PSRAM_CS, GPIO_FUNC_XIP_CS1);
+    // xip_ctrl_hw->ctrl|=XIP_CTRL_WRITABLE_M1_BITS;    
 
-    // Encoders
-    pio_add_program(ENCODER_PIO, &quadrature_encoder_program);
-    quadrature_encoder_program_init(ENCODER_PIO, 0, PIN_ENC0, 0);
-    quadrature_encoder_program_init(ENCODER_PIO, 1, PIN_ENC1, 0);
-    quadrature_encoder_program_init(ENCODER_PIO, 2, PIN_ENC2, 0);
-    quadrature_encoder_program_init(ENCODER_PIO, 3, PIN_ENC3, 0);
+    // // Encoders
+    // pio_add_program(ENCODER_PIO, &quadrature_encoder_program);
+    // quadrature_encoder_program_init(ENCODER_PIO, 0, PIN_ENC0, 0);
+    // quadrature_encoder_program_init(ENCODER_PIO, 1, PIN_ENC1, 0);
+    // quadrature_encoder_program_init(ENCODER_PIO, 2, PIN_ENC2, 0);
+    // quadrature_encoder_program_init(ENCODER_PIO, 3, PIN_ENC3, 0);
 
-    // OLED & graphics library
-    oled_init(ngl_framebuffer());
-    ngl_init();
+    // // OLED & graphics library
+    // oled_init(ngl_framebuffer());
+    // ngl_init();
 
-    // Input & LED matrix
-    matrix_init();
+    // // Input & LED matrix
+    // matrix_init();
 
-    // DAC
-    audio_pool = init_audio(SAMPLE_RATE, PIN_I2S_DATA, PIN_I2S_BCLK, 0, AUDIO_DMA_CHANNEL);
+    // // DAC
+    // audio_pool = init_audio(SAMPLE_RATE, PIN_I2S_DATA, PIN_I2S_BCLK, 0, AUDIO_DMA_CHANNEL);
 
-    // Disk
-    disk_init();
+    // // Disk
+    // disk_init();
 }
 
 void hw_audio_start(void) {
