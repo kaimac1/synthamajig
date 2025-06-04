@@ -79,7 +79,7 @@ void draw_header() {
     char buf[32] = {0};
     if (recording) strcat(buf, "Rec ");
     if (track.keyboard_enabled) strcat(buf, "Kb ");
-    ngl_textf(FONT_A, 0,0,0, "%sCh%d %s", buf, track.active_channel+1, track.is_over_limit ? "[!]" : "");
+    ngl_textf(FONT_A, 0,0,0, "Ch%d %s %s", track.active_channel+1, buf, track.is_over_limit ? "[!]" : "");
 }
 
 
@@ -104,8 +104,12 @@ void UIFSM::react(InputEvent const & evt) {
         track.play(!track.is_playing);
     } else if (PRESSED(BTN_REC)) {
         recording = !recording;
+        react(DrawEvent {});
     } else if (PRESSED(BTN_MENU)) {
         transit<Screensaver>();
+    } else if (PRESSED(BTN_KEYBOARD)) {
+        track.enable_keyboard(!track.keyboard_enabled);
+        react(DrawEvent {});
     }
 }
 
@@ -173,25 +177,36 @@ void write_to_step(Step *step) {
 }
 
 void PatternView::react(InputEvent const & ievt) {
-    if (track.keyboard_enabled) {
-        // Play notes. Enter them into the pattern if in write mode
+    bool shift = btn_down(&inputs, BTN_SHIFT);
+    int btn = -1;
+    for (int i=0; i<NUM_STEPKEYS; i++) {
+        if (btn_press(&inputs, i)) {
+            btn = i;
+            break;
+        }
+    }
 
+    Step *step = NULL;
+    if (btn != -1) {
+        step = get_step_from_key(btn);
+    }
+
+    if (track.keyboard_enabled) {
+        if (btn != -1) {
+            if (selected_step) {
+                // Edit note of selected step
+                selected_step->note.midi_note = track.last_played_midi_note;
+            }
+        }
     } else {
         // Select or toggle steps
-        bool shift = btn_down(&inputs, BTN_SHIFT);
-        for (int i=0; i<NUM_STEPKEYS; i++) {
-            if (btn_press(&inputs, i)) {
-                if (recording) {
-                    Step *step = get_step_from_key(i);
-                    write_to_step(step);
-                } else {
-                    Step *step = get_step_from_key(i);
-                    if (step) {
-                        selected_step = step;
-                        transit<StepView>();
-                        return;
-                    }
-                }
+        if (recording) {
+            write_to_step(step);
+        } else {
+            if (step) {
+                selected_step = step;
+                transit<StepView>();
+                return;
             }
         }
     }
@@ -201,7 +216,11 @@ void PatternView::react(InputEvent const & ievt) {
 }
 
 void PatternView::react(DrawEvent const& devt) {
-    led_mode = LEDS_SHOW_STEPS;
+    if (track.keyboard_enabled) {
+        led_mode = LEDS_SHOW_KEYBOARD;
+    } else {
+        led_mode = LEDS_SHOW_STEPS;
+    }
     ngl_fillscreen(0);
     draw_header();
     kmgui_gauge(0, &PATTERN.length, 1, 64, "Len=$");
@@ -236,7 +255,7 @@ void StepView::react(InputEvent const &ievt) {
 }
 
 void StepView::react(DrawEvent const& devt) {
-    led_mode = LEDS_SHOW_STEPS;
+    led_mode = track.keyboard_enabled ? LEDS_SHOW_KEYBOARD : LEDS_SHOW_STEPS;
     ngl_fillscreen(0);
     draw_header();
     if (selected_step == NULL) return;
@@ -463,8 +482,10 @@ void control_leds() {
     if (led_mode != LEDS_OVERRIDDEN) {
         for (int i=0; i<NUM_STEPKEYS; i++) {
             uint8_t led = LED_OFF;
-            
-            if (led_mode == LEDS_SHOW_CHANNELS) {
+            int pidx;
+
+            switch (led_mode) {
+            case LEDS_SHOW_CHANNELS:
                 // Show activity on each channel
                 if (i < NUM_CHANNELS) {
                     if (track.get_channel_activity(i)) {
@@ -473,13 +494,20 @@ void control_leds() {
                         led = LED_DIM;
                     }
                 }
-            } else if (led_mode == LEDS_SHOW_STEPS) {
-                int pidx = pattern_page*NUM_STEPKEYS + i;
+                break;
+
+            case LEDS_SHOW_STEPS:
+                pidx = pattern_page*NUM_STEPKEYS + i;
                 if (PATTERN.step[pidx].on && pidx < PATTERN.length) led = LED_DIM;
                 if (track.is_playing) {
                     if (CHANNEL.step == pidx) led = LED_ON;
                 }
+                break;
+
+            case LEDS_SHOW_KEYBOARD:
+                break;
             }
+            
             hw_set_led(i, led);
         }
     }
