@@ -41,3 +41,10 @@
 #define PIN_DISK_MISO   8
 #define PIN_DISK_SCK    14
 #define PIN_DISK_CS     13
+
+
+// PSRAM SPI
+#define PSRAM_PIN_CS    1
+#define PSRAM_PIN_SCK   2
+#define PSRAM_PIN_MOSI  3
+#define PSRAM_PIN_MISO  0

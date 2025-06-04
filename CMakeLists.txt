@@ -22,6 +22,7 @@ add_executable(synth
     src/hw/perf.c
     src/hw/disk.c
     src/hw/sdcard_config.c
+    src/hw/psram_spi.c
 
     src/gfx/ngl.c
     src/gfx/gfx_ext.c
@@ -45,6 +46,7 @@ add_executable(synth
 target_compile_options(synth PUBLIC -fno-exceptions)
 
 pico_generate_pio_header(synth ${CMAKE_CURRENT_LIST_DIR}/src/hw/quadrature_encoder.pio)
+pico_generate_pio_header(synth ${CMAKE_CURRENT_LIST_DIR}/src/hw/psram_spi.pio)
 
 target_link_libraries(synth
     pico_stdlib
