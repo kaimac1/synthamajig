@@ -220,7 +220,7 @@ __force_inline static void __time_critical_func(pio_spi_write_read_dma_blocking)
     dma_channel_transfer_from_buffer_now(spi->write_dma_chan, src, src_len);
     dma_channel_transfer_to_buffer_now(spi->read_dma_chan, dst, dst_len);
     dma_channel_wait_for_finish_blocking(spi->write_dma_chan);
-    dma_channel_wait_for_finish_blocking(spi->read_dma_chan);
+    //dma_channel_wait_for_finish_blocking(spi->read_dma_chan);
 #ifdef PSRAM_MUTEX
     mutex_exit(&spi->mtx);
 #elif defined(PSRAM_SPINLOCK)
