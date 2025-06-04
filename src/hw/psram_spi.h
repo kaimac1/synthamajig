@@ -297,7 +297,6 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv, bool fudge
  * all PSRAM access functions.
  */
 psram_spi_inst_t psram_spi_init(PIO pio, int sm);
-int test_psram(psram_spi_inst_t* psram_spi, int increment);
 
 void psram_spi_uninit(psram_spi_inst_t spi, bool fudge);
 
