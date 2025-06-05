@@ -100,12 +100,12 @@ writeloop:
     out pins, 4         side 0b00  ; Write value on pins, lower clock. CS asserted
     jmp x--, writeloop  side 0b10  ; Raise clock: this is when PSRAM reads the value. Loop if we have more to write
     jmp !y, begin       side 0b00  ; If this is a write-only operation, jump back to beginning
-    set pindirs 0       side 0b10  ; Fudge factor of extra clock cycle; the PSRAM needs 1 extra for output to start appearing
-    nop    side 0b00  ; Jump to middle of readloop to decrement y and get right clock phase
+    set pindirs 0       side 0b10  ; clk 14 rising edge, 
+    jmp readloop_mid    side 0b00
 readloop:
-    in pins, 4          side 0b10  ; Read value on s, lower clock. Datasheet says to read on falling edge > 83MHz
+    in pins, 4          side 0b00
 readloop_mid:
-    jmp y--, readloop   side 0b00  ; Raise clock. Loop if we have more to read
+    jmp y--, readloop   side 0b10  
     set pindirs 0xF     side 0b01
 
 % c-sdk {
@@ -113,7 +113,7 @@ readloop_mid:
 static inline void pio_qspi_psram_cs_init(PIO pio, uint sm, uint prog_offs, uint n_bits, float clkdiv, uint pin_cs, uint pin_sio0) {
     pio_sm_config c = qspi_psram_program_get_default_config(prog_offs);
     sm_config_set_out_pins(&c, pin_sio0, 4);
-    sm_config_set_in_pins(&c, pin_sio0);
+    sm_config_set_in_pins(&c, pin_sio0); // base
     sm_config_set_set_pins(&c, pin_sio0, 4);
     sm_config_set_sideset_pins(&c, pin_cs);
     sm_config_set_out_shift(&c, false, true, n_bits);

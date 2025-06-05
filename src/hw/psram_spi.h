@@ -62,6 +62,7 @@ SOFTWARE.
 #include <string.h>
 
 #include "psram_spi.pio.h"
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -114,7 +115,6 @@ extern psram_spi_inst_t* async_spi_inst;
  */
 __force_inline static void __time_critical_func(pio_spi_write_read_blocking)(
         psram_spi_inst_t* spi,
-        uint8_t outbits, uint8_t inbits, uint8_t cmd,
         const uint8_t* src, const size_t src_len,
         uint8_t* dst, const size_t dst_len
 ) {
@@ -127,13 +127,6 @@ __force_inline static void __time_critical_func(pio_spi_write_read_blocking)(
 #endif
 
     io_rw_8 *txfifo = (io_rw_8 *) &spi->pio->txf[spi->sm];
-
-    while (!pio_sm_is_tx_fifo_empty(spi->pio, spi->sm));
-
-    pio_sm_put(spi->pio, spi->sm, outbits << 24);
-    pio_sm_put(spi->pio, spi->sm, inbits << 24);
-    pio_sm_put(spi->pio, spi->sm, cmd << 24);
-
     while (tx_remain) {
         if (!pio_sm_is_tx_fifo_full(spi->pio, spi->sm)) {
             *txfifo = *src++;
@@ -283,14 +276,11 @@ __force_inline static void __time_critical_func(pio_spi_write_async)(
  * @param clkdiv Clock divisor for the state machine. At RP2040 speeds greater
  * than 280MHz, a clkdiv >1.0 is needed. For example, at 400MHz, a clkdiv of
  * 1.6 is recommended.
- * @param fudge Whether to insert an extra "fudge factor" of one clock cycle
- * before reading from the PSRAM. Depending on your PCB layout or PSRAM type,
- * you may need to do this.
  *
  * @return The PSRAM configuration instance. This instance should be passed to
  * all PSRAM access functions.
  */
-psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv, bool fudge);
+psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv);
 
 /**
  * @brief Initialize the PSRAM over SPI. This function must be called before
@@ -309,11 +299,11 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv, bool fudge
  */
 psram_spi_inst_t psram_spi_init(PIO pio, int sm);
 
-void psram_spi_uninit(psram_spi_inst_t spi, bool fudge);
+void psram_spi_uninit(psram_spi_inst_t spi);
 
 static uint8_t write8_command[] = {
-    40,         // 40 bits write
-    0,          // 0 bits read
+    10,         // 10 nibs
+    0,          // 0 nibs read
     0x02u,      // Write command
     0, 0, 0,    // Address
     0           // 8 bits data
@@ -364,11 +354,11 @@ __force_inline static void psram_write8(psram_spi_inst_t* spi, uint32_t addr, ui
 
 
 static uint8_t read8_command[] = {
-    40,         // 40 bits write
-    8,          // 8 bits read
-    0x0bu,      // Fast read command
+    14,         // 14 nibs write
+    2,          // 2 nibs read
+    0xeb,       // Fast read command
     0, 0, 0,    // Address
-    0           // 8 delay cycles
+    0, 0, 0     // Delay cycles
 };
 /**
  * @brief Read 8 bits of data from a given address to the PSRAM SPI PIO,
@@ -388,13 +378,14 @@ __force_inline static uint8_t psram_read8(psram_spi_inst_t* spi, uint32_t addr) 
     read8_command[5] = addr;
 
     uint8_t val; 
-    pio_spi_write_read_blocking(spi, 40, 8, 0x0b, &read8_command[3], 4, &val, 1);
+    //pio_spi_write_dma_blocking(spi, read8_command, sizeof(read8_command));
+    pio_spi_write_read_dma_blocking(spi, read8_command, sizeof(read8_command), &val, 1);
     return val;
 };
 
 
 static uint8_t write16_command[] = {
-    48,         // 48 bits write
+    12,         // 48 bits write
     0,          // 0 bits read
     0x02u,      // Write command
     0, 0, 0,    // Address
@@ -424,11 +415,11 @@ __force_inline static void psram_write16(psram_spi_inst_t* spi, uint32_t addr, u
 
 
 static uint8_t read16_command[] = {
-    40,         // 40 bits write
-    16,         // 16 bits read
-    0x0bu,      // Fast read command
+    14,         // 14 nibs
+    4,          // 16 bits read
+    0xeb,       // Fast read command
     0, 0, 0,    // Address
-    0           // 8 delay cycles
+    0, 0, 0     // Delay cycles
 };
 /**
  * @brief Read 16 bits of data from a given address to the PSRAM SPI PIO,
@@ -454,7 +445,7 @@ __force_inline static uint16_t psram_read16(psram_spi_inst_t* spi, uint32_t addr
 
 
 static uint8_t write32_command[] = {
-    64,         // 64 bits write
+    16,         // 64 bits write
     0,          // 0 bits read
     0x02u,      // Write command
     0, 0, 0,    // Address
@@ -514,11 +505,11 @@ __force_inline static void psram_write32_async(psram_spi_inst_t* spi, uint32_t a
 
 
 static uint8_t read32_command[] = {
-    40,         // 40 bits write
-    32,         // 32 bits read
-    0x0bu,      // Fast read command
+    14,         // 14 nibs
+    8,          // 32 bits read
+    0xeb,       // Fast read command
     0, 0, 0,    // Address
-    0           // 8 delay cycles
+    0, 0, 0     // Delay cycles
 };
 /**
  * @brief Read 32 bits of data from a given address to the PSRAM SPI PIO,
