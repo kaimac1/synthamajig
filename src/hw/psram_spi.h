@@ -114,6 +114,7 @@ extern psram_spi_inst_t* async_spi_inst;
  */
 __force_inline static void __time_critical_func(pio_spi_write_read_blocking)(
         psram_spi_inst_t* spi,
+        uint8_t outbits, uint8_t inbits, uint8_t cmd,
         const uint8_t* src, const size_t src_len,
         uint8_t* dst, const size_t dst_len
 ) {
@@ -124,13 +125,26 @@ __force_inline static void __time_critical_func(pio_spi_write_read_blocking)(
 #elif defined(PSRAM_SPINLOCK)
     spi->spin_irq_state = spin_lock_blocking(spi->spinlock);
 #endif
+
     io_rw_8 *txfifo = (io_rw_8 *) &spi->pio->txf[spi->sm];
+
+    gpio_put(4,1);
+
+    while (!pio_sm_is_tx_fifo_empty(spi->pio, spi->sm));
+
+    pio_sm_put(spi->pio, spi->sm, outbits << 24);
+    pio_sm_put(spi->pio, spi->sm, inbits << 24);
+    pio_sm_put(spi->pio, spi->sm, cmd << 24);
+    gpio_put(4,0);
+
     while (tx_remain) {
         if (!pio_sm_is_tx_fifo_full(spi->pio, spi->sm)) {
             *txfifo = *src++;
             --tx_remain;
         }
     }
+
+    
 
     io_rw_8 *rxfifo = (io_rw_8 *) &spi->pio->rxf[spi->sm];
     while (rx_remain) {
@@ -220,7 +234,7 @@ __force_inline static void __time_critical_func(pio_spi_write_read_dma_blocking)
     dma_channel_transfer_from_buffer_now(spi->write_dma_chan, src, src_len);
     dma_channel_transfer_to_buffer_now(spi->read_dma_chan, dst, dst_len);
     dma_channel_wait_for_finish_blocking(spi->write_dma_chan);
-    //dma_channel_wait_for_finish_blocking(spi->read_dma_chan);
+    dma_channel_wait_for_finish_blocking(spi->read_dma_chan);
 #ifdef PSRAM_MUTEX
     mutex_exit(&spi->mtx);
 #elif defined(PSRAM_SPINLOCK)
@@ -377,7 +391,7 @@ __force_inline static uint8_t psram_read8(psram_spi_inst_t* spi, uint32_t addr) 
     read8_command[5] = addr;
 
     uint8_t val; 
-    pio_spi_write_read_dma_blocking(spi, read8_command, sizeof(read8_command), &val, 1);
+    pio_spi_write_read_blocking(spi, 40, 8, 0x0b, &read8_command[3], 4, &val, 1);
     return val;
 };
 
