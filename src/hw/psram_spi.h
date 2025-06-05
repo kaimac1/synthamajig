@@ -128,14 +128,11 @@ __force_inline static void __time_critical_func(pio_spi_write_read_blocking)(
 
     io_rw_8 *txfifo = (io_rw_8 *) &spi->pio->txf[spi->sm];
 
-    gpio_put(4,1);
-
     while (!pio_sm_is_tx_fifo_empty(spi->pio, spi->sm));
 
     pio_sm_put(spi->pio, spi->sm, outbits << 24);
     pio_sm_put(spi->pio, spi->sm, inbits << 24);
     pio_sm_put(spi->pio, spi->sm, cmd << 24);
-    gpio_put(4,0);
 
     while (tx_remain) {
         if (!pio_sm_is_tx_fifo_full(spi->pio, spi->sm)) {

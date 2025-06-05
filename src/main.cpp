@@ -34,9 +34,6 @@ int main() {
 
     sleep_ms(2000);
 
-    gpio_init(4);
-    gpio_set_dir(4, GPIO_OUT);
-
     puts("Initing PSRAM...");
     psram_spi_inst_t psram_spi = psram_spi_init(pio0, -1);
 
@@ -46,40 +43,40 @@ int main() {
     puts("Testing PSRAM...");
 
 
-    psram_begin = time_us_32();
-    for (uint32_t addr = 0; addr < (8 * 1024 * 1024); ++addr) {
-        psram_write8(&psram_spi, addr, (addr & 0xFF));
-    }
-    psram_elapsed = time_us_32() - psram_begin;
-    psram_speed = 1000000.0 * 8 / psram_elapsed;
-    printf("8 bit: PSRAM write 8MB in %d us, %.2f MB/s\n", psram_elapsed, psram_speed);    
+    // psram_begin = time_us_32();
+    // for (uint32_t addr = 0; addr < (8 * 1024 * 1024); ++addr) {
+    //     psram_write8(&psram_spi, addr, (addr & 0xFF));
+    // }
+    // psram_elapsed = time_us_32() - psram_begin;
+    // psram_speed = 1000000.0 * 8 / psram_elapsed;
+    // printf("8 bit: PSRAM write 8MB in %d us, %.2f MB/s\n", psram_elapsed, psram_speed);    
 
-    psram_begin = time_us_32();
-    for (uint32_t addr = 0; addr < (8 * 1024 * 1024); ++addr) {
-        uint8_t result = psram_read8(&psram_spi, addr);
-        if ((uint8_t)(addr & 0xFF) != result) {
-            printf("\nPSRAM failure at address %x (%x != %x)\n", addr, addr & 0xFF, result);
-            return 1;
-        }
-    }
-    psram_elapsed = time_us_32() - psram_begin;
-    psram_speed = 1000000.0 * 8 / psram_elapsed;
-    printf("8 bit: PSRAM read 8MB in %d us, %.2f MB/s\n", psram_elapsed, psram_speed);    
+    // psram_begin = time_us_32();
+    // for (uint32_t addr = 0; addr < (8 * 1024 * 1024); ++addr) {
+    //     uint8_t result = psram_read8(&psram_spi, addr);
+    //     if ((uint8_t)(addr & 0xFF) != result) {
+    //         printf("\nPSRAM failure at address %x (%x != %x)\n", addr, addr & 0xFF, result);
+    //         return 1;
+    //     }
+    // }
+    // psram_elapsed = time_us_32() - psram_begin;
+    // psram_speed = 1000000.0 * 8 / psram_elapsed;
+    // printf("8 bit: PSRAM read 8MB in %d us, %.2f MB/s\n", psram_elapsed, psram_speed);    
 
-    puts("Reading continuously...");
+    // puts("Reading continuously...");
 
-    uint32_t addr = 0;
-    while (1) {
-        uint16_t result = psram_read8(&psram_spi, addr);
-        //psram_write8(&psram_spi, addr, (addr & 0xFF));
-        if ((uint8_t)(addr & 0xFF) != result) {
-            printf("\nPSRAM failure at address %x (%x != %x)\n", addr, addr & 0xFF, result);
-            while (1);
-        }
+    // uint32_t addr = 0;
+    // while (1) {
+    //     uint16_t result = psram_read8(&psram_spi, addr);
+    //     //psram_write8(&psram_spi, addr, (addr & 0xFF));
+    //     if ((uint8_t)(addr & 0xFF) != result) {
+    //         printf("\nPSRAM failure at address %x (%x != %x)\n", addr, addr & 0xFF, result);
+    //         while (1);
+    //     }
 
-        addr++;
-        if (addr == 8*1024*1024) addr = 0;
-    }
+    //     addr++;
+    //     if (addr == 8*1024*1024) addr = 0;
+    // }
 
 
 
