@@ -106,7 +106,7 @@ static inline void pio_qspi_psram_cs_init(PIO pio, uint sm, uint prog_offs, uint
     sm_config_set_set_pins(&c, pin_sio0, 4);
     sm_config_set_sideset_pins(&c, pin_cs);
     sm_config_set_out_shift(&c, false, true, n_bits);
-    sm_config_set_in_shift(&c, false, true, n_bits);
+    sm_config_set_in_shift(&c, false, true, 32);
     sm_config_set_clkdiv(&c, clkdiv);
 
     pio_sm_set_consecutive_pindirs(pio, sm, pin_cs, 2, true);

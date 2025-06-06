@@ -67,13 +67,13 @@ int main() {
             (((addr + 1) & 0xFF) << 8)  |
             (addr & 0XFF)) != result
         ) {
-            printf("PSRAM failure at address %x (%x != %x) ", addr, (
+            printf("PSRAM failure at address %x (%08x != %08x) ", addr, (
                 (((addr + 3) & 0xFF) << 24) |
                 (((addr + 2) & 0xFF) << 16) |
                 (((addr + 1) & 0xFF) << 8)  |
                 (addr & 0XFF)), result
             );
-            return 1;
+            while (1);
         }
     }
     psram_elapsed = (time_us_32() - psram_begin);

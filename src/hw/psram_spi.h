@@ -68,7 +68,7 @@ SOFTWARE.
 extern "C" {
 #endif
 
-#define SPI_READ_WRITE pio_qspi_read_write_dma
+#define SPI_READ_WRITE pio_qspi_read_write
 
 /**
  * @brief A struct that holds the configuration for the PSRAM interface.
@@ -105,9 +105,9 @@ extern psram_spi_inst_t* async_spi_inst;
 __force_inline static void __time_critical_func(pio_qspi_read_write)(
         psram_spi_inst_t* spi,
         const uint8_t* src, const size_t src_len,
-        uint8_t* dst, const size_t dst_len
+        uint32_t* dst, const size_t dst_words
 ) {
-    size_t tx_remain = src_len, rx_remain = dst_len;
+    size_t tx_remain = src_len, rx_remain = dst_words * 1;
 
 #if defined(PSRAM_MUTEX)
     mutex_enter_blocking(&spi->mtx); 
@@ -130,13 +130,13 @@ __force_inline static void __time_critical_func(pio_qspi_read_write)(
         }
     }
 
-    io_rw_8 *rxfifo = (io_rw_8 *) &spi->pio->rxf[spi->sm];
+    // Read 32-bit values
     while (rx_remain) {
-        if (!pio_sm_is_rx_fifo_empty(spi->pio, spi->sm)) {
-            *dst++ = *rxfifo;
-            --rx_remain;
-        }
+        *dst++ = pio_sm_get_blocking(spi->pio, spi->sm);
+        rx_remain--;
     }
+
+
 
 #if defined(PSRAM_MUTEX)
     mutex_exit(&spi->mtx);
@@ -363,10 +363,10 @@ __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, u
     write32_command[3] = addr >> 16;
     write32_command[4] = addr >> 8;
     write32_command[5] = addr;
-    write32_command[6] = val;
-    write32_command[7] = val >> 8;
-    write32_command[8] = val >> 16;
-    write32_command[9] = val >> 24;
+    write32_command[6] = val >> 24;
+    write32_command[7] = val >> 16;
+    write32_command[8] = val >> 8;
+    write32_command[9] = val;
 
     SPI_READ_WRITE(spi, write32_command, sizeof(write32_command), 0, 0);
 };
@@ -398,7 +398,7 @@ __force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr
     read32_command[5] = addr;
 
     uint32_t val;
-    SPI_READ_WRITE(spi, read32_command, sizeof(read32_command), (unsigned char*)&val, 4);
+    SPI_READ_WRITE(spi, read32_command, sizeof(read32_command), &val, 1);
     return val;
 };
 
