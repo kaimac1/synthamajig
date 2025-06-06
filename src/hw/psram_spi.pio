@@ -41,13 +41,13 @@ readloop_mid:
 .program qspi_psram
 .side_set 2
 begin:
-    out x, 32           side 0b01  ; x = number of nibbles to output. CS deasserted
-    jmp x--, writeloop  side 0b01  ; Pre-decement x by 1 so loop has correct number of iterations
+    out x, 32           side 0b01  ; x = number of nibbles to output MINUS ONE. CS high
+    out y, 32           side 0b01  ; y = number of nibbles to input
 writeloop:
     out pins, 4         side 0b00  ; Write value on pins, lower clock. CS asserted
     jmp x--, writeloop  side 0b10  ; Raise clock: this is when PSRAM reads the value. Loop if we have more to write
-    out y, 32           side 0b00  ; y = number of nibbles to input
-    jmp !y, begin       side 0b10  ; If this is a write-only operation, jump back to beginning
+    jmp !y, begin       side 0b00  ; If this is a write-only operation, jump back to beginning
+    nop                 side 0b10
     nop                 side 0b00  ; wait cycles (6) 
     nop                 side 0b10
     nop                 side 0b00

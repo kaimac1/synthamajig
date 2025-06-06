@@ -349,10 +349,10 @@ __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, u
     uint32_t cmd = 0x02000000 | addr;
 
     while(!pio_sm_is_tx_fifo_empty(spi->pio, spi->sm));
-    pio_sm_put(spi->pio, spi->sm, 16);
+    pio_sm_put(spi->pio, spi->sm, 15);
+    pio_sm_put(spi->pio, spi->sm, 0);
     pio_sm_put(spi->pio, spi->sm, cmd);
     pio_sm_put(spi->pio, spi->sm, val);
-    pio_sm_put(spi->pio, spi->sm, 0);
 
     // write32_command[2] = 0x02000000 | addr;
     // write32_command[3] = val;
@@ -368,9 +368,9 @@ __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, u
 __force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr) {
     uint32_t cmd = 0xeb000000 | addr;
 
+    pio_sm_put(spi->pio, spi->sm, 7);
     pio_sm_put(spi->pio, spi->sm, 8);
     pio_sm_put(spi->pio, spi->sm, cmd);
-    pio_sm_put(spi->pio, spi->sm, 8);
     uint32_t val = pio_sm_get_blocking(spi->pio, spi->sm);
 
     return val;
@@ -380,9 +380,9 @@ __force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr
 __force_inline static void psram_readwords(psram_spi_inst_t* spi, uint32_t addr, uint32_t *buffer, uint32_t num_words) {
     uint32_t cmd = 0xeb000000 | addr;
 
-    pio_sm_put(spi->pio, spi->sm, 8);
-    pio_sm_put(spi->pio, spi->sm, cmd);
+    pio_sm_put(spi->pio, spi->sm, 7);
     pio_sm_put(spi->pio, spi->sm, 8 * num_words);
+    pio_sm_put(spi->pio, spi->sm, cmd);
     while (num_words) {
         *buffer++ = pio_sm_get_blocking(spi->pio, spi->sm);
         num_words--;
