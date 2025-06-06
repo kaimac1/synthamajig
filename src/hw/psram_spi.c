@@ -122,7 +122,7 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
     // Write DMA channel setup
     spi.write_dma_chan = dma_claim_unused_channel(true);
     spi.write_dma_chan_config = dma_channel_get_default_config(spi.write_dma_chan);
-    channel_config_set_transfer_data_size(&spi.write_dma_chan_config, DMA_SIZE_8);
+    channel_config_set_transfer_data_size(&spi.write_dma_chan_config, DMA_SIZE_32);
     channel_config_set_read_increment(&spi.write_dma_chan_config, true);
     channel_config_set_write_increment(&spi.write_dma_chan_config, false);
     channel_config_set_dreq(&spi.write_dma_chan_config, pio_get_dreq(spi.pio, spi.sm, true));
@@ -132,7 +132,7 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
     // Read DMA channel setup
     spi.read_dma_chan = dma_claim_unused_channel(true);
     spi.read_dma_chan_config = dma_channel_get_default_config(spi.read_dma_chan);
-    channel_config_set_transfer_data_size(&spi.read_dma_chan_config, DMA_SIZE_8);
+    channel_config_set_transfer_data_size(&spi.read_dma_chan_config, DMA_SIZE_32);
     channel_config_set_read_increment(&spi.read_dma_chan_config, false);
     channel_config_set_write_increment(&spi.read_dma_chan_config, true);
     channel_config_set_dreq(&spi.read_dma_chan_config, pio_get_dreq(spi.pio, spi.sm, false));

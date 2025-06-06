@@ -104,10 +104,10 @@ extern psram_spi_inst_t* async_spi_inst;
 // Read data via QSPI
 __force_inline static void __time_critical_func(pio_qspi_read_write)(
         psram_spi_inst_t* spi,
-        const uint8_t* src, const size_t src_len,
+        const uint32_t* src, const size_t src_words,
         uint32_t* dst, const size_t dst_words
 ) {
-    size_t tx_remain = src_len, rx_remain = dst_words * 1;
+    size_t tx_remain = src_words, rx_remain = dst_words;
 
 #if defined(PSRAM_MUTEX)
     mutex_enter_blocking(&spi->mtx); 
@@ -118,14 +118,14 @@ __force_inline static void __time_critical_func(pio_qspi_read_write)(
     if (tx_remain >= 4) {
         while (!pio_sm_is_tx_fifo_empty(spi->pio, spi->sm));
         for (int i=0; i<4; i++) {
-            pio_sm_put(spi->pio, spi->sm, (*src++) << 24);
+            pio_sm_put(spi->pio, spi->sm, *src++);
         }
         tx_remain -= 4;
     }
 
     while (tx_remain) {
         if (!pio_sm_is_tx_fifo_full(spi->pio, spi->sm)) {
-            pio_sm_put(spi->pio, spi->sm, (*src++) << 24);
+            pio_sm_put(spi->pio, spi->sm, *src++);
             --tx_remain;
         }
     }
@@ -200,7 +200,7 @@ __force_inline static void __time_critical_func(pio_spi_single_rw)(
  */
 __force_inline static void __time_critical_func(pio_spi_write_dma_blocking)(
         psram_spi_inst_t* spi,
-        const uint8_t* src, const size_t src_len
+        const uint32_t* src, const size_t src_words
 ) {
 #ifdef PSRAM_MUTEX
     mutex_enter_blocking(&spi->mtx); 
@@ -214,7 +214,7 @@ __force_inline static void __time_critical_func(pio_spi_write_dma_blocking)(
     dma_channel_wait_for_finish_blocking(spi->write_dma_chan);
     dma_channel_wait_for_finish_blocking(spi->read_dma_chan);
 #endif // PSRAM_WAITDMA
-    dma_channel_transfer_from_buffer_now(spi->write_dma_chan, src, src_len);
+    dma_channel_transfer_from_buffer_now(spi->write_dma_chan, src, src_words);
     dma_channel_wait_for_finish_blocking(spi->write_dma_chan);
 #ifdef PSRAM_MUTEX
     mutex_exit(&spi->mtx);
@@ -236,13 +236,12 @@ __force_inline static void __time_critical_func(pio_spi_write_dma_blocking)(
  * @param src_len Length of the source data in bytes.
  * @param dst Pointer to the destination for read data, if any. Set to 0 or NULL
  * if no data is to be read.
- * @param dst_len Length of the destination data in bytes. Set to 0 if no data
- * is to be read.
+ * @param dst_words Length of destination in 32-bit words
  */
 __force_inline static void __time_critical_func(pio_qspi_read_write_dma)(
         psram_spi_inst_t* spi,
-        const uint8_t* src, const size_t src_len,
-        uint8_t* dst, const size_t dst_len
+        const uint32_t* src, const size_t src_words,
+        uint32_t* dst, const size_t dst_words
 ) {
 #ifdef PSRAM_MUTEX
     mutex_enter_blocking(&spi->mtx); 
@@ -256,8 +255,8 @@ __force_inline static void __time_critical_func(pio_qspi_read_write_dma)(
     dma_channel_wait_for_finish_blocking(spi->write_dma_chan);
     dma_channel_wait_for_finish_blocking(spi->read_dma_chan);
 #endif // PSRAM_WAITDMA
-    dma_channel_transfer_from_buffer_now(spi->write_dma_chan, src, src_len);
-    dma_channel_transfer_to_buffer_now(spi->read_dma_chan, dst, dst_len);
+    dma_channel_transfer_from_buffer_now(spi->write_dma_chan, src, src_words);
+    dma_channel_transfer_to_buffer_now(spi->read_dma_chan, dst, dst_words);
     dma_channel_wait_for_finish_blocking(spi->write_dma_chan);
     dma_channel_wait_for_finish_blocking(spi->read_dma_chan);
 #ifdef PSRAM_MUTEX
@@ -342,33 +341,22 @@ void psram_spi_uninit(psram_spi_inst_t spi);
 /******************************************************************************/
 // Write
 
-static uint8_t write32_command[] = {
+static uint32_t write32_command[] = {
     16, 0, // nibbles to write/read
-    0x02, 0, 0, 0, 0, 0, 0, 0
+    0, 0
 };
-/**
- * @brief Write 32 bits of data to a given address to the PSRAM SPI PIO,
- * driven by DMA without CPU involvement, blocking until the write is
- * complete.
- *
- * This function is optimized to write 32 bits as quickly as possible to the
- * PSRAM as opposed to the more general-purpose psram_write() function.
- *
- * @param spi The PSRAM configuration instance returned from psram_spi_init().
- * @param addr Address to write to.
- * @param val Value to write.
- */
 __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, uint32_t val) {
-    // Break the address into three bytes and send read command
-    write32_command[3] = addr >> 16;
-    write32_command[4] = addr >> 8;
-    write32_command[5] = addr;
-    write32_command[6] = val >> 24;
-    write32_command[7] = val >> 16;
-    write32_command[8] = val >> 8;
-    write32_command[9] = val;
+    uint32_t cmd = 0x02000000 | addr;
 
-    SPI_READ_WRITE(spi, write32_command, sizeof(write32_command), 0, 0);
+    while(!pio_sm_is_tx_fifo_empty(spi->pio, spi->sm));
+    pio_sm_put(spi->pio, spi->sm, 16);
+    pio_sm_put(spi->pio, spi->sm, cmd);
+    pio_sm_put(spi->pio, spi->sm, val);
+    pio_sm_put(spi->pio, spi->sm, 0);
+
+    // write32_command[2] = 0x02000000 | addr;
+    // write32_command[3] = val;
+    // SPI_READ_WRITE(spi, write32_command, 4, 0, 0);
 };
 
 
@@ -376,33 +364,30 @@ __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, u
 /******************************************************************************/
 // Read
 
-static uint8_t read32_command[] = {
-    8, 8, // nibbles to write/read
-    0xeb, 0, 0, 0
-};
-/**
- * @brief Read 32 bits of data from a given address to the PSRAM SPI PIO,
- * driven by DMA without CPU involvement, blocking until the read is
- * complete.
- *
- * This function is optimized to read 32 bits as quickly as possible from the
- * PSRAM as opposed to the more general-purpose psram_read() function.
- *
- * @param spi The PSRAM configuration instance returned from psram_spi_init().
- * @param addr Address to read from.
- * @return The data at the specified address.
- */
+// Read single 32-bit value
 __force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr) {
-    read32_command[3] = addr >> 16;
-    read32_command[4] = addr >> 8;
-    read32_command[5] = addr;
+    uint32_t cmd = 0xeb000000 | addr;
 
-    uint32_t val;
-    SPI_READ_WRITE(spi, read32_command, sizeof(read32_command), &val, 1);
+    pio_sm_put(spi->pio, spi->sm, 8);
+    pio_sm_put(spi->pio, spi->sm, cmd);
+    pio_sm_put(spi->pio, spi->sm, 8);
+    uint32_t val = pio_sm_get_blocking(spi->pio, spi->sm);
+
     return val;
 };
 
+// Read a number of 32-bit words into a buffer
+__force_inline static void psram_readwords(psram_spi_inst_t* spi, uint32_t addr, uint32_t *buffer, uint32_t num_words) {
+    uint32_t cmd = 0xeb000000 | addr;
 
+    pio_sm_put(spi->pio, spi->sm, 8);
+    pio_sm_put(spi->pio, spi->sm, cmd);
+    pio_sm_put(spi->pio, spi->sm, 8 * num_words);
+    while (num_words) {
+        *buffer++ = pio_sm_get_blocking(spi->pio, spi->sm);
+        num_words--;
+    }
+};
 
 
 
@@ -478,8 +463,8 @@ __force_inline static void psram_write(psram_spi_inst_t* spi, const uint32_t add
     write_command[4] = addr >> 8;
     write_command[5] = addr;
 
-    pio_spi_write_dma_blocking(spi, write_command, sizeof(write_command));
-    pio_spi_write_dma_blocking(spi, src, count);
+    //pio_spi_write_dma_blocking(spi, write_command, sizeof(write_command));
+    //pio_spi_write_dma_blocking(spi, src, count);
 };
 
 
@@ -506,7 +491,7 @@ __force_inline static void psram_read(psram_spi_inst_t* spi, const uint32_t addr
     read_command[4] = addr >> 8;
     read_command[5] = addr;
 
-    pio_qspi_read_write_dma(spi, read_command, sizeof(read_command), dst, count);
+    //pio_qspi_read_write_dma(spi, read_command, sizeof(read_command), dst, count);
 };
 
 
