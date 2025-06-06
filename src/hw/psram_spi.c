@@ -109,14 +109,14 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
     busy_wait_us(1);
 
     // Use QSPI program
-    pio_sm_clear_fifos(spi.pio, spi.sm);
+    uint32_t st = time_us_32();    
     pio_sm_unclaim(spi.pio, spi.sm);
     pio_remove_program(spi.pio, &spi_psram_fudge_program, spi.offset);    
     spi.offset = pio_add_program(spi.pio, &qspi_psram_program);
-
     pio_qspi_psram_cs_init(spi.pio, spi.sm, spi.offset, 8, clkdiv, PSRAM_PIN_CS, PSRAM_PIN_SD0_SI);
+    uint32_t tt = time_us_32() - st;
 
-    pio_sm_clear_fifos(spi.pio, spi.sm);
+    printf("time to switch = %d us\n", tt);
 
     
     // Write DMA channel setup

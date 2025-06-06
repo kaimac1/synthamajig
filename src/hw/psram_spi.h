@@ -68,7 +68,7 @@ SOFTWARE.
 extern "C" {
 #endif
 
-#define SPI_READ_WRITE pio_qspi_read_write
+#define SPI_READ_WRITE pio_qspi_read_write_dma
 
 /**
  * @brief A struct that holds the configuration for the PSRAM interface.
@@ -239,7 +239,7 @@ __force_inline static void __time_critical_func(pio_spi_write_dma_blocking)(
  * @param dst_len Length of the destination data in bytes. Set to 0 if no data
  * is to be read.
  */
-__force_inline static void __time_critical_func(pio_spi_write_read_dma_blocking)(
+__force_inline static void __time_critical_func(pio_qspi_read_write_dma)(
         psram_spi_inst_t* spi,
         const uint8_t* src, const size_t src_len,
         uint8_t* dst, const size_t dst_len
@@ -339,14 +339,12 @@ void psram_spi_uninit(psram_spi_inst_t spi);
 
 
 
-
+/******************************************************************************/
+// Write
 
 static uint8_t write32_command[] = {
-    16,         
-    0,          
-    0x02u,      // Write command
-    0, 0, 0,    // Address
-    0, 0, 0, 0  // 32 bits data
+    16, 0, // nibbles to write/read
+    0x02, 0, 0, 0, 0, 0, 0, 0
 };
 /**
  * @brief Write 32 bits of data to a given address to the PSRAM SPI PIO,
@@ -375,42 +373,12 @@ __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, u
 
 
 
-
-
-/**
- * @brief Write 32 bits of data to a given address asynchronously to the PSRAM
- * SPI PIO, driven by DMA without CPU involvement.
- *
- * This function is optimized to write 32 bits as quickly as possible to the
- * PSRAM as opposed to the more general-purpose psram_write() function.
- *
- * @param spi The PSRAM configuration instance returned from psram_spi_init().
- * @param addr Address to write to.
- * @param val Value to write.
- */
-#if defined(PSRAM_ASYNC)
-__force_inline static void psram_write32_async(psram_spi_inst_t* spi, uint32_t addr, uint32_t val) {
-    // Break the address into three bytes and send read command
-    write32_command[3] = addr >> 16;
-    write32_command[4] = addr >> 8;
-    write32_command[5] = addr;
-    write32_command[6] = val;
-    write32_command[7] = val >> 8;
-    write32_command[8] = val >> 16;
-    write32_command[9] = val >> 24;
-
-    pio_spi_write_async(spi, write32_command, sizeof(write32_command));
-};
-#endif
-
-
-
+/******************************************************************************/
+// Read
 
 static uint8_t read32_command[] = {
-    8,          // nibs to write
-    8,          // nibs to read
-    0xeb,       // Fast read command
-    0, 0, 0,    // Address
+    8, 8, // nibbles to write/read
+    0xeb, 0, 0, 0
 };
 /**
  * @brief Read 32 bits of data from a given address to the PSRAM SPI PIO,
@@ -459,6 +427,32 @@ __force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr
 
 
 
+
+/**
+ * @brief Write 32 bits of data to a given address asynchronously to the PSRAM
+ * SPI PIO, driven by DMA without CPU involvement.
+ *
+ * This function is optimized to write 32 bits as quickly as possible to the
+ * PSRAM as opposed to the more general-purpose psram_write() function.
+ *
+ * @param spi The PSRAM configuration instance returned from psram_spi_init().
+ * @param addr Address to write to.
+ * @param val Value to write.
+ */
+#if defined(PSRAM_ASYNC)
+__force_inline static void psram_write32_async(psram_spi_inst_t* spi, uint32_t addr, uint32_t val) {
+    // Break the address into three bytes and send read command
+    write32_command[3] = addr >> 16;
+    write32_command[4] = addr >> 8;
+    write32_command[5] = addr;
+    write32_command[6] = val;
+    write32_command[7] = val >> 8;
+    write32_command[8] = val >> 16;
+    write32_command[9] = val >> 24;
+
+    pio_spi_write_async(spi, write32_command, sizeof(write32_command));
+};
+#endif
 
 
 static uint8_t write_command[] = {
@@ -512,7 +506,7 @@ __force_inline static void psram_read(psram_spi_inst_t* spi, const uint32_t addr
     read_command[4] = addr >> 8;
     read_command[5] = addr;
 
-    pio_spi_write_read_dma_blocking(spi, read_command, sizeof(read_command), dst, count);
+    pio_qspi_read_write_dma(spi, read_command, sizeof(read_command), dst, count);
 };
 
 
