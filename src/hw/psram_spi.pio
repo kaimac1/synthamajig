@@ -21,98 +21,108 @@
 ; SOFTWARE.
 
 
-.program spi_psram_fudge
-.side_set 2                        ; sideset bit 1 is SCK, bit 0 is CS
+.program spi_psram
+.side_set 1 ; SCK
 begin:
-    out x, 8            side 0b01  ; x = number of bits to output. CS deasserted
-    out y, 8            side 0b01  ; y = number of bits to input
-    jmp x--, writeloop  side 0b01  ; Pre-decement x by 1 so loop has correct number of iterations
+    nop                 side 0 
+    set pins, 1         side 0  ; CS high
+    out x, 8            side 0  ; x = number of bits to output
+    out y, 8            side 0  ; y = number of bits to input
+    set pins, 0         side 0  ; CS low
+    jmp x--, writeloop  side 0  ; Pre-decement x by 1 so loop has correct number of iterations
 writeloop:
-    out pins, 1         side 0b00  ; Write value on pin, lower clock. CS asserted
-    jmp x--, writeloop  side 0b10  ; Raise clock: this is when PSRAM reads the value. Loop if we have more to write
-    jmp !y, begin       side 0b00  ; If this is a write-only operation, jump back to beginning
-    nop                 side 0b10  ; Fudge factor of extra clock cycle; the PSRAM needs 1 extra for output to start appearing
-    jmp readloop_mid    side 0b00  ; Jump to middle of readloop to decrement y and get right clock phase
+    out pins, 1         side 0  ; Write value on pin, lower clock
+    jmp x--, writeloop  side 1  ; Raise clock: this is when PSRAM reads the value. Loop if we have more to write
+    jmp !y, begin       side 0  ; If this is a write-only operation, jump back to beginning
+    nop                 side 1  ; Fudge factor of extra clock cycle; the PSRAM needs 1 extra for output to start appearing
+    jmp readloop_mid    side 0  ; Jump to middle of readloop to decrement y and get right clock phase
 readloop:
-    in pins, 1          side 0b00  ; Read value on pin, lower clock. Datasheet says to read on falling edge > 83MHz
+    in pins, 1          side 0  ; Read value on pin, lower clock. Datasheet says to read on falling edge > 83MHz
 readloop_mid:
-    jmp y--, readloop   side 0b10  ; Raise clock. Loop if we have more to read
+    jmp y--, readloop   side 1  ; Raise clock. Loop if we have more to read
 
 .program qspi_psram
-.side_set 2
+.side_set 1 ; SCK
 begin:
-    out x, 32           side 0b01  ; x = number of nibbles to output MINUS ONE. CS high
-    out y, 32           side 0b01  ; y = number of nibbles to input
+    set pins, 1         side 0    ; CS high
+    out x, 32           side 0    ; x = number of nibbles to output MINUS ONE
+    out y, 32           side 0    ; y = number of nibbles to input
+    set pins, 0         side 0    ; CS low
 writeloop:
-    out pins, 4         side 0b00  ; Write value on pins, lower clock. CS asserted
-    jmp x--, writeloop  side 0b10  ; Raise clock: this is when PSRAM reads the value. Loop if we have more to write
-    jmp !y, begin       side 0b00  ; If this is a write-only operation, jump back to beginning
-    set x, 4            side 0b10  ; wait clocks (6)
+    out pins, 4         side 0    ; Write value on pins, lower clock
+    jmp x--, writeloop  side 1    ; Raise clock: this is when PSRAM reads the value. Loop if we have more to write
+    jmp !y, begin       side 0    ; If this is a write-only operation, jump back to beginning
+    set x, 4            side 1    ; wait clocks (6)
 waitloop:
-    nop                 side 0b00
-    jmp x--, waitloop   side 0b10
-    nop                 side 0b00
-    set pindirs 0       side 0b10  ; clk 14 rising edge, 
-    jmp readloop_mid    side 0b00
+    nop                 side 0 
+    jmp x--, waitloop   side 1 
+    set x, 0            side 0 
+    mov pindirs, x      side 1    ; clk 14 rising edge, 
+    jmp readloop_mid    side 0 
 readloop:
-    in pins, 4          side 0b00
+    in pins, 4          side 0 
 readloop_mid:
-    jmp y--, readloop   side 0b10  
-    set pindirs 0xF     side 0b01
+    jmp y--, readloop   side 1 
+    set x, 0b1111       side 0 
+    mov pindirs, x      side 0 
 
 
 
 % c-sdk {
 #include "hardware/gpio.h"
-static inline void pio_spi_psram_cs_init(PIO pio, uint sm, uint prog_offs, uint n_bits, float clkdiv, uint pin_cs, uint pin_mosi, uint pin_miso) {
-    pio_sm_config c;
-    c = spi_psram_fudge_program_get_default_config(prog_offs);
-    sm_config_set_out_pins(&c, pin_mosi, 1);
-    sm_config_set_in_pins(&c, pin_miso);
-    sm_config_set_sideset_pins(&c, pin_cs);
-    sm_config_set_out_shift(&c, false, true, n_bits);
-    sm_config_set_in_shift(&c, false, true, n_bits);
-    sm_config_set_clkdiv(&c, clkdiv);
+
+extern pio_sm_config psram_sm_cfg;;
+
+static inline void pio_spi_psram_cs_init(PIO pio, uint sm, uint prog_offs, float clkdiv, uint pin_cs, uint pin_sck, uint pin_mosi, uint pin_miso) {
+    pio_sm_config *c = &psram_sm_cfg;
+    *c = spi_psram_program_get_default_config(prog_offs);
+    sm_config_set_out_pins(c, pin_mosi, 1);
+    sm_config_set_in_pins(c, pin_miso);
+    sm_config_set_sideset_pins(c, pin_sck);
+    sm_config_set_set_pins(c, pin_cs, 1);      // chip select(s)
+    sm_config_set_out_shift(c, false, true, 8);
+    sm_config_set_in_shift(c, false, true, 8);
+    sm_config_set_clkdiv(c, clkdiv);
 
     pio_sm_set_consecutive_pindirs(pio, sm, pin_cs, 2, true);
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_sck, 1, true);
     pio_sm_set_consecutive_pindirs(pio, sm, pin_mosi, 1, true);
     pio_sm_set_consecutive_pindirs(pio, sm, pin_miso, 1, false);
     pio_gpio_init(pio, pin_miso);
     pio_gpio_init(pio, pin_mosi);
     pio_gpio_init(pio, pin_cs);
-    pio_gpio_init(pio, pin_cs + 1);
+    pio_gpio_init(pio, pin_sck);
 
     hw_set_bits(&pio->input_sync_bypass, 1u << pin_miso);
 
-    pio_sm_init(pio, sm, prog_offs, &c);
+    pio_sm_init(pio, sm, prog_offs, c);
     pio_sm_set_enabled(pio, sm, true);
 }
-%}
 
-% c-sdk {
-#include "hardware/gpio.h"
-static inline void pio_qspi_psram_cs_init(PIO pio, uint sm, uint prog_offs, float clkdiv, uint pin_cs, uint pin_sio0) {
-    pio_sm_config c = qspi_psram_program_get_default_config(prog_offs);
-    sm_config_set_out_pins(&c, pin_sio0, 4);
-    sm_config_set_in_pins(&c, pin_sio0); // base
-    sm_config_set_set_pins(&c, pin_sio0, 4);
-    sm_config_set_sideset_pins(&c, pin_cs);
-    sm_config_set_out_shift(&c, false, true, 32);
-    sm_config_set_in_shift(&c, false, true, 32);
-    sm_config_set_clkdiv(&c, clkdiv);
+static inline void pio_qspi_psram_cs_init(PIO pio, uint sm, uint prog_offs, float clkdiv, uint pin_cs, uint pin_sck, uint pin_sio0) {
+    pio_sm_config *c = &psram_sm_cfg;
+    *c = qspi_psram_program_get_default_config(prog_offs);
+    sm_config_set_out_pins(c, pin_sio0, 4);
+    sm_config_set_in_pins(c, pin_sio0);        // base
+    sm_config_set_set_pins(c, pin_cs, 1);      // chip select(s)
+    sm_config_set_sideset_pins(c, pin_sck);    // clock
+    sm_config_set_out_shift(c, false, true, 32);
+    sm_config_set_in_shift(c, false, true, 32);
+    sm_config_set_clkdiv(c, clkdiv);
 
     pio_sm_set_consecutive_pindirs(pio, sm, pin_cs, 2, true);
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_sck, 1, true);
     pio_sm_set_consecutive_pindirs(pio, sm, pin_sio0, 4, true);
     pio_gpio_init(pio, pin_sio0);
     pio_gpio_init(pio, pin_sio0 + 1);
     pio_gpio_init(pio, pin_sio0 + 2);
     pio_gpio_init(pio, pin_sio0 + 3);
     pio_gpio_init(pio, pin_cs);
-    pio_gpio_init(pio, pin_cs + 1);
+    pio_gpio_init(pio, pin_sck);
 
     hw_set_bits(&pio->input_sync_bypass, 0xfu << pin_sio0);
 
-    pio_sm_init(pio, sm, prog_offs, &c);
+    pio_sm_init(pio, sm, prog_offs, c);
     pio_sm_set_enabled(pio, sm, true);
 }
 %}

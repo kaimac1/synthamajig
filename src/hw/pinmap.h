@@ -44,7 +44,8 @@
 
 
 // PSRAM SPI
-#define PSRAM_PIN_CS    1
+#define PSRAM_PIN_CS0   0
+#define PSRAM_PIN_CS1   1
 #define PSRAM_PIN_SCK   2
 #define PSRAM_PIN_SD0_SI 3
 #define PSRAM_PIN_SD1_SO 4

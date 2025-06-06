@@ -68,6 +68,8 @@ SOFTWARE.
 extern "C" {
 #endif
 
+#define PSRAM_DEVICE_SIZE   (8*1024*1024)
+
 #define SPI_READ_WRITE pio_qspi_read_write
 
 /**
@@ -336,6 +338,19 @@ psram_spi_inst_t psram_spi_init(PIO pio, int sm);
 
 void psram_spi_uninit(psram_spi_inst_t spi);
 
+// Change which chip select pin the PIO program drives.
+// This is done by changing the SET pin base
+__force_inline static void psram_select_device(psram_spi_inst_t *psram, int cs_pin) {
+    static int old_cs_pin = -1;
+
+    if (cs_pin != old_cs_pin) {
+        if (old_cs_pin >= 0) gpio_set_function(old_cs_pin, GPIO_FUNC_SIO);
+        sm_config_set_set_pin_base(&psram_sm_cfg, cs_pin);
+        pio_sm_set_config(psram->pio, psram->sm, &psram_sm_cfg);
+        pio_gpio_init(psram->pio, cs_pin);
+        old_cs_pin = cs_pin;
+    }
+}
 
 
 
@@ -345,6 +360,8 @@ void psram_spi_uninit(psram_spi_inst_t spi);
 // Write single 32-bit value
 __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, uint32_t val) {
     uint32_t cmd = 0x02000000 | addr;
+
+    psram_select_device(spi, addr >= PSRAM_DEVICE_SIZE ? PSRAM_PIN_CS1 : PSRAM_PIN_CS0);
 
     while(!pio_sm_is_tx_fifo_empty(spi->pio, spi->sm));
     pio_sm_put(spi->pio, spi->sm, 15);
@@ -362,6 +379,8 @@ __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, u
 __force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr) {
     uint32_t cmd = 0xeb000000 | addr;
 
+    psram_select_device(spi, addr >= PSRAM_DEVICE_SIZE ? PSRAM_PIN_CS1 : PSRAM_PIN_CS0);
+
     pio_sm_put(spi->pio, spi->sm, 7);
     pio_sm_put(spi->pio, spi->sm, 8);
     pio_sm_put(spi->pio, spi->sm, cmd);
@@ -373,6 +392,8 @@ __force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr
 // Read a number of 32-bit words into a buffer
 __force_inline static void psram_readwords(psram_spi_inst_t* spi, uint32_t addr, uint32_t *buffer, uint32_t num_words) {
     uint32_t cmd = 0xeb000000 | addr;
+
+    psram_select_device(spi, addr >= PSRAM_DEVICE_SIZE ? PSRAM_PIN_CS1 : PSRAM_PIN_CS0);
 
     pio_sm_put(spi->pio, spi->sm, 7);
     pio_sm_put(spi->pio, spi->sm, 8 * num_words);

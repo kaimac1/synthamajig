@@ -32,6 +32,14 @@ extern "C" void audio_dma_callback(void) {
 int main() {
     hw_init();
 
+    gpio_init(PSRAM_PIN_CS0);
+    gpio_set_dir(PSRAM_PIN_CS0, GPIO_OUT);
+    gpio_put(PSRAM_PIN_CS0, 1);
+    gpio_init(PSRAM_PIN_CS1);
+    gpio_set_dir(PSRAM_PIN_CS1, GPIO_OUT);
+    gpio_put(PSRAM_PIN_CS1, 1);
+
+
     sleep_ms(2000);
 
     puts("Initing PSRAM...");
@@ -47,15 +55,15 @@ int main() {
 
     // **************** 32 bits testing ****************
     psram_begin = time_us_32();
-    for (uint32_t addr = 0; addr < (8 * 1024 * 1024); addr += 4) {
+    for (uint32_t addr = 0; addr < (16 * 1024 * 1024); addr += 4) {
         psram_write32(&psram, addr, addr + 10);
     }
     psram_elapsed = time_us_32() - psram_begin;
-    psram_speed = 1000000.0 * 8 / psram_elapsed;
-    printf("32 bit: PSRAM write 8MB in %d us, %.2f MB/s\n", psram_elapsed, psram_speed);
+    psram_speed = 1000000.0 * 16 / psram_elapsed;
+    printf("32 bit: PSRAM write 16MB in %d us, %.2f MB/s\n", psram_elapsed, psram_speed);
 
     psram_begin = time_us_32();
-    for (uint32_t addr = 0; addr < (8 * 1024 * 1024); addr += 4) {
+    for (uint32_t addr = 0; addr < (16 * 1024 * 1024); addr += 4) {
         uint32_t result = psram_read32(&psram, addr);
         if (result != addr+10) {
             printf("PSRAM failure at address %x (%08x != %08x) ", addr, result, addr+10);
@@ -63,14 +71,14 @@ int main() {
         }
     }
     psram_elapsed = (time_us_32() - psram_begin);
-    psram_speed = 1000000.0 * 8 / psram_elapsed;
-    printf("32 bit: PSRAM read 8MB in %d us, %.2f MB/s\n", psram_elapsed, psram_speed);    
+    psram_speed = 1000000.0 * 16 / psram_elapsed;
+    printf("32 bit: PSRAM read 16MB in %d us, %.2f MB/s\n", psram_elapsed, psram_speed);    
 
 
     psram_begin = time_us_32();
     const int bufsiz = 4;
     const int nbytes = 4*bufsiz;
-    for (uint32_t addr = 0; addr < 8*1024*1024; addr += nbytes) {
+    for (uint32_t addr = 0; addr < 16*1024*1024; addr += nbytes) {
         uint32_t buffer[bufsiz];
         psram_readwords(&psram, addr, buffer, bufsiz);
         if (buffer[2] != addr+18) {
@@ -79,8 +87,8 @@ int main() {
         }
     }
     psram_elapsed = (time_us_32() - psram_begin);
-    psram_speed = 1000000.0 * 8 / psram_elapsed;
-    printf("%d byte buffer: PSRAM read 8MB in %d us, %.2f MB/s\n", nbytes, psram_elapsed, psram_speed);    
+    psram_speed = 1000000.0 * 16 / psram_elapsed;
+    printf("%d byte buffer: PSRAM read 16MB in %d us, %.2f MB/s\n", nbytes, psram_elapsed, psram_speed);    
 
 
     printf("done.\n");

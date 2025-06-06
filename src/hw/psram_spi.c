@@ -45,10 +45,41 @@ void __isr psram_dma_complete_handler() {
 }
 #endif // defined(PSRAM_ASYNC) && defined(PSRAM_ASYNC_SYNCHRONIZE)
 
+pio_sm_config psram_sm_cfg;
+
+static int initialise_device(psram_spi_inst_t *psram) {
+    uint8_t reset_en_cmd[] = {8, 0, 0x66};
+    pio_spi_single_rw(psram, reset_en_cmd, sizeof(reset_en_cmd), 0, 0);
+    busy_wait_us(50);
+
+    uint8_t reset_cmd[] = {8, 0, 0x99};
+    pio_spi_single_rw(psram, reset_cmd, sizeof(reset_cmd), 0, 0);
+    busy_wait_us(100);
+
+    // Check ID registers
+    uint8_t id_cmd[] = {32, 16, 0x9F, 0, 0, 0};
+    uint8_t id_data[2];
+    pio_spi_single_rw(psram, id_cmd, sizeof(id_cmd), id_data, sizeof(id_data));
+
+    const uint8_t expected_mfid = 0x0D;
+    const uint8_t expected_kgd = 0x5D;
+    if ((id_data[0] != expected_mfid) || (id_data[1] != expected_kgd)) {
+        printf("PSRAM read ID error: MFID=%02x, KGD=%02x\n", id_data[0], id_data[1]);
+        return 1;
+    }
+    return 0;
+}
+
+static void enable_qspi(psram_spi_inst_t *psram) {
+    uint8_t qspi_en_cmd[] = {8, 0, 0x35};
+    pio_spi_single_rw(psram, qspi_en_cmd, sizeof(qspi_en_cmd), 0, 0);
+    busy_wait_us(10);    
+}
+
 psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
     psram_spi_inst_t spi;
     spi.pio = pio;
-    spi.offset = pio_add_program(spi.pio, &spi_psram_fudge_program);
+    spi.offset = pio_add_program(spi.pio, &spi_psram_program);
     spi.sm = sm;
 
 #if defined(PSRAM_MUTEX)
@@ -58,51 +89,39 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
     spi.spinlock = spin_lock_init(spin_id);
 #endif
 
-    gpio_set_drive_strength(PSRAM_PIN_CS, GPIO_DRIVE_STRENGTH_8MA);
-    gpio_set_drive_strength(PSRAM_PIN_SCK, GPIO_DRIVE_STRENGTH_8MA);
-    gpio_set_drive_strength(PSRAM_PIN_SD0_SI, GPIO_DRIVE_STRENGTH_8MA);
-    gpio_set_drive_strength(PSRAM_PIN_SD1_SO, GPIO_DRIVE_STRENGTH_8MA);
-    gpio_set_drive_strength(PSRAM_PIN_SD2, GPIO_DRIVE_STRENGTH_8MA);
-    gpio_set_drive_strength(PSRAM_PIN_SD3, GPIO_DRIVE_STRENGTH_8MA);
+    gpio_set_drive_strength(PSRAM_PIN_CS0, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(PSRAM_PIN_CS1, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(PSRAM_PIN_SCK, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(PSRAM_PIN_SD0_SI, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(PSRAM_PIN_SD1_SO, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(PSRAM_PIN_SD2, GPIO_DRIVE_STRENGTH_4MA);
+    gpio_set_drive_strength(PSRAM_PIN_SD3, GPIO_DRIVE_STRENGTH_4MA);
     /* gpio_set_slew_rate(PSRAM_PIN_CS, GPIO_SLEW_RATE_FAST); */
     /* gpio_set_slew_rate(PSRAM_PIN_SCK, GPIO_SLEW_RATE_FAST); */
     /* gpio_set_slew_rate(PSRAM_PIN_MOSI, GPIO_SLEW_RATE_FAST); */
 
-    pio_spi_psram_cs_init(spi.pio, spi.sm, spi.offset, 8, clkdiv, PSRAM_PIN_CS, PSRAM_PIN_SD0_SI, PSRAM_PIN_SD1_SO);
+    pio_spi_psram_cs_init(spi.pio, spi.sm, spi.offset, clkdiv, PSRAM_PIN_CS0, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI, PSRAM_PIN_SD1_SO);
     
-
-    // Configure device (not using DMA as not configured yet)
-    uint8_t reset_en_cmd[] = {8, 0, 0x66};
-    pio_spi_single_rw(&spi, reset_en_cmd, sizeof(reset_en_cmd), 0, 0);
-    busy_wait_us(50);
-
-    uint8_t reset_cmd[] = {8, 0, 0x99};
-    pio_spi_single_rw(&spi, reset_cmd, sizeof(reset_cmd), 0, 0);
-    busy_wait_us(100);
-
-    // Check ID registers
-    uint8_t id_cmd[] = {32, 16, 0x9F, 0, 0, 0};
-    uint8_t id_data[2];
-    pio_spi_single_rw(&spi, id_cmd, sizeof(id_cmd), id_data, sizeof(id_data));
-
-    const uint8_t expected_mfid = 0x0D;
-    const uint8_t expected_kgd = 0x5D;
-    if ((id_data[0] != expected_mfid) || (id_data[1] != expected_kgd)) {
-        printf("PSRAM read ID error: MFID=%02x, KGD=%02x\n", id_data[0], id_data[1]);
-        spi.error = 1;
-        return spi;
-    }
+    // Initialise & check
+    psram_select_device(&spi, PSRAM_PIN_CS0);
+    spi.error = initialise_device(&spi);
+    if (spi.error) return spi;
+    psram_select_device(&spi, PSRAM_PIN_CS1);
+    spi.error = initialise_device(&spi);
+    if (spi.error) return spi;    
 
     // Switch to QSPI mode
-    uint8_t qspi_en_cmd[] = {8, 0, 0x35};
-    pio_spi_single_rw(&spi, qspi_en_cmd, sizeof(qspi_en_cmd), 0, 0);
-    busy_wait_us(1);
+    psram_select_device(&spi, PSRAM_PIN_CS0);
+    enable_qspi(&spi);
+    psram_select_device(&spi, PSRAM_PIN_CS1);
+    enable_qspi(&spi);
 
     // Use QSPI program
     pio_sm_unclaim(spi.pio, spi.sm);
-    pio_remove_program(spi.pio, &spi_psram_fudge_program, spi.offset);    
+    pio_remove_program(spi.pio, &spi_psram_program, spi.offset);    
     spi.offset = pio_add_program(spi.pio, &qspi_psram_program);
-    pio_qspi_psram_cs_init(spi.pio, spi.sm, spi.offset, clkdiv, PSRAM_PIN_CS, PSRAM_PIN_SD0_SI);
+    pio_qspi_psram_cs_init(spi.pio, spi.sm, spi.offset, clkdiv, PSRAM_PIN_CS0, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI);
+    psram_select_device(&spi, PSRAM_PIN_CS0);
     
     // Write DMA channel setup
     spi.write_dma_chan = dma_claim_unused_channel(true);
