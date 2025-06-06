@@ -68,56 +68,41 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
     /* gpio_set_slew_rate(PSRAM_PIN_SCK, GPIO_SLEW_RATE_FAST); */
     /* gpio_set_slew_rate(PSRAM_PIN_MOSI, GPIO_SLEW_RATE_FAST); */
 
-    pio_spi_psram_cs_init(spi.pio, spi.sm, spi.offset, 8 /*n_bits*/, clkdiv, true, PSRAM_PIN_CS, PSRAM_PIN_SD0_SI, PSRAM_PIN_SD1_SO);
+    pio_spi_psram_cs_init(spi.pio, spi.sm, spi.offset, 8, clkdiv, PSRAM_PIN_CS, PSRAM_PIN_SD0_SI, PSRAM_PIN_SD1_SO);
     
 
     // Configure device (not using DMA as not configured yet)
-    uint8_t psram_reset_en_cmd[] = {
-        8,      // 8 bits to write
-        0,      // 0 bits to read
-        0x66u   // Reset enable command
-    };
-    pio_spi_single_rw(&spi, psram_reset_en_cmd, 3, 0, 0);
+    uint8_t reset_en_cmd[] = {8, 0, 0x66};
+    pio_spi_single_rw(&spi, reset_en_cmd, sizeof(reset_en_cmd), 0, 0);
     busy_wait_us(50);
-    uint8_t psram_reset_cmd[] = {
-        8,      // 8 bits to write
-        0,      // 0 bits to read
-        0x99u   // Reset command
-    };
-    pio_spi_single_rw(&spi, psram_reset_cmd, 3, 0, 0);
+
+    uint8_t reset_cmd[] = {8, 0, 0x99};
+    pio_spi_single_rw(&spi, reset_cmd, sizeof(reset_cmd), 0, 0);
     busy_wait_us(100);
-    uint8_t psram_id_cmd[] = {
-        32,
-        16,
-        0x9F,   // Read ID
-        0, 0, 0,// Don't care
-    };
+
+    // Check ID registers
+    uint8_t id_cmd[] = {32, 16, 0x9F, 0, 0, 0};
     uint8_t id_data[2];
-    pio_spi_single_rw(&spi, psram_id_cmd, 6, id_data, 2);
+    pio_spi_single_rw(&spi, id_cmd, sizeof(id_cmd), id_data, sizeof(id_data));
 
-    printf("MFID = %02x\nKGD  = %02x\n", id_data[0], id_data[1]);
+    const uint8_t expected_mfid = 0x0D;
+    const uint8_t expected_kgd = 0x5D;
+    if ((id_data[0] != expected_mfid) || (id_data[1] != expected_kgd)) {
+        printf("PSRAM read ID error: MFID=%02x, KGD=%02x\n", id_data[0], id_data[1]);
+        spi.error = 1;
+        return spi;
+    }
 
-    printf("Switching to QSPI mode\n");
-
-    uint8_t psram_quad_cmd[] = {
-        8,      // 8 bits to write
-        0,      // 0 bits to read
-        0x35u   // Quad mode enable
-    };
-
-    pio_spi_single_rw(&spi, psram_quad_cmd, 3, 0, 0);
+    // Switch to QSPI mode
+    uint8_t qspi_en_cmd[] = {8, 0, 0x35};
+    pio_spi_single_rw(&spi, qspi_en_cmd, sizeof(qspi_en_cmd), 0, 0);
     busy_wait_us(1);
 
     // Use QSPI program
-    uint32_t st = time_us_32();    
     pio_sm_unclaim(spi.pio, spi.sm);
     pio_remove_program(spi.pio, &spi_psram_fudge_program, spi.offset);    
     spi.offset = pio_add_program(spi.pio, &qspi_psram_program);
-    pio_qspi_psram_cs_init(spi.pio, spi.sm, spi.offset, 8, clkdiv, PSRAM_PIN_CS, PSRAM_PIN_SD0_SI);
-    uint32_t tt = time_us_32() - st;
-
-    printf("time to switch = %d us\n", tt);
-
+    pio_qspi_psram_cs_init(spi.pio, spi.sm, spi.offset, clkdiv, PSRAM_PIN_CS, PSRAM_PIN_SD0_SI);
     
     // Write DMA channel setup
     spi.write_dma_chan = dma_claim_unused_channel(true);
@@ -157,6 +142,7 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
 #endif // defined(PSRAM_ASYNC_COMPLETE)
 #endif // defined(PSRAM_ASYNC)
 
+    spi.error = 0;
     return spi;
 };
 

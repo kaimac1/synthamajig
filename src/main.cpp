@@ -35,7 +35,10 @@ int main() {
     sleep_ms(2000);
 
     puts("Initing PSRAM...");
-    psram_spi_inst_t psram_spi = psram_spi_init(pio0, 0);
+    psram_spi_inst_t psram = psram_spi_init(pio0, 0);
+    if (psram.error) {
+        while (1);
+    }
 
     uint32_t psram_begin, psram_elapsed;
     float psram_speed;
@@ -45,7 +48,7 @@ int main() {
     // **************** 32 bits testing ****************
     psram_begin = time_us_32();
     for (uint32_t addr = 0; addr < (8 * 1024 * 1024); addr += 4) {
-        psram_write32(&psram_spi, addr, addr + 10);
+        psram_write32(&psram, addr, addr + 10);
     }
     psram_elapsed = time_us_32() - psram_begin;
     psram_speed = 1000000.0 * 8 / psram_elapsed;
@@ -53,7 +56,7 @@ int main() {
 
     psram_begin = time_us_32();
     for (uint32_t addr = 0; addr < (8 * 1024 * 1024); addr += 4) {
-        uint32_t result = psram_read32(&psram_spi, addr);
+        uint32_t result = psram_read32(&psram, addr);
         if (result != addr+10) {
             printf("PSRAM failure at address %x (%08x != %08x) ", addr, result, addr+10);
             while (1);
@@ -69,7 +72,7 @@ int main() {
     const int nbytes = 4*bufsiz;
     for (uint32_t addr = 0; addr < 8*1024*1024; addr += nbytes) {
         uint32_t buffer[bufsiz];
-        psram_readwords(&psram_spi, addr, buffer, bufsiz);
+        psram_readwords(&psram, addr, buffer, bufsiz);
         if (buffer[2] != addr+18) {
             printf("PSRAM failure at address %x (%08x %08x %08x %08x) ", addr, buffer[0], buffer[1], buffer[2], buffer[3]);
             while (1);

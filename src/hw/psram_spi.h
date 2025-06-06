@@ -80,6 +80,7 @@ typedef struct psram_spi_inst {
     PIO pio;
     int sm;
     uint offset;
+    int error;
 #if defined(PSRAM_MUTEX)
     mutex_t mtx;
 #elif defined(PSRAM_SPINLOCK)
@@ -341,10 +342,7 @@ void psram_spi_uninit(psram_spi_inst_t spi);
 /******************************************************************************/
 // Write
 
-static uint32_t write32_command[] = {
-    16, 0, // nibbles to write/read
-    0, 0
-};
+// Write single 32-bit value
 __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, uint32_t val) {
     uint32_t cmd = 0x02000000 | addr;
 
@@ -353,10 +351,6 @@ __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, u
     pio_sm_put(spi->pio, spi->sm, 0);
     pio_sm_put(spi->pio, spi->sm, cmd);
     pio_sm_put(spi->pio, spi->sm, val);
-
-    // write32_command[2] = 0x02000000 | addr;
-    // write32_command[3] = val;
-    // SPI_READ_WRITE(spi, write32_command, 4, 0, 0);
 };
 
 
