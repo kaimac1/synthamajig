@@ -77,14 +77,14 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
         0,      // 0 bits to read
         0x66u   // Reset enable command
     };
-    pio_spi_write_read_blocking(&spi, psram_reset_en_cmd, 3, 0, 0);
+    pio_spi_single_rw(&spi, psram_reset_en_cmd, 3, 0, 0);
     busy_wait_us(50);
     uint8_t psram_reset_cmd[] = {
         8,      // 8 bits to write
         0,      // 0 bits to read
         0x99u   // Reset command
     };
-    pio_spi_write_read_blocking(&spi, psram_reset_cmd, 3, 0, 0);
+    pio_spi_single_rw(&spi, psram_reset_cmd, 3, 0, 0);
     busy_wait_us(100);
     uint8_t psram_id_cmd[] = {
         32,
@@ -93,7 +93,7 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
         0, 0, 0,// Don't care
     };
     uint8_t id_data[2];
-    pio_spi_write_read_blocking(&spi, psram_id_cmd, 6, id_data, 2);
+    pio_spi_single_rw(&spi, psram_id_cmd, 6, id_data, 2);
 
     printf("MFID = %02x\nKGD  = %02x\n", id_data[0], id_data[1]);
 
@@ -105,7 +105,7 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
         0x35u   // Quad mode enable
     };
 
-    pio_spi_write_read_blocking(&spi, psram_quad_cmd, 3, 0, 0);
+    pio_spi_single_rw(&spi, psram_quad_cmd, 3, 0, 0);
     busy_wait_us(1);
 
     // Use QSPI program

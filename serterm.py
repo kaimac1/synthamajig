@@ -97,8 +97,9 @@ def input_thread():
 try:
     port = sys.argv[1]
 except:
-    print('Usage: {} port'.format(sys.argv[0]))
-    sys.exit()
+    port = 'acm0'
+    #print('Usage: {} port'.format(sys.argv[0]))
+    #sys.exit()
 
 port = get_port(port)
 s = serial.Serial(port, BAUDRATE, timeout=0.5)

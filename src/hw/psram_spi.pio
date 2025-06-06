@@ -100,6 +100,18 @@ writeloop:
     out pins, 4         side 0b00  ; Write value on pins, lower clock. CS asserted
     jmp x--, writeloop  side 0b10  ; Raise clock: this is when PSRAM reads the value. Loop if we have more to write
     jmp !y, begin       side 0b00  ; If this is a write-only operation, jump back to beginning
+    nop                 side 0b10  ; wait cycles (6)
+    nop                 side 0b00
+    nop                 side 0b10
+    nop                 side 0b00
+    nop                 side 0b10
+    nop                 side 0b00
+    nop                 side 0b10
+    nop                 side 0b00
+    nop                 side 0b10
+    nop                 side 0b00
+    nop                 side 0b10
+    nop                 side 0b00  
     set pindirs 0       side 0b10  ; clk 14 rising edge, 
     jmp readloop_mid    side 0b00
 readloop:
