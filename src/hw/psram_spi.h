@@ -364,8 +364,7 @@ __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, u
     psram_select_device(spi, addr >= PSRAM_DEVICE_SIZE ? PSRAM_PIN_CS1 : PSRAM_PIN_CS0);
 
     while(!pio_sm_is_tx_fifo_empty(spi->pio, spi->sm));
-    pio_sm_put(spi->pio, spi->sm, 15);
-    pio_sm_put(spi->pio, spi->sm, 0);
+    pio_sm_put(spi->pio, spi->sm, 0x000F0000);
     pio_sm_put(spi->pio, spi->sm, cmd);
     pio_sm_put(spi->pio, spi->sm, val);
 };
@@ -381,8 +380,7 @@ __force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr
 
     psram_select_device(spi, addr >= PSRAM_DEVICE_SIZE ? PSRAM_PIN_CS1 : PSRAM_PIN_CS0);
 
-    pio_sm_put(spi->pio, spi->sm, 7);
-    pio_sm_put(spi->pio, spi->sm, 8);
+    pio_sm_put(spi->pio, spi->sm, 0x00070008);
     pio_sm_put(spi->pio, spi->sm, cmd);
     uint32_t val = pio_sm_get_blocking(spi->pio, spi->sm);
 
@@ -390,13 +388,14 @@ __force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr
 };
 
 // Read a number of 32-bit words into a buffer
+// The address range must not cross the 8MB boundary as this only reads from one device!
 __force_inline static void psram_readwords(psram_spi_inst_t* spi, uint32_t addr, uint32_t *buffer, uint32_t num_words) {
     uint32_t cmd = 0xeb000000 | addr;
 
     psram_select_device(spi, addr >= PSRAM_DEVICE_SIZE ? PSRAM_PIN_CS1 : PSRAM_PIN_CS0);
 
-    pio_sm_put(spi->pio, spi->sm, 7);
-    pio_sm_put(spi->pio, spi->sm, 8 * num_words);
+    uint16_t num_nibs = 8*num_words;
+    pio_sm_put(spi->pio, spi->sm, 0x00070000 | num_nibs);
     pio_sm_put(spi->pio, spi->sm, cmd);
     while (num_words) {
         *buffer++ = pio_sm_get_blocking(spi->pio, spi->sm);

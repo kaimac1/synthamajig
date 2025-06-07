@@ -45,8 +45,8 @@ readloop_mid:
 .side_set 1 ; SCK
 begin:
     set pins, 1         side 0    ; CS high
-    out x, 32           side 0    ; x = number of nibbles to output MINUS ONE
-    out y, 32           side 0    ; y = number of nibbles to input
+    out x, 16           side 0    ; x = number of nibbles to output MINUS ONE
+    out y, 16           side 0    ; y = number of nibbles to input
     set pins, 0         side 0    ; CS low
 writeloop:
     out pins, 4         side 0    ; Write value on pins, lower clock
@@ -57,7 +57,7 @@ waitloop:
     nop                 side 0 
     jmp x--, waitloop   side 1 
     set x, 0            side 0 
-    mov pindirs, x      side 1    ; clk 14 rising edge, 
+    mov pindirs, x      side 1    ; clk 14 rising edge
     jmp readloop_mid    side 0 
 readloop:
     in pins, 4          side 0 
@@ -79,12 +79,13 @@ static inline void pio_spi_psram_cs_init(PIO pio, uint sm, uint prog_offs, float
     sm_config_set_out_pins(c, pin_mosi, 1);
     sm_config_set_in_pins(c, pin_miso);
     sm_config_set_sideset_pins(c, pin_sck);
-    sm_config_set_set_pins(c, pin_cs, 1);      // chip select(s)
+    sm_config_set_set_pins(c, pin_cs, 1);
     sm_config_set_out_shift(c, false, true, 8);
     sm_config_set_in_shift(c, false, true, 8);
     sm_config_set_clkdiv(c, clkdiv);
 
-    pio_sm_set_consecutive_pindirs(pio, sm, pin_cs, 2, true);
+    const int num_cs = 2;
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_cs, num_cs, true);
     pio_sm_set_consecutive_pindirs(pio, sm, pin_sck, 1, true);
     pio_sm_set_consecutive_pindirs(pio, sm, pin_mosi, 1, true);
     pio_sm_set_consecutive_pindirs(pio, sm, pin_miso, 1, false);
@@ -103,14 +104,15 @@ static inline void pio_qspi_psram_cs_init(PIO pio, uint sm, uint prog_offs, floa
     pio_sm_config *c = &psram_sm_cfg;
     *c = qspi_psram_program_get_default_config(prog_offs);
     sm_config_set_out_pins(c, pin_sio0, 4);
-    sm_config_set_in_pins(c, pin_sio0);        // base
-    sm_config_set_set_pins(c, pin_cs, 1);      // chip select(s)
-    sm_config_set_sideset_pins(c, pin_sck);    // clock
+    sm_config_set_in_pins(c,pin_sio0);
+    sm_config_set_set_pins(c, pin_cs, 1);       // SET pins: chip select
+    sm_config_set_sideset_pins(c, pin_sck);     // side-set: clock
     sm_config_set_out_shift(c, false, true, 32);
     sm_config_set_in_shift(c, false, true, 32);
     sm_config_set_clkdiv(c, clkdiv);
 
-    pio_sm_set_consecutive_pindirs(pio, sm, pin_cs, 2, true);
+    const int num_cs = 2;
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_cs, num_cs, true);
     pio_sm_set_consecutive_pindirs(pio, sm, pin_sck, 1, true);
     pio_sm_set_consecutive_pindirs(pio, sm, pin_sio0, 4, true);
     pio_gpio_init(pio, pin_sio0);
