@@ -76,6 +76,20 @@ static void enable_qspi(psram_spi_inst_t *psram) {
     busy_wait_us(10);    
 }
 
+// Change which chip select pin the PIO program drives.
+// This is done by changing the SET pin base
+static void psram_select_device(psram_spi_inst_t *psram, int cs_pin) {
+    static int old_cs_pin = -1;
+
+    if (cs_pin != old_cs_pin) {
+        if (old_cs_pin >= 0) gpio_set_function(old_cs_pin, GPIO_FUNC_SIO);
+        sm_config_set_set_pin_base(&psram_sm_cfg, cs_pin);
+        pio_sm_set_config(psram->pio, psram->sm, &psram_sm_cfg);
+        pio_gpio_init(psram->pio, cs_pin);
+        old_cs_pin = cs_pin;
+    }
+}
+
 psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
     psram_spi_inst_t spi;
     spi.pio = pio;
@@ -121,7 +135,6 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
     pio_remove_program(spi.pio, &spi_psram_program, spi.offset);    
     spi.offset = pio_add_program(spi.pio, &qspi_psram_program);
     pio_qspi_psram_cs_init(spi.pio, spi.sm, spi.offset, clkdiv, PSRAM_PIN_CS0, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI);
-    psram_select_device(&spi, PSRAM_PIN_CS0);
     
     // Write DMA channel setup
     spi.write_dma_chan = dma_claim_unused_channel(true);
