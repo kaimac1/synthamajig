@@ -80,7 +80,8 @@ extern "C" {
  */
 typedef struct psram_spi_inst {
     PIO pio;
-    int sm;
+    int sm0;
+    int sm1;
     uint offset;
     int error;
 #if defined(PSRAM_MUTEX)
@@ -119,23 +120,23 @@ __force_inline static void __time_critical_func(pio_qspi_read_write)(
 #endif
 
     if (tx_remain >= 4) {
-        while (!pio_sm_is_tx_fifo_empty(spi->pio, spi->sm));
+        while (!pio_sm_is_tx_fifo_empty(spi->pio, spi->sm0));
         for (int i=0; i<4; i++) {
-            pio_sm_put(spi->pio, spi->sm, *src++);
+            pio_sm_put(spi->pio, spi->sm0, *src++);
         }
         tx_remain -= 4;
     }
 
     while (tx_remain) {
-        if (!pio_sm_is_tx_fifo_full(spi->pio, spi->sm)) {
-            pio_sm_put(spi->pio, spi->sm, *src++);
+        if (!pio_sm_is_tx_fifo_full(spi->pio, spi->sm0)) {
+            pio_sm_put(spi->pio, spi->sm0, *src++);
             --tx_remain;
         }
     }
 
     // Read 32-bit values
     while (rx_remain) {
-        *dst++ = pio_sm_get_blocking(spi->pio, spi->sm);
+        *dst++ = pio_sm_get_blocking(spi->pio, spi->sm0);
         rx_remain--;
     }
 
@@ -164,9 +165,9 @@ __force_inline static void __time_critical_func(pio_spi_single_rw)(
     spi->spin_irq_state = spin_lock_blocking(spi->spinlock);
 #endif
 
-    io_rw_8 *txfifo = (io_rw_8 *) &spi->pio->txf[spi->sm];
+    io_rw_8 *txfifo = (io_rw_8 *) &spi->pio->txf[spi->sm0];
     while (tx_remain) {
-        if (!pio_sm_is_tx_fifo_full(spi->pio, spi->sm)) {
+        if (!pio_sm_is_tx_fifo_full(spi->pio, spi->sm0)) {
             *txfifo = *src++;
             --tx_remain;
         }
@@ -174,9 +175,9 @@ __force_inline static void __time_critical_func(pio_spi_single_rw)(
 
     
 
-    io_rw_8 *rxfifo = (io_rw_8 *) &spi->pio->rxf[spi->sm];
+    io_rw_8 *rxfifo = (io_rw_8 *) &spi->pio->rxf[spi->sm0];
     while (rx_remain) {
-        if (!pio_sm_is_rx_fifo_empty(spi->pio, spi->sm)) {
+        if (!pio_sm_is_rx_fifo_empty(spi->pio, spi->sm0)) {
             *dst++ = *rxfifo;
             --rx_remain;
         }
@@ -346,12 +347,12 @@ void psram_spi_uninit(psram_spi_inst_t spi);
 __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, uint32_t val) {
     uint32_t setup = 0x000F0000;
     uint32_t cmd = 0x02000000 | addr;
-    if (addr >= PSRAM_DEVICE_SIZE) setup |= 0x80000000;
+    int sm = (addr >= PSRAM_DEVICE_SIZE) ? 1 : 0;
 
-    while(!pio_sm_is_tx_fifo_empty(spi->pio, spi->sm));
-    pio_sm_put(spi->pio, spi->sm, setup);
-    pio_sm_put(spi->pio, spi->sm, cmd);
-    pio_sm_put(spi->pio, spi->sm, val);
+    pio_sm_put(spi->pio, sm, setup);
+    pio_sm_put(spi->pio, sm, cmd);
+    pio_sm_put(spi->pio, sm, val);
+    while(!pio_sm_is_tx_fifo_empty(spi->pio, sm));
 };
 
 
@@ -363,11 +364,11 @@ __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, u
 __force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr) {
     uint32_t setup = 0x00070008;
     uint32_t cmd = 0xeb000000 | addr;
-    if (addr >= PSRAM_DEVICE_SIZE) setup |= 0x80000000;    
+    int sm = (addr >= PSRAM_DEVICE_SIZE) ? 1 : 0;
 
-    pio_sm_put(spi->pio, spi->sm, setup);
-    pio_sm_put(spi->pio, spi->sm, cmd);
-    uint32_t val = pio_sm_get_blocking(spi->pio, spi->sm);
+    pio_sm_put(spi->pio, sm, setup);
+    pio_sm_put(spi->pio, sm, cmd);
+    uint32_t val = pio_sm_get_blocking(spi->pio, sm);
 
     return val;
 };
@@ -375,15 +376,14 @@ __force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr
 // Read a number of 32-bit words into a buffer
 // The address range must not cross the 8MB boundary as this only reads from one device!
 __force_inline static void psram_readwords(psram_spi_inst_t* spi, uint32_t addr, uint32_t *buffer, uint32_t num_words) {
-    uint16_t num_nibs = 8*num_words;
-    uint32_t setup = 0x00070000 | num_nibs;
+    uint32_t setup = 0x00070000 | (8*num_words);
     uint32_t cmd = 0xeb000000 | addr;
-    if (addr >= PSRAM_DEVICE_SIZE) setup |= 0x80000000;
+    int sm = (addr >= PSRAM_DEVICE_SIZE) ? 1 : 0;
 
-    pio_sm_put(spi->pio, spi->sm, setup);
-    pio_sm_put(spi->pio, spi->sm, cmd);
+    pio_sm_put(spi->pio, sm, setup);
+    pio_sm_put(spi->pio, sm, cmd);
     while (num_words) {
-        *buffer++ = pio_sm_get_blocking(spi->pio, spi->sm);
+        *buffer++ = pio_sm_get_blocking(spi->pio, sm);
         num_words--;
     }
 };

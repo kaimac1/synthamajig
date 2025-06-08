@@ -84,7 +84,7 @@ static void psram_select_device(psram_spi_inst_t *psram, int cs_pin) {
     if (cs_pin != old_cs_pin) {
         if (old_cs_pin >= 0) gpio_set_function(old_cs_pin, GPIO_FUNC_SIO);
         sm_config_set_set_pin_base(&psram_sm_cfg, cs_pin);
-        pio_sm_set_config(psram->pio, psram->sm, &psram_sm_cfg);
+        pio_sm_set_config(psram->pio, psram->sm0, &psram_sm_cfg);
         pio_gpio_init(psram->pio, cs_pin);
         old_cs_pin = cs_pin;
     }
@@ -94,7 +94,8 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
     psram_spi_inst_t spi;
     spi.pio = pio;
     spi.offset = pio_add_program(spi.pio, &spi_psram_program);
-    spi.sm = sm;
+    spi.sm0 = sm;
+    spi.sm1 = sm+1;
 
 #if defined(PSRAM_MUTEX)
     mutex_init(&spi.mtx);
@@ -114,7 +115,7 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
     /* gpio_set_slew_rate(PSRAM_PIN_SCK, GPIO_SLEW_RATE_FAST); */
     /* gpio_set_slew_rate(PSRAM_PIN_MOSI, GPIO_SLEW_RATE_FAST); */
 
-    pio_spi_psram_cs_init(spi.pio, spi.sm, spi.offset, clkdiv, PSRAM_PIN_CS0, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI, PSRAM_PIN_SD1_SO);
+    pio_spi_psram_cs_init(spi.pio, spi.sm0, spi.offset, clkdiv, PSRAM_PIN_CS0, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI, PSRAM_PIN_SD1_SO);
     
     // Initialise & check
     psram_select_device(&spi, PSRAM_PIN_CS0);
@@ -131,48 +132,49 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
     enable_qspi(&spi);
 
     // Use QSPI program
-    pio_sm_unclaim(spi.pio, spi.sm);
+    pio_sm_unclaim(spi.pio, spi.sm0);
     pio_remove_program(spi.pio, &spi_psram_program, spi.offset);    
     spi.offset = pio_add_program(spi.pio, &qspi_psram_program);
-    pio_qspi_psram_cs_init(spi.pio, spi.sm, spi.offset, clkdiv, PSRAM_PIN_CS0, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI);
+    pio_qspi_psram_cs_init(spi.pio, spi.sm0, spi.offset, clkdiv, PSRAM_PIN_CS0, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI);
+    pio_qspi_psram_cs_init(spi.pio, spi.sm1, spi.offset, clkdiv, PSRAM_PIN_CS1, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI);
     
-    // Write DMA channel setup
-    spi.write_dma_chan = dma_claim_unused_channel(true);
-    spi.write_dma_chan_config = dma_channel_get_default_config(spi.write_dma_chan);
-    channel_config_set_transfer_data_size(&spi.write_dma_chan_config, DMA_SIZE_32);
-    channel_config_set_read_increment(&spi.write_dma_chan_config, true);
-    channel_config_set_write_increment(&spi.write_dma_chan_config, false);
-    channel_config_set_dreq(&spi.write_dma_chan_config, pio_get_dreq(spi.pio, spi.sm, true));
-    dma_channel_set_write_addr(spi.write_dma_chan, &spi.pio->txf[spi.sm], false);
-    dma_channel_set_config(spi.write_dma_chan, &spi.write_dma_chan_config, false);
+//     // Write DMA channel setup
+//     spi.write_dma_chan = dma_claim_unused_channel(true);
+//     spi.write_dma_chan_config = dma_channel_get_default_config(spi.write_dma_chan);
+//     channel_config_set_transfer_data_size(&spi.write_dma_chan_config, DMA_SIZE_32);
+//     channel_config_set_read_increment(&spi.write_dma_chan_config, true);
+//     channel_config_set_write_increment(&spi.write_dma_chan_config, false);
+//     channel_config_set_dreq(&spi.write_dma_chan_config, pio_get_dreq(spi.pio, spi.sm, true));
+//     dma_channel_set_write_addr(spi.write_dma_chan, &spi.pio->txf[spi.sm], false);
+//     dma_channel_set_config(spi.write_dma_chan, &spi.write_dma_chan_config, false);
 
-    // Read DMA channel setup
-    spi.read_dma_chan = dma_claim_unused_channel(true);
-    spi.read_dma_chan_config = dma_channel_get_default_config(spi.read_dma_chan);
-    channel_config_set_transfer_data_size(&spi.read_dma_chan_config, DMA_SIZE_32);
-    channel_config_set_read_increment(&spi.read_dma_chan_config, false);
-    channel_config_set_write_increment(&spi.read_dma_chan_config, true);
-    channel_config_set_dreq(&spi.read_dma_chan_config, pio_get_dreq(spi.pio, spi.sm, false));
-    dma_channel_set_read_addr(spi.read_dma_chan, &spi.pio->rxf[spi.sm], false);
-    dma_channel_set_config(spi.read_dma_chan, &spi.read_dma_chan_config, false);
+//     // Read DMA channel setup
+//     spi.read_dma_chan = dma_claim_unused_channel(true);
+//     spi.read_dma_chan_config = dma_channel_get_default_config(spi.read_dma_chan);
+//     channel_config_set_transfer_data_size(&spi.read_dma_chan_config, DMA_SIZE_32);
+//     channel_config_set_read_increment(&spi.read_dma_chan_config, false);
+//     channel_config_set_write_increment(&spi.read_dma_chan_config, true);
+//     channel_config_set_dreq(&spi.read_dma_chan_config, pio_get_dreq(spi.pio, spi.sm, false));
+//     dma_channel_set_read_addr(spi.read_dma_chan, &spi.pio->rxf[spi.sm], false);
+//     dma_channel_set_config(spi.read_dma_chan, &spi.read_dma_chan_config, false);
 
-#if defined(PSRAM_ASYNC)
-    // Asynchronous DMA channel setup
-    spi.async_dma_chan = dma_claim_unused_channel(true);
-    spi.async_dma_chan_config = dma_channel_get_default_config(spi.async_dma_chan);
-    channel_config_set_transfer_data_size(&spi.async_dma_chan_config, DMA_SIZE_8);
-    channel_config_set_read_increment(&spi.async_dma_chan_config, true);
-    channel_config_set_write_increment(&spi.async_dma_chan_config, false);
-    channel_config_set_dreq(&spi.async_dma_chan_config, pio_get_dreq(spi.pio, spi.sm, true));
-    dma_channel_set_write_addr(spi.async_dma_chan, &spi.pio->txf[spi.sm], false);
-    dma_channel_set_config(spi.async_dma_chan, &spi.async_dma_chan_config, false);
+// #if defined(PSRAM_ASYNC)
+//     // Asynchronous DMA channel setup
+//     spi.async_dma_chan = dma_claim_unused_channel(true);
+//     spi.async_dma_chan_config = dma_channel_get_default_config(spi.async_dma_chan);
+//     channel_config_set_transfer_data_size(&spi.async_dma_chan_config, DMA_SIZE_8);
+//     channel_config_set_read_increment(&spi.async_dma_chan_config, true);
+//     channel_config_set_write_increment(&spi.async_dma_chan_config, false);
+//     channel_config_set_dreq(&spi.async_dma_chan_config, pio_get_dreq(spi.pio, spi.sm, true));
+//     dma_channel_set_write_addr(spi.async_dma_chan, &spi.pio->txf[spi.sm], false);
+//     dma_channel_set_config(spi.async_dma_chan, &spi.async_dma_chan_config, false);
 
-#if defined(PSRAM_ASYNC_COMPLETE)
-    irq_set_exclusive_handler(DMA_IRQ_0 + PSRAM_ASYNC_DMA_IRQ, psram_dma_complete_handler);
-    dma_irqn_set_channel_enabled(PSRAM_ASYNC_DMA_IRQ, spi.async_dma_chan, true);
-    irq_set_enabled(DMA_IRQ_0 + PSRAM_ASYNC_DMA_IRQ, true);
-#endif // defined(PSRAM_ASYNC_COMPLETE)
-#endif // defined(PSRAM_ASYNC)
+// #if defined(PSRAM_ASYNC_COMPLETE)
+//     irq_set_exclusive_handler(DMA_IRQ_0 + PSRAM_ASYNC_DMA_IRQ, psram_dma_complete_handler);
+//     dma_irqn_set_channel_enabled(PSRAM_ASYNC_DMA_IRQ, spi.async_dma_chan, true);
+//     irq_set_enabled(DMA_IRQ_0 + PSRAM_ASYNC_DMA_IRQ, true);
+// #endif // defined(PSRAM_ASYNC_COMPLETE)
+// #endif // defined(PSRAM_ASYNC)
 
     spi.error = 0;
     return spi;
@@ -204,7 +206,8 @@ void psram_spi_uninit(psram_spi_inst_t spi) {
     spin_lock_unclaim(spin_id);
 #endif
 
-    pio_sm_unclaim(spi.pio, spi.sm);
+    pio_sm_unclaim(spi.pio, spi.sm0);
+    pio_sm_unclaim(spi.pio, spi.sm1);
     pio_remove_program(spi.pio, &qspi_psram_program, spi.offset);
 }
 
