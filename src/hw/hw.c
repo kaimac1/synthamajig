@@ -42,9 +42,9 @@ void hw_init(void) {
     gpio_init(PICO_LED_PIN);
     gpio_set_dir(PICO_LED_PIN, GPIO_OUT);
 
-    // // Enable PSRAM
-    // gpio_set_function(PIN_PSRAM_CS, GPIO_FUNC_XIP_CS1);
-    // xip_ctrl_hw->ctrl|=XIP_CTRL_WRITABLE_M1_BITS;    
+    // Enable PSRAM
+    gpio_set_function(PIN_PSRAM_CS, GPIO_FUNC_XIP_CS1);
+    xip_ctrl_hw->ctrl|=XIP_CTRL_WRITABLE_M1_BITS;
 
     // // Encoders
     // pio_add_program(ENCODER_PIO, &quadrature_encoder_program);

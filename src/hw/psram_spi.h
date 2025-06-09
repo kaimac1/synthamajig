@@ -303,41 +303,10 @@ __force_inline static void __time_critical_func(pio_spi_write_async)(
 }
 #endif
 
-
-/**
- * @brief Initialize the PSRAM over SPI. This function must be called before
- * accessing PSRAM.
- *
- * @param pio The PIO instance to use (PIO0 or PIO1).
- * @param sm The state machine number in the PIO module to use. If -1 is given,
- * will use the first available state machine.
- * @param clkdiv Clock divisor for the state machine. At RP2040 speeds greater
- * than 280MHz, a clkdiv >1.0 is needed. For example, at 400MHz, a clkdiv of
- * 1.6 is recommended.
- *
- * @return The PSRAM configuration instance. This instance should be passed to
- * all PSRAM access functions.
- */
-psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv);
-
-/**
- * @brief Initialize the PSRAM over SPI. This function must be called before
- * accessing PSRAM.
- *
- * Defaults to a clkdiv of 1.0. This function is provided for backwards
- * compatibility. Use psram_spi_init_clkdiv instead if you want a clkdiv other
- * than 1.0.
- *
- * @param pio The PIO instance to use (PIO0 or PIO1).
- * @param sm The state machine number in the PIO module to use. If -1 is given,
- * will use the first available state machine.
- *
- * @return The PSRAM configuration instance. This instance should be passed to
- * all PSRAM access functions.
- */
-psram_spi_inst_t psram_spi_init(PIO pio, int sm);
-
+psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, float clkdiv);
+psram_spi_inst_t psram_spi_init(PIO pio);
 void psram_spi_uninit(psram_spi_inst_t spi);
+void psram_test(psram_spi_inst_t *psram);
 
 
 /******************************************************************************/
@@ -347,7 +316,7 @@ void psram_spi_uninit(psram_spi_inst_t spi);
 __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, uint32_t val) {
     uint32_t setup = 0x000F0000;
     uint32_t cmd = 0x02000000 | addr;
-    int sm = (addr >= PSRAM_DEVICE_SIZE) ? 1 : 0;
+    int sm = (addr >= PSRAM_DEVICE_SIZE) ? spi->sm1 : spi->sm0;
 
     pio_sm_put(spi->pio, sm, setup);
     pio_sm_put(spi->pio, sm, cmd);
@@ -364,7 +333,7 @@ __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, u
 __force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr) {
     uint32_t setup = 0x00070008;
     uint32_t cmd = 0xeb000000 | addr;
-    int sm = (addr >= PSRAM_DEVICE_SIZE) ? 1 : 0;
+    int sm = (addr >= PSRAM_DEVICE_SIZE) ? spi->sm1 : spi->sm0;
 
     pio_sm_put(spi->pio, sm, setup);
     pio_sm_put(spi->pio, sm, cmd);
@@ -378,7 +347,7 @@ __force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr
 __force_inline static void psram_readwords(psram_spi_inst_t* spi, uint32_t addr, uint32_t *buffer, uint32_t num_words) {
     uint32_t setup = 0x00070000 | (8*num_words);
     uint32_t cmd = 0xeb000000 | addr;
-    int sm = (addr >= PSRAM_DEVICE_SIZE) ? 1 : 0;
+    int sm = (addr >= PSRAM_DEVICE_SIZE) ? spi->sm1 : spi->sm0;
 
     pio_sm_put(spi->pio, sm, setup);
     pio_sm_put(spi->pio, sm, cmd);

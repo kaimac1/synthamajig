@@ -90,12 +90,12 @@ static void psram_select_device(psram_spi_inst_t *psram, int cs_pin) {
     }
 }
 
-psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
+psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, float clkdiv) {
     psram_spi_inst_t spi;
     spi.pio = pio;
     spi.offset = pio_add_program(spi.pio, &spi_psram_program);
-    spi.sm0 = sm;
-    spi.sm1 = sm+1;
+    spi.sm0 = 0;
+    spi.sm1 = 1;
 
 #if defined(PSRAM_MUTEX)
     mutex_init(&spi.mtx);
@@ -180,8 +180,8 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, int sm, float clkdiv) {
     return spi;
 };
 
-psram_spi_inst_t psram_spi_init(PIO pio, int sm) {
-    return psram_spi_init_clkdiv(pio, sm, 1.0);
+psram_spi_inst_t psram_spi_init(PIO pio) {
+    return psram_spi_init_clkdiv(pio, 1.0);
 }
 
 void psram_spi_uninit(psram_spi_inst_t spi) {
@@ -211,3 +211,47 @@ void psram_spi_uninit(psram_spi_inst_t spi) {
     pio_remove_program(spi.pio, &qspi_psram_program, spi.offset);
 }
 
+void psram_test(psram_spi_inst_t *psram) {
+    uint32_t psram_begin, psram_elapsed;
+    float psram_speed;
+
+    puts("Testing PSRAM...");
+
+    // **************** 32 bits testing ****************
+    psram_begin = time_us_32();
+    for (uint32_t addr = 0; addr < (16 * 1024 * 1024); addr += 4) {
+        psram_write32(psram, addr, addr + 10);
+    }
+    psram_elapsed = time_us_32() - psram_begin;
+    psram_speed = 1000000.0 * 16 / psram_elapsed;
+    printf("32 bit: PSRAM write 16MB in %d us, %.2f MB/s\n", psram_elapsed, psram_speed);
+
+    psram_begin = time_us_32();
+    for (uint32_t addr = 0; addr < (16 * 1024 * 1024); addr += 4) {
+        uint32_t result = psram_read32(psram, addr);
+        if (result != addr+10) {
+            printf("PSRAM failure at address %x (%08x != %08x) ", addr, result, addr+10);
+            while (1);
+        }
+    }
+    psram_elapsed = (time_us_32() - psram_begin);
+    psram_speed = 1000000.0 * 16 / psram_elapsed;
+    printf("32 bit: PSRAM read 16MB in %d us, %.2f MB/s\n", psram_elapsed, psram_speed);    
+
+
+    psram_begin = time_us_32();
+    const int bufsiz = 4;
+    const int nbytes = 4*bufsiz;
+    for (uint32_t addr = 0; addr < 16*1024*1024; addr += nbytes) {
+        uint32_t buffer[bufsiz];
+        psram_readwords(psram, addr, buffer, bufsiz);
+        if (buffer[2] != addr+18) {
+            printf("PSRAM failure at address %x (%08x %08x %08x %08x) ", addr, buffer[0], buffer[1], buffer[2], buffer[3]);
+            while (1);
+        }
+    }
+    psram_elapsed = (time_us_32() - psram_begin);
+    psram_speed = 1000000.0 * 16 / psram_elapsed;
+    printf("%d byte buffer: PSRAM read 16MB in %d us, %.2f MB/s\n", nbytes, psram_elapsed, psram_speed);    
+
+}
