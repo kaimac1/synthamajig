@@ -51,3 +51,12 @@
 #define PSRAM_PIN_SD1_SO 4
 #define PSRAM_PIN_SD2   5
 #define PSRAM_PIN_SD3   6
+
+// NAND flash
+#define PIN_NAND_CS     17
+#define PIN_NAND_SCK    18
+#define PIN_NAND_MOSI   19
+#define PIN_NAND_MISO   20
+#define PIN_NAND_WP     21
+#define PIN_NAND_HOLD   22
+#define NAND_SPI        spi0

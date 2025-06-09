@@ -15,6 +15,8 @@
 //#define DEBUG_PRINTF(fmt, ...) (void)0
 #define DEBUG_PRINTF printf
 
+#define INIT_PRINTF printf
+
 
 static inline void toggle_dbg_gpio() {
     const int pin = 18;

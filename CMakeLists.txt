@@ -41,6 +41,9 @@ add_executable(synth
 
     vendor/libwave/libwave.c
     vendor/tlsf/tlsf.c
+    vendor/nandflash/nandflash.c
+    vendor/nandflash/nand_spi.c
+    vendor/nandflash/sys_time.c
 )
 
 target_compile_options(synth PUBLIC -fno-exceptions)
