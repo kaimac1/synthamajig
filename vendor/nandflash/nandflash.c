@@ -567,12 +567,17 @@ static int page_read(row_address_t row, uint32_t timeout) {
     feature_reg_status_t status;
     timeout -= sys_time_get_elapsed(start);
     ret = poll_for_oip_clear(&status, timeout);
-    if (SPI_RET_OK != ret) {
+    if (SPI_NAND_RET_OK != ret) {
         return ret;
     }
 
     // check ecc
-    return get_ret_from_ecc_status(status);
+    ret = get_ret_from_ecc_status(status);
+    if (ret == ECC_STATUS_1_BIT_CORRECTED) {
+        // Refresh here?
+        ret = SPI_NAND_RET_OK;
+    }
+    return ret;
 }
 
 /// @note Input validation is expected to be performed by caller.
