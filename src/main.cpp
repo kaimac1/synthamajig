@@ -58,6 +58,25 @@ int main() {
     int r = spi_nand_init(NULL);
     INIT_PRINTF("  init returned %d\n", r);
 
+    uint8_t buffer[256];
+    row_address_t row;
+    row.whole = 0;
+    r = spi_nand_page_read(row, 0, buffer, sizeof(buffer));
+    INIT_PRINTF("read=%d\n",r);
+    INIT_PRINTF("buffer= %02x %02x %02x %02x\n", buffer[0], buffer[1], buffer[2], buffer[3]);
+
+    r = spi_nand_block_erase(row);
+    INIT_PRINTF("erase=%d\n",r);
+
+    // uint8_t wbuffer[4] = {1, 2, 3, 4};
+    // r = spi_nand_page_program(row, 0, wbuffer, sizeof(wbuffer));
+    // INIT_PRINTF("write=%d\n",r);
+
+
+    r = spi_nand_page_read(row, 0, buffer, sizeof(buffer));
+    INIT_PRINTF("read=%d\n",r);
+    INIT_PRINTF("buffer= %02x %02x %02x %02x\n", buffer[0], buffer[1], buffer[2], buffer[3]);
+
     // puts("Initialising NAND disk...");
     // gpio_init(PIN_NAND_WP);
     // gpio_set_dir(PIN_NAND_WP, GPIO_OUT);

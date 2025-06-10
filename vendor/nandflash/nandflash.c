@@ -45,12 +45,6 @@ typedef struct _nand_identity {
 ///        and more thoroughly validating the chip's identity.
 typedef struct _supported_nand_device {
     nand_identity_t Identity;
-    /// @brief Log2 of the number of planes in the device
-    uint8_t Log2_plane_count;
-    /// @brief Count of planes in the device ( === 2^Log2_plane_count )
-    uint8_t Plane_count;
-    /// @brief Mask to get plane from block ( === (2^Log2_plane_count) - 1 )
-    uint8_t Plane_mask;
     /// @brief size, in bytes, of extra data per sector / block (typically used for ECC)
     uint8_t Oob_size;
 } supported_nand_device_t;
@@ -58,9 +52,6 @@ static const supported_nand_device_t* g_Actual_Nand_Device = NULL; // stays NULL
 static const supported_nand_device_t bp5_supported_nand[] = {
     {
         .Identity = { .Manufacturer = 0xEF, .DeviceID_0 = 0xAA, .DeviceID_1 = 0x21 }, // Winbond W25N01GVxxxG/T/R
-        .Log2_plane_count = 0,
-        .Plane_count = 1,
-        .Plane_mask = 0,
         .Oob_size = 64,
     },
 };
@@ -72,23 +63,15 @@ static inline uint8_t SPI_NAND_OOB_SIZE() {
     assert(g_Actual_Nand_Device != NULL);
     return g_Actual_Nand_Device->Oob_size;
 }
-static inline uint32_t SPI_NAND_PLANE_COUNT() {
-    assert(g_Actual_Nand_Device != NULL);
-    return g_Actual_Nand_Device->Plane_count;
-}
 static inline uint32_t SPI_NAND_ERASE_BLOCKS_PER_LUN() {
     assert(g_Actual_Nand_Device != NULL);
-    return g_Actual_Nand_Device->Plane_count * SPI_NAND_ERASE_BLOCKS_PER_PLANE;
+    return SPI_NAND_ERASE_BLOCKS_PER_PLANE;
 }
 static inline uint32_t SPI_NAND_MAX_BLOCK_ADDRESS() {
     return SPI_NAND_ERASE_BLOCKS_PER_LUN() - 1;
 }
 #define SPI_NAND_MAX_PAGE_ADDRESS (SPI_NAND_PAGES_PER_ERASE_BLOCK - 1) // zero-indexed
 
-static inline uint8_t get_plane(row_address_t row) {
-    assert(g_Actual_Nand_Device != NULL);
-    return row.block & g_Actual_Nand_Device->Plane_mask;
-}
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 // clang-format off
@@ -315,24 +298,6 @@ int spi_nand_page_copy(row_address_t src, row_address_t dest) {
     }
     if (!validate_row_address(dest) || !validate_row_address(dest)) {
         return SPI_NAND_RET_BAD_ADDRESS;
-    }
-    if (get_plane(src) != get_plane(dest)) {
-        // If the source and destination are on different planes,
-        // the optimized copy operation cannot be used.  This is because
-        // there does not appear to be a command to move data from one
-        // plane's cache register to another plane's cache register.
-        //
-        // Without this check, data would be corrupted on multi-plane
-        // NAND when the source and destination are on different planes.
-        //
-        // As a result, must read the source sector to a host buffer, and
-        // then write that host buffer to the destination sector.
-        size_t page_and_oob_len = SPI_NAND_PAGE_SIZE + SPI_NAND_OOB_SIZE();
-        int ret = spi_nand_page_read(src, 0, page_main_and_largest_oob_buffer, page_and_oob_len);
-        if (SPI_NAND_RET_OK != ret) {
-            return ret;
-        }
-        return spi_nand_page_program(dest, 0, page_main_and_largest_oob_buffer, page_and_oob_len);
     }
 
     // setup timeout tracking
@@ -585,7 +550,7 @@ static int page_read(row_address_t row, uint32_t timeout) {
     // setup data for page read command (need to go from LSB -> MSB first on address)
     uint8_t tx_data[PAGE_READ_TRANS_LEN];
     tx_data[0] = CMD_PAGE_READ;
-    tx_data[1] = row.whole >> 16;
+    tx_data[1] = 0; // dummy
     tx_data[2] = row.whole >> 8;
     tx_data[3] = row.whole;
     // perform transaction
@@ -618,10 +583,9 @@ static int read_from_cache(
     uint8_t tx_data[READ_FROM_CACHE_TRANS_LEN];
 
     tx_data[0] = CMD_READ_FROM_CACHE;
-    uint8_t plane = get_plane(row);
-    tx_data[1] = (plane << 4) | ((column >> 8) & 0xF);
+    tx_data[1] = (column >> 8) & 0xF;
     tx_data[2] = column;
-    tx_data[3] = 0;
+    tx_data[3] = 0; // dummy
     // perform transaction
     csel_select();
     int ret = nand_spi_write(tx_data, READ_FROM_CACHE_TRANS_LEN, timeout);
@@ -643,8 +607,7 @@ static int program_load(
     // setup data for program load (need to go from LSB -> MSB first on address)
     uint8_t tx_data[PROGRAM_LOAD_TRANS_LEN];
     tx_data[0] = CMD_PROGRAM_LOAD;
-    uint8_t plane = get_plane(row);
-    tx_data[1] = (plane << 4) | ((column >> 8) & 0xF);
+    tx_data[1] = (column >> 8) & 0xF;
     tx_data[2] = column;
     // perform transaction
     csel_select();
@@ -666,8 +629,7 @@ static int program_load_random_data(
     // setup data for program load (need to go from LSB -> MSB first on address)
     uint8_t tx_data[PROGRAM_LOAD_RANDOM_DATA_TRANS_LEN];
     tx_data[0] = CMD_PROGRAM_LOAD_RANDOM_DATA;
-    uint8_t plane = get_plane(row);
-    tx_data[1] = (plane << 4) | ((column >> 8) & 0xF);
+    tx_data[1] = (column >> 8) & 0xF;
     tx_data[2] = column;
     // perform transaction
     csel_select();
@@ -689,7 +651,7 @@ static int program_execute(row_address_t row, uint32_t timeout) {
     // setup data for program execute (need to go from LSB -> MSB first on address)
     uint8_t tx_data[PROGRAM_EXECUTE_TRANS_LEN];
     tx_data[0] = CMD_PROGRAM_EXECUTE;
-    tx_data[1] = row.whole >> 16;
+    tx_data[1] = 0; // dummy
     tx_data[2] = row.whole >> 8;
     tx_data[3] = row.whole;
     // perform transaction
@@ -721,7 +683,7 @@ static int block_erase(row_address_t row, uint32_t timeout) {
     // setup data for block erase command (need to go from LSB -> MSB first on address)
     uint8_t tx_data[BLOCK_ERASE_TRANS_LEN];
     tx_data[0] = CMD_BLOCK_ERASE;
-    tx_data[1] = row.whole >> 16;
+    tx_data[1] = 0; // dummy
     tx_data[2] = row.whole >> 8;
     tx_data[3] = row.whole;
     // perform transaction
