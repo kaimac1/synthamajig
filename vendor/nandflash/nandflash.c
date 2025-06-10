@@ -176,7 +176,7 @@ static int get_ret_from_ecc_status(feature_reg_status_t status);
 uint8_t page_main_and_largest_oob_buffer[SPI_NAND_PAGE_SIZE + SPI_NAND_LARGEST_OOB_SUPPORTED];
 
 // public function definitions
-int spi_nand_init(struct dhara_nand* dhara_parameters_out) {
+int nandflash_init(struct dhara_nand* dhara_parameters_out) {
     if (dhara_parameters_out) memset(dhara_parameters_out, 0, sizeof(struct dhara_nand));
 
     // initialize chip select
@@ -236,7 +236,7 @@ int spi_nand_init(struct dhara_nand* dhara_parameters_out) {
     return ret;
 }
 
-int spi_nand_page_read(row_address_t row, column_address_t column, void* data_out, size_t read_len) {
+int nandflash_page_read(row_address_t row, column_address_t column, void* data_out, size_t read_len) {
     // input validation
     if (!validate_row_address(row) || !validate_column_address(column)) {
         return SPI_NAND_RET_BAD_ADDRESS;
@@ -260,7 +260,7 @@ int spi_nand_page_read(row_address_t row, column_address_t column, void* data_ou
     return read_from_cache(row, column, data_out, read_len, timeout);
 }
 
-int spi_nand_page_program(row_address_t row, column_address_t column, const void* data_in, size_t write_len) {
+int nandflash_page_program(row_address_t row, column_address_t column, const void* data_in, size_t write_len) {
     // input validation
     if (!validate_row_address(row) || !validate_column_address(column)) {
         return SPI_NAND_RET_BAD_ADDRESS;
@@ -291,7 +291,7 @@ int spi_nand_page_program(row_address_t row, column_address_t column, const void
     return program_execute(row, timeout);
 }
 
-int spi_nand_page_copy(row_address_t src, row_address_t dest) {
+int nandflash_page_copy(row_address_t src, row_address_t dest) {
     // input validation
     if (!validate_row_address(src) || !validate_row_address(src)) {
         return SPI_NAND_RET_BAD_ADDRESS;
@@ -329,7 +329,7 @@ int spi_nand_page_copy(row_address_t src, row_address_t dest) {
     return program_execute(dest, timeout);
 }
 
-int spi_nand_block_erase(row_address_t row) {
+int nandflash_block_erase(row_address_t row) {
     row.page = 0; // make sure page address is zero
     // input validation
     if (!validate_row_address(row)) {
@@ -350,10 +350,10 @@ int spi_nand_block_erase(row_address_t row) {
     return block_erase(row, timeout);
 }
 
-int spi_nand_block_is_bad(row_address_t row, bool* is_bad) {
+int nandflash_block_is_bad(row_address_t row, bool* is_bad) {
     uint8_t bad_block_mark[1];
     // page read will validate the block address
-    int ret = spi_nand_page_read(row, SPI_NAND_PAGE_SIZE, bad_block_mark, sizeof(bad_block_mark));
+    int ret = nandflash_page_read(row, SPI_NAND_PAGE_SIZE, bad_block_mark, sizeof(bad_block_mark));
     if (SPI_NAND_RET_OK != ret) {
         return ret;
     }
@@ -371,7 +371,7 @@ int spi_nand_block_is_bad(row_address_t row, bool* is_bad) {
     return SPI_NAND_RET_OK;
 }
 
-int spi_nand_block_mark_bad(row_address_t row) {
+int nandflash_block_mark_bad(row_address_t row) {
     // Refer to MT29F2G01ABAGD datasheet, table 11 on page 46:
     // Bad blocks can be detected by the value 0x00 in the
     // FIRST BYTE of the spare area.
@@ -379,14 +379,14 @@ int spi_nand_block_mark_bad(row_address_t row) {
 
     uint8_t bad_block_mark[1] = { BAD_BLOCK_MARK };
     // page program will validate the block address
-    return spi_nand_page_program(row, SPI_NAND_PAGE_SIZE, bad_block_mark, sizeof(bad_block_mark));
+    return nandflash_page_program(row, SPI_NAND_PAGE_SIZE, bad_block_mark, sizeof(bad_block_mark));
 }
 
-int spi_nand_page_is_free(row_address_t row, bool* is_free) {
+int nandflash_page_is_free(row_address_t row, bool* is_free) {
     // page read will validate block & page address
     size_t page_and_oob_len = SPI_NAND_PAGE_SIZE + SPI_NAND_OOB_SIZE();
 
-    int ret = spi_nand_page_read(row, 0, page_main_and_largest_oob_buffer, page_and_oob_len);
+    int ret = nandflash_page_read(row, 0, page_main_and_largest_oob_buffer, page_and_oob_len);
     if (SPI_NAND_RET_OK != ret) {
         return ret;
     }
@@ -407,19 +407,19 @@ int spi_nand_page_is_free(row_address_t row, bool* is_free) {
     return SPI_NAND_RET_OK;
 }
 
-int spi_nand_clear(void) {
+int nandflash_clear(void) {
     bool is_bad;
     for (int i = 0; i < SPI_NAND_ERASE_BLOCKS_PER_LUN(); i++) {
         // get bad block flag
         row_address_t row = { .block = i, .page = 0 };
-        int ret = spi_nand_block_is_bad(row, &is_bad);
+        int ret = nandflash_block_is_bad(row, &is_bad);
         if (SPI_NAND_RET_OK != ret) {
             return ret;
         }
 
         // erase if good block
         if (!is_bad) {
-            int ret = spi_nand_block_erase(row);
+            int ret = nandflash_block_erase(row);
             if (SPI_NAND_RET_OK != ret) {
                 return ret;
             }

@@ -44,6 +44,9 @@ add_executable(synth
     vendor/nandflash/nandflash.c
     vendor/nandflash/nand_spi.c
     vendor/nandflash/sys_time.c
+    vendor/nandflash/dhara_nand.c
+    vendor/dhara/map.c
+    vendor/dhara/journal.c
 )
 
 target_compile_options(synth PUBLIC -fno-exceptions)

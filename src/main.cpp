@@ -55,58 +55,35 @@ int main() {
     }
 
     nand_spi_init();
-    int r = spi_nand_init(NULL);
+    int r = nandflash_init(NULL);
     INIT_PRINTF("  init returned %d\n", r);
 
     uint8_t buffer[256];
-    row_address_t row;
-    row.whole = 0;
-    r = spi_nand_page_read(row, 0, buffer, sizeof(buffer));
-    INIT_PRINTF("read=%d\n",r);
-    INIT_PRINTF("buffer= %02x %02x %02x %02x\n", buffer[0], buffer[1], buffer[2], buffer[3]);
 
-    r = spi_nand_block_erase(row);
-    INIT_PRINTF("erase=%d\n",r);
+    for (uint32_t block=0; block<1024; block++) {
+        row_address_t row = {.page = 0, .block = block};
+        bool is_bad;
+        r = nandflash_block_is_bad(row, &is_bad);
+        INIT_PRINTF("block %04d r=%d bad=%d\n", row.block, r, is_bad);
+    }
 
-    // uint8_t wbuffer[4] = {1, 2, 3, 4};
-    // r = spi_nand_page_program(row, 0, wbuffer, sizeof(wbuffer));
-    // INIT_PRINTF("write=%d\n",r);
+    // r = nandflash_page_read(row, 0, buffer, sizeof(buffer));
+    // INIT_PRINTF("read=%d\n",r);
+    // INIT_PRINTF("buffer= %02x %02x %02x %02x\n", buffer[0], buffer[1], buffer[2], buffer[3]);
+
+    // r = nandflash_block_erase(row);
+    // INIT_PRINTF("erase=%d\n",r);
+
+    // // uint8_t wbuffer[4] = {1, 2, 3, 4};
+    // // r = spi_nand_page_program(row, 0, wbuffer, sizeof(wbuffer));
+    // // INIT_PRINTF("write=%d\n",r);
 
 
-    r = spi_nand_page_read(row, 0, buffer, sizeof(buffer));
-    INIT_PRINTF("read=%d\n",r);
-    INIT_PRINTF("buffer= %02x %02x %02x %02x\n", buffer[0], buffer[1], buffer[2], buffer[3]);
+    // r = nandflash_page_read(row, 0, buffer, sizeof(buffer));
+    // INIT_PRINTF("read=%d\n",r);
+    // INIT_PRINTF("buffer= %02x %02x %02x %02x\n", buffer[0], buffer[1], buffer[2], buffer[3]);
 
-    // puts("Initialising NAND disk...");
-    // gpio_init(PIN_NAND_WP);
-    // gpio_set_dir(PIN_NAND_WP, GPIO_OUT);
-    // gpio_put(PIN_NAND_WP, 1);
-    // gpio_init(PIN_NAND_HOLD);
-    // gpio_set_dir(PIN_NAND_HOLD, GPIO_OUT);
-    // gpio_put(PIN_NAND_HOLD, 1);
 
-    // const int disk_clock_speed = 1000*1000;
-    // spi_init(NAND_SPI, disk_clock_speed);
-    // //gpio_set_function(PIN_NAND_CS, GPIO_FUNC_SPI);
-    // gpio_set_function(PIN_NAND_SCK, GPIO_FUNC_SPI);
-    // gpio_set_function(PIN_NAND_MOSI, GPIO_FUNC_SPI);
-    // gpio_set_function(PIN_NAND_MISO, GPIO_FUNC_SPI);
-
-    // const uint8_t cmd_reset = 0xFF;
-    // gpio_put(PIN_NAND_CS, 0);
-    // spi_write_blocking(NAND_SPI, &cmd_reset, 1);
-    // gpio_put(PIN_NAND_CS, 1);
-    // sleep_ms(1);
-
-    // const uint8_t cmd_read_id[] = {0x9F, 0x00};
-    // uint8_t buffer_read_id[3];
-    // gpio_put(PIN_NAND_CS, 0);
-    // spi_write_blocking(NAND_SPI, cmd_read_id, sizeof(cmd_read_id));
-    // spi_read_blocking(NAND_SPI, 0x00, buffer_read_id, sizeof(buffer_read_id));
-    // gpio_put(PIN_NAND_CS, 1);
-
-    // printf("Read ID: %02x %02x %02x\n", buffer_read_id[0], buffer_read_id[1], buffer_read_id[2]);
- 
 
     printf("done.\n");
     while (1) {
