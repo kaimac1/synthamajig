@@ -59,6 +59,15 @@ int main() {
     INIT_PRINTF("  init returned %d\n", r);
 
     uint8_t buffer[256];
+    row_address_t row;
+    row.whole = 0;
+    r = nandflash_page_read(row, 0, buffer, sizeof(buffer));
+    INIT_PRINTF("read=%d\n",r);
+    INIT_PRINTF("buffer= %02x %02x %02x %02x\n", buffer[0], buffer[1], buffer[2], buffer[3]);    
+
+    // uint8_t wbuffer[4] = {1, 2, 3, 4};
+    // r = nandflash_page_program(row, 0, wbuffer, sizeof(wbuffer));
+    // INIT_PRINTF("write=%d\n",r);    
 
     for (uint32_t block=0; block<1024; block++) {
         row_address_t row = {.page = 0, .block = block};
@@ -67,16 +76,10 @@ int main() {
         INIT_PRINTF("block %04d r=%d bad=%d\n", row.block, r, is_bad);
     }
 
-    // r = nandflash_page_read(row, 0, buffer, sizeof(buffer));
-    // INIT_PRINTF("read=%d\n",r);
-    // INIT_PRINTF("buffer= %02x %02x %02x %02x\n", buffer[0], buffer[1], buffer[2], buffer[3]);
+
 
     // r = nandflash_block_erase(row);
     // INIT_PRINTF("erase=%d\n",r);
-
-    // // uint8_t wbuffer[4] = {1, 2, 3, 4};
-    // // r = spi_nand_page_program(row, 0, wbuffer, sizeof(wbuffer));
-    // // INIT_PRINTF("write=%d\n",r);
 
 
     // r = nandflash_page_read(row, 0, buffer, sizeof(buffer));

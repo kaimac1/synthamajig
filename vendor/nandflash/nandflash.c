@@ -96,6 +96,7 @@ static inline uint32_t SPI_NAND_MAX_BLOCK_ADDRESS() {
 #define ECC_STATUS_UNRECOVERABLE            0b11
 // clang-format on
 
+#define GOOD_BLOCK_MARK 0xFF
 #define BAD_BLOCK_MARK 0
 
 // private types
@@ -351,18 +352,19 @@ int nandflash_block_erase(row_address_t row) {
 }
 
 int nandflash_block_is_bad(row_address_t row, bool* is_bad) {
-    uint8_t bad_block_mark[1];
+    uint8_t bad_block_mark[2];
     // page read will validate the block address
     int ret = nandflash_page_read(row, SPI_NAND_PAGE_SIZE, bad_block_mark, sizeof(bad_block_mark));
     if (SPI_NAND_RET_OK != ret) {
         return ret;
     }
 
-    // Refer to MT29F2G01ABAGD datasheet, table 11 on page 46:
-    // Bad blocks can be detected by the value 0x00 in the
-    // FIRST BYTE of the spare area.
-    // This is ONFI-compliant, so should be universal nowadays.
-    if (BAD_BLOCK_MARK == bad_block_mark[0]) {
+    //printf(" [%02x %02x] ", bad_block_mark[0], bad_block_mark[1]);
+
+    // Refer to W25N01G datasheet, page 33:
+    // Bad blocks can be detected by a non-FFh data byte at byte 0 of page 0 of the block.
+    // There is also a two-byte marker at the start of the spare area.
+    if (!((bad_block_mark[0] == GOOD_BLOCK_MARK) && (bad_block_mark[1] == GOOD_BLOCK_MARK))) {
         *is_bad = true;
     } else {
         *is_bad = false;
