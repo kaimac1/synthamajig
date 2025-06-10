@@ -90,7 +90,10 @@ def input_thread():
                     quit = True
         else:
             if c == '\n': c = '\r' # send CR for enter instead of newline
-            if s.isOpen(): s.write(c.encode())
+            try:
+                if s.isOpen(): s.write(c.encode())
+            except:
+                quit = True
 
 
 
