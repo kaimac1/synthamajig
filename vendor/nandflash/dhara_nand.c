@@ -8,6 +8,7 @@
 #include "dhara/nand.h"
 #include "nandflash.h"
 #include <stdbool.h>
+#include <stdio.h>
 
 #define DHARA_DEBUG_PRINTF printf
 
@@ -20,6 +21,7 @@ int dhara_nand_is_bad(const struct dhara_nand *n, dhara_block_t b)
     // call spi_nand layer for block status
     bool is_bad;
     int ret = nandflash_block_is_bad(row, &is_bad);
+    DHARA_DEBUG_PRINTF("dhara: nand_is_bad(%d): %d (bad=%d)\n", b, ret, is_bad);
     if (SPI_NAND_RET_OK != ret) {
         // if we get a bad return, we'll just call this block bad
         is_bad = true;
@@ -30,6 +32,7 @@ int dhara_nand_is_bad(const struct dhara_nand *n, dhara_block_t b)
 
 void dhara_nand_mark_bad(const struct dhara_nand *n, dhara_block_t b)
 {
+    DHARA_DEBUG_PRINTF("dhara: nand_mark_bad(%d)\n", b);
     // construct row address
     row_address_t row = {.block = b, .page = 0};
     // call spi_nand layer
@@ -42,6 +45,7 @@ int dhara_nand_erase(const struct dhara_nand *n, dhara_block_t b, dhara_error_t 
     row_address_t row = {.block = b, .page = 0};
     // call spi_nand layer
     int ret = nandflash_block_erase(row);
+    DHARA_DEBUG_PRINTF("dhara: nand_erase(%d): %d\n", b, ret);
     if (SPI_NAND_RET_OK == ret) { // success
         return 0;
     }
@@ -61,6 +65,7 @@ int dhara_nand_prog(const struct dhara_nand *n, dhara_page_t p, const uint8_t *d
     row_address_t row = {.whole = p};
     // call spi_nand layer
     int ret = nandflash_page_program(row, 0, data, SPI_NAND_PAGE_SIZE);
+    DHARA_DEBUG_PRINTF("dhara: nand_prog(%d): %d\n", p, ret);
     if (SPI_NAND_RET_OK == ret) { // success
         return 0;
     }
@@ -80,6 +85,7 @@ int dhara_nand_is_free(const struct dhara_nand *n, dhara_page_t p)
     // call spi_nand layer
     bool is_free;
     int ret = nandflash_page_is_free(row, &is_free);
+    DHARA_DEBUG_PRINTF("dhara: nand_is_free(%d): %d\n", p, ret);
     if (SPI_NAND_RET_OK != ret) {
         // if we get a bad return, we'll report the page as "not free"
         is_free = false;
@@ -95,6 +101,7 @@ int dhara_nand_read(const struct dhara_nand *n, dhara_page_t p, size_t offset, s
     row_address_t row = {.whole = p};
     // call spi_nand layer
     int ret = nandflash_page_read(row, offset, data, length);
+    DHARA_DEBUG_PRINTF("dhara: nand_read(%d): %d\n", p, ret);
     if (SPI_NAND_RET_OK == ret) { // success
         return 0;
     }
@@ -119,6 +126,7 @@ int dhara_nand_copy(const struct dhara_nand *n, dhara_page_t src, dhara_page_t d
     row_address_t dest = {.whole = dst};
     // call spi_nand layer
     int ret = nandflash_page_copy(source, dest);
+    DHARA_DEBUG_PRINTF("dhara: nand_copy(%d->%d): %d\n", src, dst, ret);
     if (SPI_NAND_RET_OK == ret) { // success
         return 0;
     }

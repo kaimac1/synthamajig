@@ -24,7 +24,7 @@ void nand_spi_init(void) {
     gpio_set_dir(PIN_NAND_HOLD, GPIO_OUT);
     gpio_put(PIN_NAND_HOLD, 1);    
 
-    uint64_t baudrate=spi_init(NAND_SPI, 1000*1000*1);
+    uint64_t baudrate=spi_init(NAND_SPI, 10*1000*1000);
     INIT_PRINTF("  baud=%llu\n", baudrate);
 
     gpio_set_function(PIN_NAND_SCK, GPIO_FUNC_SPI);
