@@ -105,16 +105,14 @@ static inline uint8_t get_plane(row_address_t row) {
 #define PROGRAM_EXECUTE_TRANS_LEN           4
 #define BLOCK_ERASE_TRANS_LEN               4
 
-#define FEATURE_REG_STATUS                  0xC0
-#define FEATURE_REG_BLOCK_LOCK              0xA0
-#define FEATURE_REG_CONFIGURATION           0xB0
-#define FEATURE_REG_DIE_SELECT              0xC0
+#define FEATURE_REG_BLOCK_LOCK              0xA0    // PR/SR-1
+#define FEATURE_REG_CONFIGURATION           0xB0    // CR/SR-2
+#define FEATURE_REG_STATUS                  0xC0    // SR-3
 
-#define ECC_STATUS_NO_ERR                   0b000
-#define ECC_STATUS_1_3_NO_REFRESH           0b001
-#define ECC_STATUS_4_6_REFRESH              0b011
-#define ECC_STATUS_7_8_REFRESH              0b101
-#define ECC_STATUS_NOT_CORRECTED            0b010
+#define ECC_STATUS_NO_ERR                   0b00
+#define ECC_STATUS_1_BIT_CORRECTED          0b01
+#define ECC_STATUS_2_BITS_DETECTED          0b10
+#define ECC_STATUS_UNRECOVERABLE            0b11
 // clang-format on
 
 #define BAD_BLOCK_MARK 0
@@ -123,27 +121,26 @@ static inline uint8_t get_plane(row_address_t row) {
 typedef union {
     uint8_t whole;
     struct {
-        uint8_t : 1;
-        uint8_t WP_HOLD_DISABLE : 1;
+        uint8_t SRP1: 1;
+        uint8_t WP_E : 1;
         uint8_t TB : 1;
         uint8_t BP0 : 1;
         uint8_t BP1 : 1;
         uint8_t BP2 : 1;
         uint8_t BP3 : 1;
-        uint8_t BRWD : 1;
+        uint8_t SRP0 : 1;
     };
 } feature_reg_block_lock_t;
 
 typedef union {
     uint8_t whole;
     struct {
-        uint8_t : 1;
-        uint8_t CFG0 : 1;
-        uint8_t : 2;
+        uint8_t : 3;
+        uint8_t BUF : 1;
         uint8_t ECC_EN : 1;
-        uint8_t LOT_EN : 1;
-        uint8_t CFG1 : 1;
-        uint8_t CFG2 : 1;
+        uint8_t SR1_L : 1;
+        uint8_t OTP_E : 1;
+        uint8_t OTP_L : 1;
     };
 } feature_reg_configuration_t;
 
@@ -154,19 +151,11 @@ typedef union {
         uint8_t WEL : 1;
         uint8_t E_FAIL : 1;
         uint8_t P_FAIL : 1;
-        uint8_t ECCS0_3 : 3;
-        uint8_t CRBSY : 1;
-    };
-} feature_reg_status_t;
-
-typedef union {
-    uint8_t whole;
-    struct {
-        uint8_t : 6;
-        uint8_t DS0 : 1;
+        uint8_t ECCS0_2 : 2;
+        uint8_t LUT_FULL : 1;
         uint8_t : 1;
     };
-} feature_reg_die_select_t;
+} feature_reg_status_t;
 
 // private function prototypes
 static void csel_setup(void);
@@ -195,7 +184,6 @@ static int program_execute(row_address_t row, uint32_t timeout);
 static int block_erase(row_address_t row, uint32_t timeout);
 
 static int unlock_all_blocks(void);
-static int enable_ecc(void);
 static int poll_for_oip_clear(feature_reg_status_t* status_out, uint32_t timeout);
 
 static bool validate_row_address(row_address_t row);
@@ -809,16 +797,15 @@ static int get_ret_from_ecc_status(feature_reg_status_t status) {
     int ret;
 
     // map ECC status to return type
-    switch (status.ECCS0_3) {
+    switch (status.ECCS0_2) {
         case ECC_STATUS_NO_ERR:
-        case ECC_STATUS_1_3_NO_REFRESH:
             ret = SPI_NAND_RET_OK;
             break;
-        case ECC_STATUS_4_6_REFRESH:
-        case ECC_STATUS_7_8_REFRESH:
+        case ECC_STATUS_1_BIT_CORRECTED:
             ret = SPI_NAND_RET_ECC_REFRESH;
             break;
-        case ECC_STATUS_NOT_CORRECTED:
+        case ECC_STATUS_2_BITS_DETECTED:
+        case ECC_STATUS_UNRECOVERABLE:
         default:
             ret = SPI_NAND_RET_ECC_ERR;
             break;
