@@ -47,6 +47,7 @@ add_executable(synth
     vendor/nandflash/dhara_nand.c
     vendor/dhara/map.c
     vendor/dhara/journal.c
+    vendor/shell/shell.c
 )
 
 target_compile_options(synth PUBLIC -fno-exceptions)
