@@ -18,8 +18,8 @@
 #define OP_TIMEOUT                     3000 // ms
 #define CMD_RESET                      0xFF
 #define CMD_READ_ID                    0x9F
-#define CMD_SET_FEATURE                0x1F
-#define CMD_GET_FEATURE                0x0F
+#define CMD_SET_REGISTER               0x1F
+#define CMD_GET_REGISTER               0x0F
 #define CMD_PAGE_READ                  0x13
 #define CMD_READ_FROM_CACHE            0x03
 #define CMD_WRITE_ENABLE               0x06
@@ -31,8 +31,6 @@
 #define READ_ID_MFR_INDEX              2
 #define READ_ID_DEVICE_INDEX           3
 // clang-format on
-// vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-// See also: spi_nand.h, which contains external per-chip guards
 
 /// @brief Since only support two chips, can differentiate them simply
 ///        using only the DeviceID.
@@ -169,8 +167,8 @@ static void csel_deselect_internal(const char* file, int line);
 
 static int spi_nand_reset(void);
 static int read_id(nand_identity_t* identity_out);
-static int set_feature(uint8_t reg, uint8_t data, uint32_t timeout);
-static int get_feature(uint8_t reg, uint8_t* data_out, uint32_t timeout);
+static int set_register(uint8_t reg, uint8_t data, uint32_t timeout);
+static int get_register(uint8_t reg, uint8_t* data_out, uint32_t timeout);
 static int write_enable(uint32_t timeout);
 static int page_read(row_address_t row, uint32_t timeout);
 static int read_from_cache(
@@ -231,17 +229,19 @@ int spi_nand_init(struct dhara_nand* dhara_parameters_out) {
         return SPI_NAND_RET_DEVICE_ID;
     }
 
-    // // unlock all blocks
-    // ret = unlock_all_blocks();
-    // if (SPI_NAND_RET_OK != ret) {
-    //     return ret;
-    // }
+    // unlock all blocks
+    ret = unlock_all_blocks();
+    if (SPI_NAND_RET_OK != ret) {
+        return ret;
+    }
 
-    // // enable ecc
-    // ret = enable_ecc();
-    // if (SPI_NAND_RET_OK != ret) {
-    //     return ret;
-    // }
+    uint8_t reg;
+    int r = get_register(FEATURE_REG_BLOCK_LOCK, &reg, 10);
+    INIT_PRINTF("  reg %02x = %02x\n", FEATURE_REG_BLOCK_LOCK, reg);
+    r = get_register(FEATURE_REG_CONFIGURATION, &reg, 10);
+    INIT_PRINTF("  reg %02x = %02x\n", FEATURE_REG_CONFIGURATION, reg);
+    r = get_register(FEATURE_REG_STATUS, &reg, 10);
+    INIT_PRINTF("  reg %02x = %02x\n", FEATURE_REG_STATUS, reg);        
 
     // fill in the return structure
     if (dhara_parameters_out) {
@@ -532,10 +532,10 @@ static int read_id(nand_identity_t* identity_out) {
     return SPI_RET_OK;
 }
 
-static int set_feature(uint8_t reg, uint8_t data, uint32_t timeout) {
+static int set_register(uint8_t reg, uint8_t data, uint32_t timeout) {
     // setup data
     uint8_t tx_data[FEATURE_TRANS_LEN] = { 0 };
-    tx_data[0] = CMD_SET_FEATURE;
+    tx_data[0] = CMD_SET_REGISTER;
     tx_data[FEATURE_REG_INDEX] = reg;
     tx_data[FEATURE_DATA_INDEX] = data;
     // perform transaction
@@ -546,11 +546,11 @@ static int set_feature(uint8_t reg, uint8_t data, uint32_t timeout) {
     return (SPI_RET_OK == ret) ? SPI_NAND_RET_OK : SPI_NAND_RET_BAD_SPI;
 }
 
-static int get_feature(uint8_t reg, uint8_t* data_out, uint32_t timeout) {
+static int get_register(uint8_t reg, uint8_t* data_out, uint32_t timeout) {
     // setup data
     uint8_t tx_data[FEATURE_TRANS_LEN] = { 0 };
     uint8_t rx_data[FEATURE_TRANS_LEN] = { 0 };
-    tx_data[0] = CMD_GET_FEATURE;
+    tx_data[0] = CMD_GET_REGISTER;
     tx_data[FEATURE_REG_INDEX] = reg;
     // perform transaction
     csel_select();
@@ -747,21 +747,22 @@ static int block_erase(row_address_t row, uint32_t timeout) {
 }
 
 static int unlock_all_blocks(void) {
+    // Also sets SRP1,SRP0,WP-E to 0 -> no ~WP pin function
     feature_reg_block_lock_t unlock_all = { .whole = 0 };
-    return set_feature(FEATURE_REG_BLOCK_LOCK, unlock_all.whole, OP_TIMEOUT);
+    return set_register(FEATURE_REG_BLOCK_LOCK, unlock_all.whole, OP_TIMEOUT);
 }
 
-static int enable_ecc(void) {
-    feature_reg_configuration_t ecc_enable = { .whole = 0 }; // we want to zero the other bits here
-    ecc_enable.ECC_EN = 1;
-    return set_feature(FEATURE_REG_CONFIGURATION, ecc_enable.whole, OP_TIMEOUT);
-}
+// static int enable_ecc(void) {
+//     feature_reg_configuration_t ecc_enable = { .whole = 0 }; // we want to zero the other bits here
+//     ecc_enable.ECC_EN = 1;
+//     return set_feature(FEATURE_REG_CONFIGURATION, ecc_enable.whole, OP_TIMEOUT);
+// }
 
 static int poll_for_oip_clear(feature_reg_status_t* status_out, uint32_t ms_timeout) {
     uint32_t start_time = sys_time_get_ms();
     for (;;) {
-        uint32_t get_feature_timeout = OP_TIMEOUT - sys_time_get_elapsed(start_time);
-        int ret = get_feature(FEATURE_REG_STATUS, &status_out->whole, get_feature_timeout);
+        uint32_t get_register_timeout = OP_TIMEOUT - sys_time_get_elapsed(start_time);
+        int ret = get_register(FEATURE_REG_STATUS, &status_out->whole, get_register_timeout);
         // break on bad return
         if (SPI_NAND_RET_OK != ret) {
             return ret;
