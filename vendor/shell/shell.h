@@ -23,6 +23,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <string.h>
+#include "shell_config.h"
 
 /**
  * @brief Looks for and executes a string as a command
@@ -51,7 +52,6 @@ typedef struct {
 } cmd_t;
 
 
-#define MAX_COMMANDS 16
 extern cmd_t table[MAX_COMMANDS+1];
 extern int shell_table_size;
 

@@ -21,6 +21,8 @@
 extern "C" {
 #endif
 
+#define MAX_COMMANDS 16
+
 #define ECHO_INIT_VALUE true
 
 /**
@@ -77,7 +79,6 @@ extern "C" {
 #endif
 
 
-#define NULL ((void *)0)
 #define TRUE (1 == 1)
 #define FALSE (1 == 0)
 

@@ -20,8 +20,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "shell_config.h"
-
 
 int (*__read_char__)(void);
 void (*__write_char__)(char c);
