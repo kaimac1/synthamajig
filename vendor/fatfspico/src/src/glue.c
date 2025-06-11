@@ -25,11 +25,12 @@ specific language governing permissions and limitations under the License.
 
 #include "../vendor/dhara/map.h"
 #include "pico/stdlib.h"
+#include <stdio.h>
 
 extern struct dhara_map map;
 
-#define TRACE_PRINTF(fmt, args...)
-//#define TRACE_PRINTF printf 
+//#define TRACE_PRINTF(fmt, args...)
+#define TRACE_PRINTF printf 
 
 /*-----------------------------------------------------------------------*/
 /* Get Drive Status                                                      */
