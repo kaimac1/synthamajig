@@ -21,14 +21,15 @@ specific language governing permissions and limitations under the License.
 /*-----------------------------------------------------------------------*/
 //
 //
-#include "hw_config.h"
-#include "my_debug.h"
-#include "sd_card.h"
-//
 #include "diskio.h" /* Declarations of disk functions */
 
+#include "../vendor/dhara/map.h"
+#include "pico/stdlib.h"
+
+extern struct dhara_map map;
+
 #define TRACE_PRINTF(fmt, args...)
-//#define TRACE_PRINTF printf  // task_printf
+//#define TRACE_PRINTF printf 
 
 /*-----------------------------------------------------------------------*/
 /* Get Drive Status                                                      */
@@ -36,11 +37,8 @@ specific language governing permissions and limitations under the License.
 
 DSTATUS disk_status(BYTE pdrv /* Physical drive number to identify the drive */
 ) {
-    TRACE_PRINTF(">>> %s\n", __FUNCTION__);
-    sd_card_t *sd_card_p = sd_get_by_num(pdrv);
-    if (!sd_card_p) return RES_PARERR;
-    sd_card_detect(sd_card_p);   // Fast: just a GPIO read
-    return sd_card_p->state.m_Status;  // See http://elm-chan.org/fsw/ff/doc/dstat.html
+    TRACE_PRINTF(">>> %s(%d)\n", __FUNCTION__, pdrv);
+    return 0;
 }
 
 /*-----------------------------------------------------------------------*/
@@ -51,41 +49,9 @@ DSTATUS disk_initialize(
     BYTE pdrv /* Physical drive number to identify the drive */
 ) {
     TRACE_PRINTF(">>> %s\n", __FUNCTION__);
-
-    bool ok = sd_init_driver();
-    if (!ok) return RES_NOTRDY;
-
-    sd_card_t *sd_card_p = sd_get_by_num(pdrv);
-    if (!sd_card_p) return RES_PARERR;
-    DSTATUS ds = disk_status(pdrv);
-    if (STA_NODISK & ds) 
-        return ds;
-    // See http://elm-chan.org/fsw/ff/doc/dstat.html
-    return sd_card_p->init(sd_card_p);  
+    return 0;
 }
 
-static int sdrc2dresult(int sd_rc) {
-    switch (sd_rc) {
-        case SD_BLOCK_DEVICE_ERROR_NONE:
-            return RES_OK;
-        case SD_BLOCK_DEVICE_ERROR_UNUSABLE:
-        case SD_BLOCK_DEVICE_ERROR_NO_RESPONSE:
-        case SD_BLOCK_DEVICE_ERROR_NO_INIT:
-        case SD_BLOCK_DEVICE_ERROR_NO_DEVICE:
-            return RES_NOTRDY;
-        case SD_BLOCK_DEVICE_ERROR_PARAMETER:
-        case SD_BLOCK_DEVICE_ERROR_UNSUPPORTED:
-            return RES_PARERR;
-        case SD_BLOCK_DEVICE_ERROR_WRITE_PROTECTED:
-            return RES_WRPRT;
-        case SD_BLOCK_DEVICE_ERROR_CRC:
-        case SD_BLOCK_DEVICE_ERROR_WOULD_BLOCK:
-        case SD_BLOCK_DEVICE_ERROR_ERASE:
-        case SD_BLOCK_DEVICE_ERROR_WRITE:
-        default:
-            return RES_ERROR;
-            }
-        }
 
 /*-----------------------------------------------------------------------*/
 /* Read Sector(s)                                                        */
@@ -97,10 +63,19 @@ DRESULT disk_read(BYTE pdrv,  /* Physical drive number to identify the drive */
                   UINT count    /* Number of sectors to read */
 ) {
     TRACE_PRINTF(">>> %s\n", __FUNCTION__);
-    sd_card_t *sd_card_p = sd_get_by_num(pdrv);
-    if (!sd_card_p) return RES_PARERR;
-    int rc = sd_card_p->read_blocks(sd_card_p, buff, sector, count);
-    return sdrc2dresult(rc);
+    dhara_error_t error;
+    TRACE_PRINTF("sector %d, cnt %d\n", sector, count);
+    // read *count* consecutive sectors
+    for (int i = 0; i < count; i++) {
+        int ret = dhara_map_read(&map, sector, buff, &error);
+        if (ret) {
+            // printf("dhara read failed: %d, error: %d", ret, err);
+            return RES_ERROR;
+        }
+        buff += 2048; // sector size == page size
+        sector++;
+    }    
+    return RES_OK;
 }
 
 /*-----------------------------------------------------------------------*/
@@ -115,10 +90,18 @@ DRESULT disk_write(BYTE pdrv, /* Physical drive number to identify the drive */
                    UINT count        /* Number of sectors to write */
 ) {
     TRACE_PRINTF(">>> %s\n", __FUNCTION__);
-    sd_card_t *sd_card_p = sd_get_by_num(pdrv);
-    if (!sd_card_p) return RES_PARERR;
-    int rc = sd_card_p->write_blocks(sd_card_p, buff, sector, count);
-    return sdrc2dresult(rc);
+    dhara_error_t error;
+    // write *count* consecutive sectors
+    for (int i = 0; i < count; i++) {
+        int ret = dhara_map_write(&map, sector, buff, &error);
+        if (ret) {
+            // printf("dhara write failed: %d, error: %d", ret, err);
+            return RES_ERROR;
+        }
+        buff += 2048; // sector size == page size
+        sector++;
+    }
+    return RES_OK;
 }
 
 #endif
@@ -131,9 +114,7 @@ DRESULT disk_ioctl(BYTE pdrv, /* Physical drive number (0..) */
                    BYTE cmd,  /* Control code */
                    void *buff /* Buffer to send/receive control data */
 ) {
-    TRACE_PRINTF(">>> %s\n", __FUNCTION__);
-    sd_card_t *sd_card_p = sd_get_by_num(pdrv);
-    if (!sd_card_p) return RES_PARERR;
+    TRACE_PRINTF(">>> %s(%d)\n", __FUNCTION__, cmd);
     switch (cmd) {
         case GET_SECTOR_COUNT: {  // Retrieves number of available sectors, the
                                   // largest allowable LBA + 1, on the drive
@@ -142,10 +123,7 @@ DRESULT disk_ioctl(BYTE pdrv, /* Physical drive number (0..) */
                                   // function to determine the size of
                                   // volume/partition to be created. It is
                                   // required when FF_USE_MKFS == 1.
-            static LBA_t n;
-            n = sd_card_p->get_num_sectors(sd_card_p);
-            *(LBA_t *)buff = n;
-            if (!n) return RES_ERROR;
+            *(LBA_t *)buff = 16384;
             return RES_OK;
         }
         case GET_BLOCK_SIZE: {  // Retrieves erase block size of the flash
@@ -157,12 +135,17 @@ DRESULT disk_ioctl(BYTE pdrv, /* Physical drive number (0..) */
                                 // f_mkfs function and it attempts to align data
                                 // area on the erase block boundary. It is
                                 // required when FF_USE_MKFS == 1.
-            static DWORD bs = 1;
+            static DWORD bs = 64;
             *(DWORD *)buff = bs;
             return RES_OK;
         }
+        case GET_SECTOR_SIZE:
+            *(WORD*)buff = 2048;
+            return RES_OK;       
         case CTRL_SYNC:
-            sd_card_p->sync(sd_card_p);
+            dhara_error_t error;
+            dhara_map_sync(&map, &error);
+            //sd_card_p->sync(sd_card_p);
             return RES_OK;
         default:
             return RES_PARERR;
