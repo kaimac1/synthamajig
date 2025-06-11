@@ -40,6 +40,15 @@ int disk_init(void) {
     FRESULT res = f_mount(&fs, "", 1);
     if (res != FR_OK) {
         printf("f_mount error: %s (%d)\n", FRESULT_str(res), res);
+        const int len = 8192;
+        uint8_t buf[len];
+        MKFS_PARM opt;
+        opt.fmt = FM_EXFAT;
+        opt.n_fat = 1;
+        opt.align = 1;
+        opt.n_root = 512;
+        opt.au_size = 2048;
+        f_mkfs("", &opt, buf, len);
         return -1;
     } else {
         printf("SD card mounted\n");

@@ -21,7 +21,6 @@ add_executable(synth
     src/hw/oled.c
     src/hw/perf.c
     src/hw/disk.c
-    src/hw/sdcard_config.c
     src/hw/psram_spi.c
 
     src/gfx/ngl.c
