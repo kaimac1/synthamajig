@@ -139,15 +139,8 @@ typedef union {
     };
 } feature_reg_status_t;
 
-// private function prototypes
-static void csel_setup(void);
-//static void csel_deselect(void);
-// static void csel_select(void);
-#define csel_select()   csel_select_internal(__FILE__, __LINE__)
-#define csel_deselect() csel_deselect_internal(__FILE__, __LINE__)
-static void csel_select_internal(const char* file, int line);
-static void csel_deselect_internal(const char* file, int line);
-
+#define csel_select()   gpio_put(PIN_NAND_CS, 0)
+#define csel_deselect() gpio_put(PIN_NAND_CS, 1)
 
 static int spi_nand_reset(void);
 static int read_id(nand_identity_t* identity_out);
@@ -179,9 +172,6 @@ uint8_t page_main_and_largest_oob_buffer[SPI_NAND_PAGE_SIZE + SPI_NAND_LARGEST_O
 // public function definitions
 int nandflash_init(struct dhara_nand* dhara_parameters_out) {
     if (dhara_parameters_out) memset(dhara_parameters_out, 0, sizeof(struct dhara_nand));
-
-    // initialize chip select
-    csel_setup();
 
     // reset
     busy_wait_ms(RESET_DELAY);
@@ -430,35 +420,6 @@ int nandflash_clear(void) {
 
     // if we made it here, nothing returned a bad status
     return SPI_NAND_RET_OK;
-}
-
-// private function definitions
-static void csel_setup(void) {
-    /*// enable peripheral clock
-    if (!LL_AHB2_GRP1_IsEnabledClock(LL_AHB2_GRP1_PERIPH_GPIOB))
-        LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
-
-    // setup pin as output
-    LL_GPIO_SetPinMode(CSEL_PORT, CSEL_PIN, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinOutputType(CSEL_PORT, CSEL_PIN, LL_GPIO_OUTPUT_PUSHPULL);
-    LL_GPIO_SetPinSpeed(CSEL_PORT, CSEL_PIN, LL_GPIO_SPEED_FREQ_VERY_HIGH);
-    LL_GPIO_SetPinPull(CSEL_PORT, CSEL_PIN, LL_GPIO_PULL_NO);
-    */
-    // gpio_set_function(FLASH_STORAGE_CS, GPIO_FUNC_SIO);
-    // gpio_put(FLASH_STORAGE_CS, 1);
-    // gpio_set_dir(FLASH_STORAGE_CS, GPIO_OUT);
-}
-
-static void csel_deselect_internal(const char* file, int line) {
-    // LL_GPIO_SetOutputPin(CSEL_PORT, CSEL_PIN);
-    gpio_put(PIN_NAND_CS, 1);
-    //spi_busy_wait_internal(false, file, line);
-}
-
-static void csel_select_internal(const char* file, int line) {
-    // LL_GPIO_ResetOutputPin(CSEL_PORT, CSEL_PIN);
-    //spi_busy_wait_internal(true, file, line);
-    gpio_put(PIN_NAND_CS, 0);
 }
 
 static int spi_nand_reset(void) {

@@ -10,7 +10,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#define DHARA_DEBUG_PRINTF printf
+//#define DHARA_DEBUG_PRINTF printf
+#define DHARA_DEBUG_PRINTF
 
 
 // public function definitions
@@ -101,7 +102,7 @@ int dhara_nand_read(const struct dhara_nand *n, dhara_page_t p, size_t offset, s
     row_address_t row = {.whole = p};
     // call spi_nand layer
     int ret = nandflash_page_read(row, offset, data, length);
-    DHARA_DEBUG_PRINTF("dhara: nand_read(%d): %d\n", p, ret);
+    DHARA_DEBUG_PRINTF("dhara: nand_read(%d, len=%d): %d\n", p, length, ret);
     if (SPI_NAND_RET_OK == ret) { // success
         return 0;
     }
