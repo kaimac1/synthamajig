@@ -12,16 +12,21 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/src)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/src/gfx)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/vendor)
 
+# needed for usb
+include_directories(${CMAKE_CURRENT_LIST_DIR}/src/hw)
+
 add_subdirectory(vendor/fatfspico/src build)
 
 add_executable(synth
     src/main.cpp
+    src/mtp_fs_example.c
 
     src/hw/hw.c
     src/hw/oled.c
     src/hw/perf.c
     src/hw/disk.c
     src/hw/psram_spi.c
+    src/hw/usb_descriptors.c
 
     src/gfx/ngl.c
     src/gfx/gfx_ext.c
@@ -62,6 +67,10 @@ target_link_libraries(synth
     hardware_pio
 #    pico_multicore
 
+    pico_unique_id
+    tinyusb_device
+    tinyusb_board
+
     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
 
     # linker flags:
@@ -69,12 +78,15 @@ target_link_libraries(synth
 )
 
 # enable usb output, disable uart output
-pico_enable_stdio_usb(synth 1)
-pico_enable_stdio_uart(synth 0)
+pico_enable_stdio_usb(synth 0)
+pico_enable_stdio_uart(synth 1)
 
 target_compile_definitions(synth PRIVATE
     PICO_AUDIO_I2S_MONO_INPUT=1
     USE_AUDIO_I2S=1
+    PICO_DEFAULT_UART=0
+    PICO_DEFAULT_UART_TX_PIN=12
+    PICO_DEFAULT_UART_RX_PIN=13
 )
 
 # create binaries

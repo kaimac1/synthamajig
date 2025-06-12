@@ -36,7 +36,7 @@ static struct audio_buffer *current_audio_buffer;
 
 void hw_init(void) {
 
-    stdio_init_all();
+    // stdio_init_all();
 
     // Debug LED
     gpio_init(PICO_LED_PIN);
