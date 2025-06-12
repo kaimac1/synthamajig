@@ -19,7 +19,7 @@ add_subdirectory(vendor/fatfspico/src build)
 
 add_executable(synth
     src/main.cpp
-    src/mtp_fs_example.c
+    src/msc_disk.c
 
     src/hw/hw.c
     src/hw/oled.c

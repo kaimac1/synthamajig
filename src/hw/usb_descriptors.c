@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 Ennebi Elettronica (https://ennebielettronica.com)
+ * Copyright (c) 2019 Ha Thach (tinyusb.org)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,11 +32,9 @@
  * Auto ProductID layout's Bitmap:
  *   [MSB]         HID | MSC | CDC          [LSB]
  */
-// #define _PID_MAP(itf, n)  ( (CFG_TUD_##itf) << (n) )
-// #define USB_PID           (0x4000 | _PID_MAP(CDC, 0) | _PID_MAP(MSC, 1) | _PID_MAP(HID, 2) | \
-//                            _PID_MAP(MIDI, 3) | _PID_MAP(VENDOR, 4) | _PID_MAP(MTP, 5))
-
-#define USB_PID 0x0102
+#define _PID_MAP(itf, n)  ( (CFG_TUD_##itf) << (n) )
+#define USB_PID           (0x4000 | _PID_MAP(CDC, 0) | _PID_MAP(MSC, 1) | _PID_MAP(HID, 2) | \
+                           _PID_MAP(MIDI, 3) | _PID_MAP(VENDOR, 4) )
 
 //--------------------------------------------------------------------+
 // Device Descriptors
@@ -51,7 +49,7 @@ tusb_desc_device_t const desc_device =
     .bDeviceProtocol    = 0x00,
     .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
 
-    .idVendor           = 0x2367,
+    .idVendor           = 0xCafe,
     .idProduct          = USB_PID,
     .bcdDevice          = 0x0100,
 
@@ -64,29 +62,9 @@ tusb_desc_device_t const desc_device =
 
 // Invoked when received GET DEVICE DESCRIPTOR
 // Application return pointer to descriptor
-uint8_t const *tud_descriptor_device_cb(void)
+uint8_t const * tud_descriptor_device_cb(void)
 {
   return (uint8_t const *) &desc_device;
-}
-
-tusb_desc_device_qualifier_t const desc_device_qualifier =
-{
-    .bLength            = sizeof(tusb_desc_device_qualifier_t),
-    .bDescriptorType    = TUSB_DESC_DEVICE_QUALIFIER,
-    .bcdUSB             = 0x0201,
-    .bDeviceClass       = 0x00,
-    .bDeviceSubClass    = 0x00,
-    .bDeviceProtocol    = 0x00,
-    .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
-    .bNumConfigurations = 0x01,
-    .bReserved          = 0
-};
-
-// Invoked when received GET DEVICE DESCRIPTOR_QUALIFIER
-// Application return pointer to descriptor
-uint8_t const *tud_descriptor_device_qualifier_cb(void)
-{
-  return (uint8_t const *) &desc_device_qualifier;
 }
 
 //--------------------------------------------------------------------+
@@ -95,28 +73,69 @@ uint8_t const *tud_descriptor_device_qualifier_cb(void)
 
 enum
 {
-  ITF_NUM_MTP,
+  ITF_NUM_MSC,
   ITF_NUM_TOTAL
 };
 
-#define MTP_DESC_LEN TUD_MTP_DESC_LEN
+#define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + TUD_MSC_DESC_LEN)
 
-#define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + MTP_DESC_LEN)
+#if CFG_TUSB_MCU == OPT_MCU_LPC175X_6X || CFG_TUSB_MCU == OPT_MCU_LPC177X_8X || CFG_TUSB_MCU == OPT_MCU_LPC40XX
+  // LPC 17xx and 40xx endpoint type (bulk/interrupt/iso) are fixed by its number
+  //  0 control, 1 In, 2 Bulk, 3 Iso, 4 In, 5 Bulk etc ...
+  #define EPNUM_MSC_OUT   0x02
+  #define EPNUM_MSC_IN    0x82
+
+#elif CFG_TUSB_MCU == OPT_MCU_CXD56
+  // CXD56 USB driver has fixed endpoint type (bulk/interrupt/iso) and direction (IN/OUT) by its number
+  // 0 control (IN/OUT), 1 Bulk (IN), 2 Bulk (OUT), 3 In (IN), 4 Bulk (IN), 5 Bulk (OUT), 6 In (IN)
+  #define EPNUM_MSC_OUT  0x02
+  #define EPNUM_MSC_IN   0x81
+
+#elif defined(TUD_ENDPOINT_ONE_DIRECTION_ONLY)
+  // MCUs that don't support a same endpoint number with different direction IN and OUT defined in tusb_mcu.h
+  //    e.g EP1 OUT & EP1 IN cannot exist together
+  #define EPNUM_MSC_OUT  0x01
+  #define EPNUM_MSC_IN   0x82
+
+#else
+  #define EPNUM_MSC_OUT   0x01
+  #define EPNUM_MSC_IN    0x81
+
+#endif
 
 uint8_t const desc_fs_configuration[] =
 {
   // Config number, interface count, string index, total length, attribute, power in mA
-    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
-    TUD_MTP_DESCRIPTOR(ITF_NUM_MTP, 4, EPNUM_MTP_EVT, CFG_MTP_EVT_EP_SIZE, CFG_MTP_EVT_INTERVAL, EPNUM_MTP_OUT, EPNUM_MTP_IN, CFG_MTP_EP_SIZE),
+  TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
+
+  // Interface number, string index, EP Out & EP In address, EP size
+  TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 0, EPNUM_MSC_OUT, EPNUM_MSC_IN, 64),
 };
+
+#if TUD_OPT_HIGH_SPEED
+uint8_t const desc_hs_configuration[] =
+{
+  // Config number, interface count, string index, total length, attribute, power in mA
+  TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
+
+  // Interface number, string index, EP Out & EP In address, EP size
+  TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 0, EPNUM_MSC_OUT, EPNUM_MSC_IN, 512),
+};
+#endif
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR
 // Application return pointer to descriptor
 // Descriptor contents must exist long enough for transfer to complete
-uint8_t const *tud_descriptor_configuration_cb(uint8_t index)
+uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
 {
   (void) index; // for multiple configurations
+
+#if TUD_OPT_HIGH_SPEED
+  // Although we are highspeed, host may be fullspeed.
+  return (tud_speed_get() == TUSB_SPEED_HIGH) ?  desc_hs_configuration : desc_fs_configuration;
+#else
   return desc_fs_configuration;
+#endif
 }
 
 //--------------------------------------------------------------------+
@@ -129,17 +148,15 @@ enum {
   STRID_MANUFACTURER,
   STRID_PRODUCT,
   STRID_SERIAL,
-  STRID_MTP,
 };
 
 // array of pointer to string descriptors
 char const *string_desc_arr[] =
 {
   (const char[]) { 0x09, 0x04 }, // 0: is supported language is English (0x0409)
-  CFG_TUD_MANUFACTURER,          // 1: Manufacturer
-  CFG_TUD_MODEL,                 // 2: Product
+  "TinyUSB",                     // 1: Manufacturer
+  "TinyUSB Device",              // 2: Product
   NULL,                          // 3: Serials will use unique ID if possible
-  CFG_MTP_INTERFACE,             // 4: MTP Interface
 };
 
 static uint16_t _desc_str[32 + 1];

@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2025 Ennebi Elettronica (https://ennebielettronica.com)
+ * Copyright (c) 2019 Ha Thach (tinyusb.org)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -91,23 +91,14 @@
 #endif
 
 //------------- CLASS -------------//
-#define CFG_TUD_MTP               1
+#define CFG_TUD_CDC               0
+#define CFG_TUD_MSC               1
+#define CFG_TUD_HID               0
+#define CFG_TUD_MIDI              0
+#define CFG_TUD_VENDOR            0
 
-#define CFG_TUD_MANUFACTURER "TinyUsb Manufacturer"
-#define CFG_TUD_MODEL "TinyUsb Device"
-
-#define CFG_MTP_EP_SIZE 64
-#define CFG_MTP_EVT_EP_SIZE 64
-#define CFG_MTP_EVT_INTERVAL 100
-
-#define CFG_MTP_DEVICE_VERSION "1.0"
-#define CFG_MTP_SERIAL_NUMBER "0"
-#define CFG_MTP_INTERFACE (CFG_TUD_MODEL " MTP")
-#define CFG_MTP_STORAGE_ID_COUNT 1
-
-#define EPNUM_MTP_EVT   0x81
-#define EPNUM_MTP_IN    0x83
-#define EPNUM_MTP_OUT   0x04
+// MSC Buffer size of Device Mass storage
+#define CFG_TUD_MSC_EP_BUFSIZE    512
 
 #ifdef __cplusplus
  }
