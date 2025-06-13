@@ -28,8 +28,8 @@ specific language governing permissions and limitations under the License.
 #include "pico/stdlib.h"
 #include <stdio.h>
 
-//#define TRACE_PRINTF(fmt, args...)
-#define TRACE_PRINTF printf 
+#define TRACE_PRINTF(fmt, args...)
+//#define TRACE_PRINTF printf 
 
 /*-----------------------------------------------------------------------*/
 /* Get Drive Status                                                      */
@@ -63,8 +63,8 @@ DRESULT disk_read(BYTE pdrv,  /* Physical drive number to identify the drive */
                   UINT count    /* Number of sectors to read */
 ) {
     TRACE_PRINTF(">>> %s\n", __FUNCTION__);
-    dhara_error_t error;
     TRACE_PRINTF("sector %d, cnt %d\n", sector, count);
+    dhara_error_t error;
     // read *count* consecutive sectors
     for (int i = 0; i < count; i++) {
         int ret = dhara_map_read(&map, sector, buff, &error);
@@ -126,6 +126,7 @@ DRESULT disk_ioctl(BYTE pdrv, /* Physical drive number (0..) */
             *(LBA_t *)buff = DISK_NUM_SECTORS;
             return RES_OK;
         }
+
         case GET_BLOCK_SIZE: {  // Retrieves erase block size of the flash
                                 // memory media in unit of sector into the DWORD
                                 // variable pointed by buff. The allowable value
@@ -139,14 +140,16 @@ DRESULT disk_ioctl(BYTE pdrv, /* Physical drive number (0..) */
             *(DWORD *)buff = bs;
             return RES_OK;
         }
+
         case GET_SECTOR_SIZE:
-            *(WORD*)buff = 2048;
+            *(WORD*)buff = DISK_SECTOR_SIZE;
             return RES_OK;       
+
         case CTRL_SYNC:
             dhara_error_t error;
             dhara_map_sync(&map, &error);
-            //sd_card_p->sync(sd_card_p);
             return RES_OK;
+
         default:
             return RES_PARERR;
     }
