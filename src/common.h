@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include "hw/perf.h"
 #include <stdio.h>
+#include "config.h"
 
 #include "pico/stdlib.h"
 

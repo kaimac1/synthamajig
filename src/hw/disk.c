@@ -59,10 +59,7 @@ FRESULT create_filesystem(void) {
 // Initialise NAND device and flash translation layer
 DiskError disk_lowlevel_init(void) {
     dhara_error_t error;
-
-    gpio_init(PIN_NAND_CS);
-    gpio_set_dir(PIN_NAND_CS, GPIO_OUT);
-    gpio_put(PIN_NAND_CS, 1);
+    INIT_PRINTF("flash\n");
 
     nand_spi_init();
     int r = nandflash_init(&nand_parameters);
@@ -77,10 +74,10 @@ DiskError disk_lowlevel_init(void) {
 
     uint32_t total_sectors = dhara_map_capacity(&map);
     float capacity_mb = total_sectors * DISK_SECTOR_SIZE / (1024.0f * 1024.0f);
-    INIT_PRINTF("  capacity = %d (%.2f MB)\n", total_sectors, capacity_mb);
+    INIT_PRINTF("  map_capacity=%d (%.2f MB)\n", total_sectors, capacity_mb);
     uint32_t used_sectors = dhara_map_size(&map);
     float used_mb = used_sectors * DISK_SECTOR_SIZE / (1024.0f * 1024.0f);
-    INIT_PRINTF("  used = %d (%.3f MB)\n", used_sectors, used_mb);
+    INIT_PRINTF("  map_size=%d (%.3f MB)\n", used_sectors, used_mb);
 
     return DISK_OK;
 }
@@ -89,26 +86,27 @@ DiskError disk_init(void) {
     int r = disk_lowlevel_init();
     if (r) return r;
 
-    // Mount
+    // Mount filesystem
+    INIT_PRINTF("fatfs\n");
     FRESULT res = f_mount(&fs, "", 1);
     if (res != FR_OK) {
-        DEBUGF("f_mount error: %s (%d)\n", FRESULT_str(res), res);
-        DEBUGF("Creating filesystem...\n");
+        INIT_PRINTF("  f_mount error: %s (%d)\n", FRESULT_str(res), res);
+        INIT_PRINTF("  creating filesystem...\n");
 
         res = create_filesystem();
         if (res) {
-            DEBUGF("f_mkfs error: %d\n", res);
+            INIT_PRINTF("  f_mkfs error: %d\n", res);
             return DISK_FILESYSTEM_ERROR;
         }
 
         // Try to mount again
         res = f_mount(&fs, "", 1);
         if (res) {
-            DEBUGF("failed to mount new filesystem: %d\n", res);
+            INIT_PRINTF("  failed to mount new filesystem: %d\n", res);
             return DISK_FILESYSTEM_ERROR;
         }
+        f_setlabel(CFG_VOLUME_LABEL);
     }
-    DEBUGF("Disk mounted\n");
 
     // Check/create directories
     if (ensure_directory(SAMPLES_DIR)) {
