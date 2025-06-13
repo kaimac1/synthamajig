@@ -17,7 +17,6 @@
 #include "hardware/spi.h"
 #include "hw/psram_spi.h"
 
-#include "nandflash/nand_spi.h"
 #include "nandflash/nandflash.h"
 #include "dhara/map.h"
 #include "shell/shell.h"
@@ -27,95 +26,6 @@
 
 #include <tusb.h>
 #include <bsp/board_api.h>
-
-
-
-//--------------------------------------------------------------------+
-// MACRO CONSTANT TYPEDEF PROTYPES
-//--------------------------------------------------------------------+
-
-/* Blink pattern
- * - 250 ms  : device not mounted
- * - 1000 ms : device mounted
- * - 2500 ms : device is suspended
- */
-enum {
-  BLINK_NOT_MOUNTED = 250,
-  BLINK_MOUNTED = 1000,
-  BLINK_SUSPENDED = 2500,
-};
-
-static uint32_t blink_interval_ms = BLINK_NOT_MOUNTED;
-
-void led_blinking_task(void);
-
-/*------------- MAIN -------------*/
-int main(void) {
-  board_init();
-
-  // init device stack on configured roothub port
-  tusb_rhport_init_t dev_init = {
-    .role = TUSB_ROLE_DEVICE,
-    .speed = TUSB_SPEED_AUTO
-  };
-  tusb_init(BOARD_TUD_RHPORT, &dev_init);
-
-  if (board_init_after_tusb) {
-    board_init_after_tusb();
-  }
-
-  while (1) {
-    tud_task(); // tinyusb device task
-    led_blinking_task();
-  }
-}
-
-//--------------------------------------------------------------------+
-// Device callbacks
-//--------------------------------------------------------------------+
-
-// Invoked when device is mounted
-void tud_mount_cb(void) {
-  blink_interval_ms = BLINK_MOUNTED;
-}
-
-// Invoked when device is unmounted
-void tud_umount_cb(void) {
-  blink_interval_ms = BLINK_NOT_MOUNTED;
-}
-
-// Invoked when usb bus is suspended
-// remote_wakeup_en : if host allow us  to perform remote wakeup
-// Within 7ms, device must draw an average of current less than 2.5 mA from bus
-void tud_suspend_cb(bool remote_wakeup_en) {
-  (void) remote_wakeup_en;
-  blink_interval_ms = BLINK_SUSPENDED;
-}
-
-// Invoked when usb bus is resumed
-void tud_resume_cb(void) {
-  blink_interval_ms = tud_mounted() ? BLINK_MOUNTED : BLINK_NOT_MOUNTED;
-}
-
-//--------------------------------------------------------------------+
-// BLINKING TASK
-//--------------------------------------------------------------------+
-void led_blinking_task(void) {
-  static uint32_t start_ms = 0;
-  static bool led_state = false;
-
-  // Blink every interval ms
-  if (board_millis() - start_ms < blink_interval_ms) return; // not enough time
-  start_ms += blink_interval_ms;
-
-  board_led_write(led_state);
-  led_state = 1 - led_state; // toggle
-}
-
-
-/*
-
-dhara_map map;
 
 
 // DMA transfer complete ISR
@@ -131,6 +41,11 @@ extern "C" void audio_dma_callback(void) {
 
 void write_char(char c) {
     putchar(c);
+}
+
+int enter_msc(int argc, char **argv) {
+    disk_enter_mass_storage_mode();
+    return 0;
 }
 
 int erase_flash(int argc, char **argv) {
@@ -269,6 +184,48 @@ int file_read_test(int argc, char **argv) {
 
 
 
+
+/*------------- MAIN -------------*/
+int main(void) {
+    board_init();
+
+    gpio_init(PSRAM_PIN_CS0);
+    gpio_set_dir(PSRAM_PIN_CS0, GPIO_OUT);
+    gpio_put(PSRAM_PIN_CS0, 1);
+    gpio_init(PSRAM_PIN_CS1);
+    gpio_set_dir(PSRAM_PIN_CS1, GPIO_OUT);
+    gpio_put(PSRAM_PIN_CS1, 1);
+
+    disk_init();
+
+    // For shell
+    set_read_char(getchar);
+    set_write_char(write_char);
+
+    ADD_CMD("erase", "erase disk", erase_flash);
+    ADD_CMD("ws", "write sector", write_sector);
+    ADD_CMD("rs", "read sector", read_sector);
+    ADD_CMD("sync", "sync disk", disk_sync);
+    ADD_CMD("gc", "gc disk", disk_gc);
+    ADD_CMD("reset", "reset MCU", reset_mcu);
+    ADD_CMD("readtest", "read test", read_test);
+    ADD_CMD("filetest", "file write test", file_test);
+    ADD_CMD("frd", "file read test", file_read_test);
+    ADD_CMD("msc", "mass storage mode", enter_msc);
+
+    prompt();
+
+    while (1);
+}
+
+
+
+/*
+
+
+
+
+
 int main() {
     board_init();
     tusb_init();
@@ -282,7 +239,6 @@ int main() {
     stdio_init_all();
 
 
-
     gpio_init(PSRAM_PIN_CS0);
     gpio_set_dir(PSRAM_PIN_CS0, GPIO_OUT);
     gpio_put(PSRAM_PIN_CS0, 1);
@@ -294,17 +250,6 @@ int main() {
     gpio_set_dir(PIN_NAND_CS, GPIO_OUT);
     gpio_put(PIN_NAND_HOLD, 1);    
 
-    // For shell
-    set_read_char(getchar);
-    set_write_char(write_char);
-
-
-    while (1) {
-        tud_task();
-        custom_cdc_task();
-    }
-
-
     sleep_ms(2000);
 
     INIT_PRINTF("Initialising PSRAM...\n");
@@ -313,15 +258,7 @@ int main() {
         while (1);
     }
 
-    ADD_CMD("erase", "erase disk", erase_flash);
-    ADD_CMD("ws", "write sector", write_sector);
-    ADD_CMD("rs", "read sector", read_sector);
-    ADD_CMD("sync", "sync disk", disk_sync);
-    ADD_CMD("gc", "gc disk", disk_gc);
-    ADD_CMD("reset", "reset MCU", reset_mcu);
-    ADD_CMD("readtest", "read test", read_test);
-    ADD_CMD("filetest", "file write test", file_test);
-    ADD_CMD("frd", "file read test", file_read_test);
+
 
 
     dhara_nand nand_parameters;

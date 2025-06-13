@@ -23,11 +23,10 @@ specific language governing permissions and limitations under the License.
 //
 #include "diskio.h" /* Declarations of disk functions */
 
+#include "disk.h"
 #include "../vendor/dhara/map.h"
 #include "pico/stdlib.h"
 #include <stdio.h>
-
-extern struct dhara_map map;
 
 //#define TRACE_PRINTF(fmt, args...)
 #define TRACE_PRINTF printf 
@@ -124,7 +123,7 @@ DRESULT disk_ioctl(BYTE pdrv, /* Physical drive number (0..) */
                                   // function to determine the size of
                                   // volume/partition to be created. It is
                                   // required when FF_USE_MKFS == 1.
-            *(LBA_t *)buff = 16384;
+            *(LBA_t *)buff = DISK_NUM_SECTORS;
             return RES_OK;
         }
         case GET_BLOCK_SIZE: {  // Retrieves erase block size of the flash

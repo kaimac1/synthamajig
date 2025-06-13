@@ -30,6 +30,8 @@
  extern "C" {
 #endif
 
+#include "disk.h"
+
 //--------------------------------------------------------------------+
 // Board Specific Configuration
 //--------------------------------------------------------------------+
@@ -98,7 +100,7 @@
 #define CFG_TUD_VENDOR            0
 
 // MSC Buffer size of Device Mass storage
-#define CFG_TUD_MSC_EP_BUFSIZE    512
+#define CFG_TUD_MSC_EP_BUFSIZE    DISK_SECTOR_SIZE
 
 #ifdef __cplusplus
  }
