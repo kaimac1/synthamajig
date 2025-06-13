@@ -10,6 +10,7 @@
 #include "disk.h"
 #include "pinmap.h"
 #include "audio.h"
+#include "psram_spi.h"
 #include "pico/audio_i2s.h"
 #include "gfx/ngl.h"
 #include "../common.h"
@@ -24,6 +25,7 @@ const int LED_SCAN_RATE_HZ = 100;
 static bool led_timer_callback(repeating_timer_t *rt);
 static void led_timer_start(void);
 static void matrix_init(void);
+static void psram_init(void);
 
 static repeating_timer_t led_timer;
 static int led_column;
@@ -33,6 +35,7 @@ static uint8_t btn_value[NUM_BUTTONS];
 static struct audio_buffer_pool *audio_pool;
 static struct audio_buffer *current_audio_buffer;
 
+psram_spi_inst_t psram;
 
 void hw_init(void) {
 
@@ -42,9 +45,8 @@ void hw_init(void) {
     gpio_init(PICO_LED_PIN);
     gpio_set_dir(PICO_LED_PIN, GPIO_OUT);
 
-    // Enable PSRAM
-    gpio_set_function(PIN_PSRAM_CS, GPIO_FUNC_XIP_CS1);
-    xip_ctrl_hw->ctrl|=XIP_CTRL_WRITABLE_M1_BITS;
+    // Enable PSRAMs
+    psram_init();
 
     // // Encoders
     // pio_add_program(ENCODER_PIO, &quadrature_encoder_program);
@@ -91,6 +93,24 @@ void hw_debug_led(bool value) {
 
 bool hw_read_button(int button) {
     return btn_value[button];
+}
+
+
+static void psram_init(void) {
+    INIT_PRINTF("Initialising PSRAM...\n");
+
+    gpio_init(PSRAM_PIN_CS0);
+    gpio_set_dir(PSRAM_PIN_CS0, GPIO_OUT);
+    gpio_put(PSRAM_PIN_CS0, 1);
+    gpio_init(PSRAM_PIN_CS1);
+    gpio_set_dir(PSRAM_PIN_CS1, GPIO_OUT);
+    gpio_put(PSRAM_PIN_CS1, 1);
+
+    psram = psram_spi_init(pio0);
+    if (psram.error) {
+        INIT_PRINTF("PSRAM error\n");
+        while (1);
+    }    
 }
 
 
