@@ -19,7 +19,6 @@ add_subdirectory(vendor/fatfspico/src build)
 
 add_executable(synth
     src/main.cpp
-    src/msc_disk.c
     src/debug_shell.c
 
     src/hw/hw.c
@@ -28,6 +27,7 @@ add_executable(synth
     src/hw/disk.c
     src/hw/psram_spi.c
     src/hw/usb_descriptors.c
+    src/hw/mass_storage.c
 
     src/gfx/ngl.c
     src/gfx/gfx_ext.c
