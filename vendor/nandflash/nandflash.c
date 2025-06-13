@@ -209,14 +209,6 @@ int nandflash_init(struct dhara_nand* dhara_parameters_out) {
         return ret;
     }
 
-    uint8_t reg;
-    int r = get_register(FEATURE_REG_BLOCK_LOCK, &reg, 10);
-    INIT_PRINTF("  reg %02x = %02x\n", FEATURE_REG_BLOCK_LOCK, reg);
-    r = get_register(FEATURE_REG_CONFIGURATION, &reg, 10);
-    INIT_PRINTF("  reg %02x = %02x\n", FEATURE_REG_CONFIGURATION, reg);
-    r = get_register(FEATURE_REG_STATUS, &reg, 10);
-    INIT_PRINTF("  reg %02x = %02x\n", FEATURE_REG_STATUS, reg);        
-
     // fill in the return structure
     if (dhara_parameters_out) {
         dhara_parameters_out->log2_page_size = SPI_NAND_LOG2_PAGE_SIZE;

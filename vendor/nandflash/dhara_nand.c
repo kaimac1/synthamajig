@@ -6,12 +6,52 @@
  */
 
 #include "dhara/nand.h"
+#include "dhara/journal.h"
 #include "nandflash.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 //#define DHARA_DEBUG_PRINTF printf
 #define DHARA_DEBUG_PRINTF
+
+typedef struct {
+    bool valid;
+    dhara_page_t page;
+    size_t offset;
+    uint8_t data[DHARA_META_SIZE];
+} metadata_cache_entry;
+
+#define NUM_CACHE_ENTRIES 16
+metadata_cache_entry metadata_cache[NUM_CACHE_ENTRIES];
+int cache_index;
+int last_cache_hit;
+
+
+int cache_idx(dhara_page_t page, size_t offset) {
+    for (int j=0; j<NUM_CACHE_ENTRIES; j++) {
+        int idx = last_cache_hit + j;
+        if (idx >= NUM_CACHE_ENTRIES) idx -= NUM_CACHE_ENTRIES;
+        if (!metadata_cache[idx].valid) continue;
+        if (metadata_cache[idx].page == page && metadata_cache[idx].offset == offset) {
+            last_cache_hit = idx;
+            return idx;
+        }
+    }
+    return -1;
+}
+
+void add_to_cache(dhara_page_t page, size_t offset, uint8_t *data) {
+    metadata_cache[cache_index].valid = true;
+    metadata_cache[cache_index].page = page;
+    metadata_cache[cache_index].offset = offset;
+    memcpy(metadata_cache[cache_index].data, data, DHARA_META_SIZE);
+    cache_index++;
+    if (cache_index == NUM_CACHE_ENTRIES) cache_index = 0;
+}
+
+
+
 
 
 // public function definitions
@@ -62,6 +102,9 @@ int dhara_nand_erase(const struct dhara_nand *n, dhara_block_t b, dhara_error_t 
 int dhara_nand_prog(const struct dhara_nand *n, dhara_page_t p, const uint8_t *data,
                     dhara_error_t *err)
 {
+    //// Invalidate cache
+    //if (p == cached_page_address) cached_page_address = INVALID_ADDRESS;
+
     // construct row address -- dhara's page address is identical to an MT29F row address
     row_address_t row = {.whole = p};
     // call spi_nand layer
@@ -98,11 +141,30 @@ int dhara_nand_is_free(const struct dhara_nand *n, dhara_page_t p)
 int dhara_nand_read(const struct dhara_nand *n, dhara_page_t p, size_t offset, size_t length,
                     uint8_t *data, dhara_error_t *err)
 {
-    // construct row address -- dhara's page address is identical to an MT29F row address
     row_address_t row = {.whole = p};
+
+    if (length == DHARA_META_SIZE) {
+        int cidx = cache_idx(p, offset);
+        if (cidx == -1) {
+            // Not in cache
+            DHARA_DEBUG_PRINTF("dhara: read (%d, %d) not in cache\n", p, offset);
+            int ret = nandflash_page_read(row, offset, data, DHARA_META_SIZE);
+            if (ret != SPI_NAND_RET_OK) {
+                if (ret == SPI_NAND_RET_ECC_ERR) *err = DHARA_E_ECC;
+                return -1;
+            }
+            add_to_cache(p, offset, data);
+            return 0;
+        } else {
+            DHARA_DEBUG_PRINTF("dhara: read (%d, %d) [cached]\n", p, offset);
+            memcpy(data, metadata_cache[cidx].data, DHARA_META_SIZE);
+            return 0;
+        }
+    }
+
     // call spi_nand layer
     int ret = nandflash_page_read(row, offset, data, length);
-    DHARA_DEBUG_PRINTF("dhara: nand_read(%d, len=%d): %d\n", p, length, ret);
+    DHARA_DEBUG_PRINTF("dhara: nand_read(%d, offs=%d, len=%d): %d\n", p, offset, length, ret);
     if (SPI_NAND_RET_OK == ret) { // success
         return 0;
     }
