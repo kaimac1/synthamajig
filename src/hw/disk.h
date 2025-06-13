@@ -14,7 +14,13 @@ extern "C" {
 
 extern struct dhara_map map;
 
-int disk_init(void);
+typedef enum {
+    DISK_OK = 0,
+    DISK_NAND_FLASH_INIT_FAILED,
+    DISK_FILESYSTEM_ERROR
+} DiskError;
+
+DiskError disk_init(void);
 void disk_deinit(void);
 void disk_enter_mass_storage_mode(void);
 

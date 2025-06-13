@@ -20,7 +20,7 @@ struct dhara_nand nand_parameters;
 uint8_t dhara_page_buffer[2048 + 128];
 extern bool disk_ejected;
 
-void led_blinking_task(void);
+void periodic_task(void);
 
 // Create a directory if it doesn't already exist
 int ensure_directory(const char *name) {
@@ -35,7 +35,7 @@ int ensure_directory(const char *name) {
     }
 
     if (f_mkdir(name) == FR_OK) {
-        DEBUGF("created %s", name);
+        DEBUGF("Created dir %s\n", name);
         return 0;
     } else {
         return -1;
@@ -57,7 +57,7 @@ FRESULT create_filesystem(void) {
 }
 
 // Initialise NAND device and flash translation layer
-int disk_lowlevel_init(void) {
+DiskError disk_lowlevel_init(void) {
     dhara_error_t error;
 
     gpio_init(PIN_NAND_CS);
@@ -66,7 +66,7 @@ int disk_lowlevel_init(void) {
 
     nand_spi_init();
     int r = nandflash_init(&nand_parameters);
-    if (r) return r;
+    if (r) return DISK_NAND_FLASH_INIT_FAILED;
 
     dhara_map_init(&map, &nand_parameters, dhara_page_buffer, DHARA_GC_RATIO);
     r = dhara_map_resume(&map, &error);
@@ -82,32 +82,37 @@ int disk_lowlevel_init(void) {
     float used_mb = used_sectors * DISK_SECTOR_SIZE / (1024.0f * 1024.0f);
     INIT_PRINTF("  used = %d (%.3f MB)\n", used_sectors, used_mb);
 
-    return 0;
+    return DISK_OK;
 }
 
-int disk_init(void) {
-
+DiskError disk_init(void) {
     int r = disk_lowlevel_init();
     if (r) return r;
 
     // Mount
     FRESULT res = f_mount(&fs, "", 1);
     if (res != FR_OK) {
-        printf("f_mount error: %s (%d)\n", FRESULT_str(res), res);
-        printf("Creating filesystem...\n");
+        DEBUGF("f_mount error: %s (%d)\n", FRESULT_str(res), res);
+        DEBUGF("Creating filesystem...\n");
+
         res = create_filesystem();
         if (res) {
-            printf("f_mkfs failed with %d\n", res);
+            DEBUGF("f_mkfs error: %d\n", res);
+            return DISK_FILESYSTEM_ERROR;
         }
-        return -1;
-    } else {
-        printf("Disk mounted\n");
+
+        // Try to mount again
+        res = f_mount(&fs, "", 1);
+        if (res) {
+            DEBUGF("failed to mount new filesystem: %d\n", res);
+            return DISK_FILESYSTEM_ERROR;
+        }
     }
+    DEBUGF("Disk mounted\n");
 
     // Check/create directories
     if (ensure_directory(SAMPLES_DIR)) {
-        DEBUGF("failed\n");
-        return -1;
+        return DISK_FILESYSTEM_ERROR;
     }
 
     return 0;
@@ -133,17 +138,11 @@ void disk_enter_mass_storage_mode(void) {
 
     while (!disk_ejected) {
         tud_task(); // tinyusb device task
-        led_blinking_task();
+        periodic_task();
     }
+    // FIXME: deinitialise tusb - somehow
 }
 
-enum {
-  BLINK_NOT_MOUNTED = 250,
-  BLINK_MOUNTED = 1000,
-  BLINK_SUSPENDED = 2500,
-};
-
-static uint32_t blink_interval_ms = BLINK_NOT_MOUNTED;
 
 //--------------------------------------------------------------------+
 // Device callbacks
@@ -151,43 +150,38 @@ static uint32_t blink_interval_ms = BLINK_NOT_MOUNTED;
 
 // Invoked when device is mounted
 void tud_mount_cb(void) {
-  blink_interval_ms = BLINK_MOUNTED;
-  printf("mounted\n");
+    printf("mounted\n");
 }
 
 // Invoked when device is unmounted
 void tud_umount_cb(void) {
-  blink_interval_ms = BLINK_NOT_MOUNTED;
-  printf("unmounted\n");
+    printf("unmounted\n");
 }
 
 // Invoked when usb bus is suspended
 // remote_wakeup_en : if host allow us  to perform remote wakeup
 // Within 7ms, device must draw an average of current less than 2.5 mA from bus
 void tud_suspend_cb(bool remote_wakeup_en) {
-  (void) remote_wakeup_en;
-  blink_interval_ms = BLINK_SUSPENDED;
+    (void) remote_wakeup_en;
 }
 
 // Invoked when usb bus is resumed
 void tud_resume_cb(void) {
-  blink_interval_ms = tud_mounted() ? BLINK_MOUNTED : BLINK_NOT_MOUNTED;
+    //blink_interval_ms = tud_mounted() ? BLINK_MOUNTED : BLINK_NOT_MOUNTED;
 }
 
-//--------------------------------------------------------------------+
-// BLINKING TASK
-//--------------------------------------------------------------------+
-void led_blinking_task(void) {
-  static uint32_t start_ms = 0;
-  static bool led_state = false;
+void periodic_task(void) {
+    const uint32_t period_ms = 1000;
+    static uint32_t start_ms = 0;
+    static bool led_state = false;
 
-  // Blink every interval ms
-  if (board_millis() - start_ms < blink_interval_ms) return; // not enough time
-  start_ms += blink_interval_ms;
+    if (board_millis() - start_ms < period_ms) return; // not enough time
+    start_ms += period_ms;
 
-  board_led_write(led_state);
-  led_state = 1 - led_state; // toggle
+    // Periodically sync writes
+    dhara_error_t error;
+    dhara_map_sync(&map, &error);  
 
-  dhara_error_t error;
-  dhara_map_sync(&map, &error);
+    board_led_write(led_state);
+    led_state = 1 - led_state; // toggle
 }

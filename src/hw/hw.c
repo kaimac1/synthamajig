@@ -36,7 +36,7 @@ static struct audio_buffer *current_audio_buffer;
 
 void hw_init(void) {
 
-    // stdio_init_all();
+    stdio_init_all();
 
     // Debug LED
     gpio_init(PICO_LED_PIN);
@@ -63,8 +63,8 @@ void hw_init(void) {
     // // DAC
     // audio_pool = init_audio(SAMPLE_RATE, PIN_I2S_DATA, PIN_I2S_BCLK, 0, AUDIO_DMA_CHANNEL);
 
-    // // Disk
-    // disk_init();
+    // Disk
+    disk_init();
 }
 
 void hw_audio_start(void) {
