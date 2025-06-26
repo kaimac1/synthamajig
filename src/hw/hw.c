@@ -1,4 +1,5 @@
 #include "pico/stdlib.h"
+#include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "hardware/sync.h"
@@ -41,13 +42,14 @@ void hw_init(void) {
 
     stdio_init_all();
     INIT_PRINTF("\n\n~ Synthamajig ~\n");
+    INIT_PRINTF("clk_sys=%.0f MHz\n", clock_get_hz(clk_sys) / 1000000.0f);
 
     // Debug LED
     //gpio_init(PICO_LED_PIN);
     //gpio_set_dir(PICO_LED_PIN, GPIO_OUT);
 
     // Enable PSRAMs
-    psram_init();
+    //psram_init();
 
     // // Encoders
     // pio_add_program(ENCODER_PIO, &quadrature_encoder_program);
