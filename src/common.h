@@ -8,7 +8,7 @@
 
 #include "pico/stdlib.h"
 
-#define SAMPLE_RATE 44100
+#define SAMPLE_RATE 48000
 
 // Show min and max sample values
 //#define DEBUG_AMPLITUDE

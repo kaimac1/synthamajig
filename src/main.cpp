@@ -25,10 +25,22 @@ extern "C" void audio_dma_callback(void) {
 }
 
 int main(void) {
+    create_lookup_tables();
     hw_init();
 
-    debug_shell_init();
-    prompt();
+    //SampleManager::init();
+    UI::init();
+    hw_audio_start();
 
-    while (1);
+    //debug_shell_init();
+    //prompt();
+
+    INIT_PRINTF("main loop\n");
+    int cnt = 0;
+    while (1) {
+        RawInput raw_input = audio_wait();
+        UI::process(raw_input);
+
+        if (cnt++ % 256 == 0) INIT_PRINTF(".");
+    }
 }

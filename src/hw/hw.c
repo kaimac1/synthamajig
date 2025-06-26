@@ -7,6 +7,7 @@
 #include "hardware/regs/xip.h"
 #include "quadrature_encoder.pio.h"
 #include "hw.h"
+#include "codec.h"
 #include "oled.h"
 #include "disk.h"
 #include "pinmap.h"
@@ -65,11 +66,12 @@ void hw_init(void) {
     // // Input & LED matrix
     // matrix_init();
 
-    // // DAC
-    // audio_pool = init_audio(SAMPLE_RATE, PIN_I2S_DATA, PIN_I2S_BCLK, 0, AUDIO_DMA_CHANNEL);
+    // Codec
+    codec_init();
+    audio_pool = init_audio(SAMPLE_RATE, PIN_CODEC_DIN, PIN_CODEC_LRCK, 0, AUDIO_DMA_CHANNEL);
 
     // Disk
-    disk_init();
+    //disk_init();
 }
 
 void hw_audio_start(void) {

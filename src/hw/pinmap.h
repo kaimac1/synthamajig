@@ -4,7 +4,7 @@
 #define PICO_LED_PIN 15
 
 // OLED
-#define OLED_I2C        i2c_default
+#define OLED_I2C        i2c0
 #define OLED_CLK_KHZ    1000
 #define PIN_OLED_SDA    16
 #define PIN_OLED_SCL    17
@@ -14,13 +14,6 @@
 #define PIN_ENC1 2
 #define PIN_ENC2 4
 #define PIN_ENC3 6
-
-// I2S
-#define AUDIO_DMA_CHANNEL 1
-#define PIN_I2S_DATA 9
-#define PIN_I2S_BCLK 10
-#define PIN_I2S_LRCLK_UNUSED 11
-#define PIN_DAC_MUTE_UNUSED 22
 
 // Button/LED matrix
 #define LED_PWM_SLICE 1
@@ -52,3 +45,13 @@
 #define PIN_NAND_HOLD   14
 #define NAND_SPI        spi1
 #define NAND_BAUD_RATE  (50*1000*1000)
+
+// Audio codec
+#define PIN_CODEC_SDA   42
+#define PIN_CODEC_SCL   43
+#define CODEC_I2C       i2c1
+#define PIN_CODEC_DOUT  44  // Output from codec
+#define PIN_CODEC_LRCK  45
+#define PIN_CODEC_BCK   46
+#define PIN_CODEC_DIN   47  // Input to codec
+#define AUDIO_DMA_CHANNEL 1

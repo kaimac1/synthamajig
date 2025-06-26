@@ -22,12 +22,13 @@ add_executable(synth
     src/debug_shell.c
 
     src/hw/hw.c
+    src/hw/codec.c
     src/hw/oled.c
-    src/hw/perf.c
-    src/hw/disk.c
     src/hw/psram_spi.c
-    src/hw/usb_descriptors.c
+    src/hw/disk.c
     src/hw/mass_storage.c
+    src/hw/usb_descriptors.c
+    src/hw/perf.c
 
     src/gfx/ngl.c
     src/gfx/gfx_ext.c
