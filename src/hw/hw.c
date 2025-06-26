@@ -40,10 +40,11 @@ psram_spi_inst_t psram;
 void hw_init(void) {
 
     stdio_init_all();
+    INIT_PRINTF("\n\n~ Synthamajig ~\n");
 
     // Debug LED
-    gpio_init(PICO_LED_PIN);
-    gpio_set_dir(PICO_LED_PIN, GPIO_OUT);
+    //gpio_init(PICO_LED_PIN);
+    //gpio_set_dir(PICO_LED_PIN, GPIO_OUT);
 
     // Enable PSRAMs
     psram_init();
@@ -97,7 +98,7 @@ bool hw_read_button(int button) {
 
 
 static void psram_init(void) {
-    INIT_PRINTF("Initialising PSRAM...\n");
+    INIT_PRINTF("psram\n");
 
     gpio_init(PSRAM_PIN_CS0);
     gpio_set_dir(PSRAM_PIN_CS0, GPIO_OUT);
@@ -108,7 +109,7 @@ static void psram_init(void) {
 
     psram = psram_spi_init(pio0);
     if (psram.error) {
-        INIT_PRINTF("PSRAM error\n");
+        INIT_PRINTF("  error\n");
         while (1);
     }    
 }

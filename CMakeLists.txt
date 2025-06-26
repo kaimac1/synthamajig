@@ -85,9 +85,9 @@ pico_enable_stdio_uart(synth 1)
 target_compile_definitions(synth PRIVATE
     PICO_AUDIO_I2S_MONO_INPUT=1
     USE_AUDIO_I2S=1
-    PICO_DEFAULT_UART=0
-    PICO_DEFAULT_UART_TX_PIN=12
-    PICO_DEFAULT_UART_RX_PIN=13
+    PICO_DEFAULT_UART=1
+    PICO_DEFAULT_UART_TX_PIN=8
+    PICO_DEFAULT_UART_RX_PIN=7
 )
 
 # create binaries

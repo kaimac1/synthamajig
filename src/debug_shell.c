@@ -5,6 +5,7 @@
 #include "hardware/watchdog.h"
 #include "ff.h"
 #include "hw/disk.h"
+#include "hw/psram_spi.h"
 
 void write_char(char c) {
     putchar(c);
@@ -148,6 +149,13 @@ int file_read_test(int argc, char **argv) {
     return 0;
 }
 
+int ram_test(int argc, char **argv) {
+    extern psram_spi_inst_t psram;
+    psram_test(&psram);
+    return 0;
+
+}
+
 
 void debug_shell_init(void) {
     set_read_char(getchar);
@@ -162,5 +170,6 @@ void debug_shell_init(void) {
     ADD_CMD("readtest", "read test", read_test);
     ADD_CMD("filetest", "file write test", file_test);
     ADD_CMD("frd", "file read test", file_read_test);
+    ADD_CMD("ramtest", "PSRAM test", ram_test);
     ADD_CMD("msc", "mass storage mode", enter_msc);
 }

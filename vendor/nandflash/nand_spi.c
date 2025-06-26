@@ -14,8 +14,9 @@
 
 // public function definitions
 void nand_spi_init(void) {
-    INIT_PRINTF("Initialising disk:\n");
-
+    gpio_init(PIN_NAND_CS);
+    gpio_set_dir(PIN_NAND_CS, GPIO_OUT);
+    gpio_put(PIN_NAND_CS, 1);    
     // WP and HOLD pins held high for 4-wire SPI
     gpio_init(PIN_NAND_WP);
     gpio_set_dir(PIN_NAND_WP, GPIO_OUT);
@@ -24,15 +25,12 @@ void nand_spi_init(void) {
     gpio_set_dir(PIN_NAND_HOLD, GPIO_OUT);
     gpio_put(PIN_NAND_HOLD, 1);    
 
-    uint64_t baudrate=spi_init(NAND_SPI, 25*1000*1000);
+    uint64_t baudrate=spi_init(NAND_SPI, NAND_BAUD_RATE);
     INIT_PRINTF("  baud=%llu\n", baudrate);
 
     gpio_set_function(PIN_NAND_SCK, GPIO_FUNC_SPI);
     gpio_set_function(PIN_NAND_MOSI, GPIO_FUNC_SPI);
     gpio_set_function(PIN_NAND_MISO, GPIO_FUNC_SPI);
-
-    // CS set up elsewhere atm
-
 }
 
 int nand_spi_write(const uint8_t* write_buff, size_t write_len, uint32_t timeout_ms) {

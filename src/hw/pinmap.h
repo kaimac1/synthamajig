@@ -1,9 +1,7 @@
 #pragma once
 // pin & peripheral config
 
-#define PICO_LED_PIN 25
-
-#define PIN_PSRAM_CS 47
+#define PICO_LED_PIN 15
 
 // OLED
 #define OLED_I2C        i2c_default
@@ -36,13 +34,6 @@
 #define PIN_BTN2 22
 #define PIN_BTN3 12
 
-// SD card
-#define PIN_DISK_MOSI   15
-#define PIN_DISK_MISO   8
-#define PIN_DISK_SCK    14
-#define PIN_DISK_CS     13
-
-
 // PSRAM SPI
 #define PSRAM_PIN_CS0   0
 #define PSRAM_PIN_CS1   1
@@ -53,10 +44,11 @@
 #define PSRAM_PIN_SD3   6
 
 // NAND flash
-#define PIN_NAND_CS     17
-#define PIN_NAND_SCK    18
-#define PIN_NAND_MOSI   19
-#define PIN_NAND_MISO   20
-#define PIN_NAND_WP     21
-#define PIN_NAND_HOLD   22
-#define NAND_SPI        spi0
+#define PIN_NAND_CS     9
+#define PIN_NAND_SCK    10
+#define PIN_NAND_MOSI   11
+#define PIN_NAND_MISO   12
+#define PIN_NAND_WP     13
+#define PIN_NAND_HOLD   14
+#define NAND_SPI        spi1
+#define NAND_BAUD_RATE  (50*1000*1000)
