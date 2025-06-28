@@ -21,7 +21,6 @@ const int PWM_SYSCLK_DIVISOR = 32;
 const int LED_SCAN_RATE_HZ = 100;
 
 #define NUM_COLUMNS 8
-#define ENCODER_PIO pio1
 #define LED_TIMER_UPDATE_HZ (LED_SCAN_RATE_HZ * NUM_COLUMNS)
 
 static bool led_timer_callback(repeating_timer_t *rt);
@@ -52,16 +51,17 @@ void hw_init(void) {
     // Enable PSRAMs
     //psram_init();
 
-    // // Encoders
-    // pio_add_program(ENCODER_PIO, &quadrature_encoder_program);
-    // quadrature_encoder_program_init(ENCODER_PIO, 0, PIN_ENC0, 0);
-    // quadrature_encoder_program_init(ENCODER_PIO, 1, PIN_ENC1, 0);
-    // quadrature_encoder_program_init(ENCODER_PIO, 2, PIN_ENC2, 0);
-    // quadrature_encoder_program_init(ENCODER_PIO, 3, PIN_ENC3, 0);
+    // Encoders
+    pio_set_gpio_base(ENCODER_PIO, 16);
+    pio_add_program(ENCODER_PIO, &quadrature_encoder_program);
+    quadrature_encoder_program_init(ENCODER_PIO, 0, PIN_ENC0, 0);
+    quadrature_encoder_program_init(ENCODER_PIO, 1, PIN_ENC1, 0);
+    quadrature_encoder_program_init(ENCODER_PIO, 2, PIN_ENC2, 0);
+    quadrature_encoder_program_init(ENCODER_PIO, 3, PIN_ENC3, 0);
 
     // // OLED & graphics library
-    // oled_init(ngl_framebuffer());
-    // ngl_init();
+    oled_init(ngl_framebuffer());
+    ngl_init();
 
     // // Input & LED matrix
     // matrix_init();
