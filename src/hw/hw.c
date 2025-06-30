@@ -125,14 +125,18 @@ static void set_sw_row(int row) {
     gpio_put(PIN_BTN2, 0);
     gpio_put(PIN_BTN3, 0);
 
+
+
     if (row == 0) gpio_put(PIN_BTN0, 1);
     if (row == 1) gpio_put(PIN_BTN1, 1);
     if (row == 2) gpio_put(PIN_BTN2, 1);
     if (row == 3) gpio_put(PIN_BTN3, 1);    
 
     // Work around E9 issue
-    for (int i=0; i<NUM_COLUMNS; i++) gpio_set_input_enabled(PIN_COL0 + i, false);
-    for (int i=0; i<NUM_COLUMNS; i++) gpio_set_input_enabled(PIN_COL0 + i, true);    
+    for (int i=0; i<NUM_COLUMNS; i++) gpio_set_input_enabled(PIN_COL0 + i, false);    
+    for (int i=0; i<NUM_COLUMNS; i++) gpio_pull_down(PIN_COL0 + i);
+    for (int i=0; i<NUM_COLUMNS; i++) gpio_set_input_enabled(PIN_COL0 + i, true);
+
 }
 
 
@@ -204,17 +208,18 @@ void hw_scan_buttons(void) {
 
     for (int row=0; row<4; row++) {
         set_sw_row(row);
-        sleep_us(10);
-        //delay_us_in_isr(2); // we should need this but don't for some reason
-        btn_value[NUM_COLUMNS*row+0] = gpio_get(PIN_COL0);
-        btn_value[NUM_COLUMNS*row+1] = gpio_get(PIN_COL1);
-        btn_value[NUM_COLUMNS*row+2] = gpio_get(PIN_COL2);
-        btn_value[NUM_COLUMNS*row+3] = gpio_get(PIN_COL3);
-        btn_value[NUM_COLUMNS*row+4] = gpio_get(PIN_COL4);
-        btn_value[NUM_COLUMNS*row+5] = gpio_get(PIN_COL5);
-        btn_value[NUM_COLUMNS*row+6] = gpio_get(PIN_COL6);
-        btn_value[NUM_COLUMNS*row+7] = gpio_get(PIN_COL7);
+        sleep_us(2);
+        //delay_us_in_isr(10); // we should need this but don't for some reason
+        btn_value[8*row+0] = gpio_get(PIN_COL0);
+        btn_value[8*row+1] = gpio_get(PIN_COL1);
+        btn_value[8*row+2] = gpio_get(PIN_COL2);
+        btn_value[8*row+3] = gpio_get(PIN_COL3);
+        btn_value[8*row+4] = gpio_get(PIN_COL4);
+        btn_value[8*row+5] = gpio_get(PIN_COL5);
+        btn_value[8*row+6] = gpio_get(PIN_COL6);
+        btn_value[8*row+7] = gpio_get(PIN_COL7);
     }
+    set_sw_row(-1);
 
     // set_column(led_column);
     // led_timer_start();

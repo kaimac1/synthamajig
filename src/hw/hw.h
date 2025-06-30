@@ -27,6 +27,7 @@ typedef enum {
     BTN_STEP_6,
     BTN_STEP_7,
     BTN_STEP_8,
+    
     BTN_STEP_9,
     BTN_STEP_10,
     BTN_STEP_11,
@@ -35,21 +36,22 @@ typedef enum {
     BTN_STEP_14,
     BTN_STEP_15,
     BTN_STEP_16,
-    BTN_SHIFT = 16,
-    // 17 absent
-    BTN_SOFT_A = 18,
-    BTN_TRACK = 19,
-    BTN_CHAN = 20,
-    BTN_PATTERN = 21,
-    // 22,23 absent
-    BTN_LEFT = 24,
-    BTN_RIGHT = 25,
+
+    BTN_NDOWN = 16,
+    BTN_LEFT = 17,
+    BTN_KEYBOARD = 18,
+    BTN_CHAN = 19,
+    BTN_TRACK = 20,
+    // 21,22 absent
+    BTN_SHIFT = 23,
+    BTN_RIGHT = 24,
+    BTN_NUP = 25,
     BTN_SOFT_B = 26,
-    BTN_PLAY = 27,
-    BTN_REC = 28,
-     BTN_UNKN2 = 29,
-    BTN_MENU = 30,
-    BTN_KEYBOARD = 31
+    BTN_PATTERN = 27,
+    BTN_SOFT_A = 28,
+    BTN_MENU = 29,
+    BTN_REC = 30,
+    BTN_PLAY = 31,
 } ButtonName;
 
 typedef struct {
