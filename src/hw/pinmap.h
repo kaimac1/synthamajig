@@ -30,15 +30,22 @@
 
 // Button/LED matrix
 #define LED_PWM_SLICE 1
-#define PIN_COLSEL0 26
-#define PIN_COLSEL1 27
-#define PIN_COLSEL2 28
-#define PIN_LED0 18
-#define PIN_LED1 19
-#define PIN_BTN0 20
-#define PIN_BTN1 21
-#define PIN_BTN2 22
-#define PIN_BTN3 12
+#define PIN_LED0            18
+#define PIN_LED1            19
+#define PIN_LED2            20
+#define PIN_LED3            21
+#define PIN_BTN0            24
+#define PIN_BTN1            25
+#define PIN_BTN2            22
+#define PIN_BTN3            23
+#define PIN_COL0            26
+#define PIN_COL1            27
+#define PIN_COL2            28
+#define PIN_COL3            29
+#define PIN_COL4            30
+#define PIN_COL5            31
+#define PIN_COL6            32
+#define PIN_COL7            33
 
 // Encoders
 #define PIN_ENC0        34  // encoder is on this pin and the next
