@@ -49,7 +49,7 @@ void hw_init(void) {
     //gpio_set_dir(PICO_LED_PIN, GPIO_OUT);
 
     // Enable PSRAMs
-    //psram_init();
+    psram_init();
 
     // Encoders
     pio_set_gpio_base(ENCODER_PIO, 16);
@@ -111,7 +111,7 @@ static void psram_init(void) {
     gpio_set_dir(PSRAM_PIN_CS1, GPIO_OUT);
     gpio_put(PSRAM_PIN_CS1, 1);
 
-    psram = psram_spi_init(pio0);
+    psram = psram_spi_init(PSRAM_PIO);
     if (psram.error) {
         INIT_PRINTF("  error\n");
         while (1);

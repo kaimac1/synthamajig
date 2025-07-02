@@ -11,6 +11,7 @@
 #define PSRAM_PIN_SD1_SO    4
 #define PSRAM_PIN_SD2       5
 #define PSRAM_PIN_SD3       6
+#define PSRAM_PIO           pio2
 
 // NAND flash
 #define PIN_NAND_CS         9
@@ -62,4 +63,5 @@
 #define PIN_CODEC_BCK   46
 #define PIN_CODEC_DIN   47  // Input to codec
 #define CODEC_I2C       i2c1
+#define PICO_AUDIO_PIO  0
 #define AUDIO_DMA_CHANNEL 1
