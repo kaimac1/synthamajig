@@ -44,8 +44,8 @@ extern "C" {
 #error PICO_AUDIO_I2S_DMA_IRQ must be 0 or 1
 #endif
 
-#if !(PICO_AUDIO_I2S_PIO == 0 || PICO_AUDIO_I2S_PIO == 1)
-#error PICO_AUDIO_I2S_PIO ust be 0 or 1
+#if !(PICO_AUDIO_I2S_PIO == 0 || PICO_AUDIO_I2S_PIO == 1 || PICO_AUDIO_I2S_PIO == 2)
+#error PICO_AUDIO_I2S_PIO ust be 0 or 1 or 2
 #endif
 
 #ifndef PICO_AUDIO_I2S_MAX_CHANNELS
