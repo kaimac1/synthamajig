@@ -24,7 +24,7 @@ SOFTWARE.
 
 ******************************************************************************/
 #include "psram_spi.h"
-
+#include "common.h"
 #include <stdio.h>
 
 #if defined(PSRAM_ASYNC) && defined(PSRAM_ASYNC_SYNCHRONIZE)
@@ -45,64 +45,109 @@ void __isr psram_dma_complete_handler() {
 }
 #endif // defined(PSRAM_ASYNC) && defined(PSRAM_ASYNC_SYNCHRONIZE)
 
+psram_spi_inst_t psram;
 pio_sm_config psram_sm_cfg;
+const pio_program_t *current_program;
+unsigned int current_program_offset;
 
-static int initialise_device(psram_spi_inst_t *psram) {
-    uint8_t reset_en_cmd[] = {8, 0, 0x66};
-    pio_spi_single_rw(psram, reset_en_cmd, sizeof(reset_en_cmd), 0, 0);
+static void use_program(const pio_program_t *program) {
+    if (program == current_program) return;
+    if (current_program) {
+        pio_remove_program(PSRAM_PIO, current_program, current_program_offset);
+        pio_sm_unclaim(PSRAM_PIO, PSRAM_SM0);
+        pio_sm_unclaim(PSRAM_PIO, PSRAM_SM1);
+        pio_clear_instruction_memory(PSRAM_PIO);
+    }
+    current_program = program;
+    current_program_offset = pio_add_program(PSRAM_PIO, program);
+
+    if (current_program == &spi_psram_program) {
+        pio_spi_psram_cs_init(PSRAM_PIO, PSRAM_SM0, current_program_offset, PSRAM_CLKDIV, PSRAM_PIN_CS0, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI, PSRAM_PIN_SD1_SO);
+    } else if (current_program == &qspi_psram_program) {
+        pio_qspi_psram_cs_init(PSRAM_PIO, PSRAM_SM0, current_program_offset, PSRAM_CLKDIV, PSRAM_PIN_CS0, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI);
+        pio_qspi_psram_cs_init(PSRAM_PIO, PSRAM_SM1, current_program_offset, PSRAM_CLKDIV, PSRAM_PIN_CS1, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI);
+    }
+
+}
+
+// Change which chip select pin the PIO program drives.
+// This is done by changing the SET pin base
+static void select_device(int cs_pin) {
+    int other_cs_pin = (cs_pin == PSRAM_PIN_CS0) ? PSRAM_PIN_CS1 : PSRAM_PIN_CS0;
+
+    gpio_set_function(other_cs_pin, GPIO_FUNC_SIO);
+    gpio_put(other_cs_pin, 1);
+    sm_config_set_set_pin_base(&psram_sm_cfg, cs_pin);
+    pio_sm_set_config(PSRAM_PIO, PSRAM_SM0, &psram_sm_cfg);
+    pio_gpio_init(PSRAM_PIO, cs_pin);
+    busy_wait_us(50);
+}
+
+static int initialise_device(int device) {
+    use_program(&spi_psram_program);
+    select_device(device ? PSRAM_PIN_CS1 : PSRAM_PIN_CS0);
+
+    // Reset enable
+    const uint8_t reset_en_cmd[] = {8, 0, 0x66};
+    pio_spi_single_rw(reset_en_cmd, sizeof(reset_en_cmd), 0, 0);
     busy_wait_us(50);
 
-    uint8_t reset_cmd[] = {8, 0, 0x99};
-    pio_spi_single_rw(psram, reset_cmd, sizeof(reset_cmd), 0, 0);
+    // Reset
+    const uint8_t reset_cmd[] = {8, 0, 0x99};
+    pio_spi_single_rw(reset_cmd, sizeof(reset_cmd), 0, 0);
     busy_wait_us(100);
 
     // Check ID registers
-    uint8_t id_cmd[] = {32, 16, 0x9F, 0, 0, 0};
+    const uint8_t id_cmd[] = {32, 16, 0x9F, 0, 0, 0};
     uint8_t id_data[2];
-    pio_spi_single_rw(psram, id_cmd, sizeof(id_cmd), id_data, sizeof(id_data));
+    pio_spi_single_rw(id_cmd, sizeof(id_cmd), id_data, sizeof(id_data));
 
     const uint8_t expected_mfid = 0x0D;
     const uint8_t expected_kgd = 0x5D;
     if ((id_data[0] != expected_mfid) || (id_data[1] != expected_kgd)) {
-        printf("PSRAM read ID error: MFID=%02x, KGD=%02x\n", id_data[0], id_data[1]);
+        INIT_PRINTF("  read ID error: MFID=%02x, KGD=%02x\n", id_data[0], id_data[1]);
         return 1;
     }
     return 0;
 }
 
-static void enable_qspi(psram_spi_inst_t *psram) {
+static void qspi_enter(int device) {
+    use_program(&spi_psram_program);
+    select_device(device ? PSRAM_PIN_CS1 : PSRAM_PIN_CS0);
+
     uint8_t qspi_en_cmd[] = {8, 0, 0x35};
-    pio_spi_single_rw(psram, qspi_en_cmd, sizeof(qspi_en_cmd), 0, 0);
-    busy_wait_us(10);    
+    pio_spi_single_rw(qspi_en_cmd, sizeof(qspi_en_cmd), 0, 0);
+    busy_wait_us(10);
 }
 
-// Change which chip select pin the PIO program drives.
-// This is done by changing the SET pin base
-static void psram_select_device(psram_spi_inst_t *psram, int cs_pin) {
-    static int old_cs_pin = -1;
+static void qspi_exit(int device) {
+    use_program(&qspi_psram_program);
 
-    if (cs_pin != old_cs_pin) {
-        if (old_cs_pin >= 0) gpio_set_function(old_cs_pin, GPIO_FUNC_SIO);
-        sm_config_set_set_pin_base(&psram_sm_cfg, cs_pin);
-        pio_sm_set_config(psram->pio, psram->sm0, &psram_sm_cfg);
-        pio_gpio_init(psram->pio, cs_pin);
-        old_cs_pin = cs_pin;
-    }
+    uint32_t setup = 0x00010000;
+    uint32_t cmd = 0xF5000000;
+    int sm = device ? PSRAM_SM1 : PSRAM_SM0;
+
+    pio_sm_put(PSRAM_PIO, sm, setup);
+    pio_sm_put(PSRAM_PIO, sm, cmd);
+    while(!pio_sm_is_tx_fifo_empty(PSRAM_PIO, sm));
+    busy_wait_us(100);
 }
 
-psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, float clkdiv) {
-    psram_spi_inst_t spi;
-    spi.pio = pio;
-    spi.offset = pio_add_program(spi.pio, &spi_psram_program);
-    spi.sm0 = 0;
-    spi.sm1 = 1;
+int psram_spi_init(void) {
 
 #if defined(PSRAM_MUTEX)
-    mutex_init(&spi.mtx);
+    mutex_init(&psram.mtx);
 #elif defined(PSRAM_SPINLOCK)
     int spin_id = spin_lock_claim_unused(true);
-    spi.spinlock = spin_lock_init(spin_id);
+    psram.spinlock = spin_lock_init(spin_id);
 #endif
+
+    gpio_init(PSRAM_PIN_CS0);
+    gpio_set_dir(PSRAM_PIN_CS0, GPIO_OUT);
+    gpio_put(PSRAM_PIN_CS0, 1);
+    gpio_init(PSRAM_PIN_CS1);
+    gpio_set_dir(PSRAM_PIN_CS1, GPIO_OUT);
+    gpio_put(PSRAM_PIN_CS1, 1);
 
     gpio_set_drive_strength(PSRAM_PIN_CS0, GPIO_DRIVE_STRENGTH_4MA);
     gpio_set_drive_strength(PSRAM_PIN_CS1, GPIO_DRIVE_STRENGTH_4MA);
@@ -111,78 +156,22 @@ psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, float clkdiv) {
     gpio_set_drive_strength(PSRAM_PIN_SD1_SO, GPIO_DRIVE_STRENGTH_4MA);
     gpio_set_drive_strength(PSRAM_PIN_SD2, GPIO_DRIVE_STRENGTH_4MA);
     gpio_set_drive_strength(PSRAM_PIN_SD3, GPIO_DRIVE_STRENGTH_4MA);
-    /* gpio_set_slew_rate(PSRAM_PIN_CS, GPIO_SLEW_RATE_FAST); */
-    /* gpio_set_slew_rate(PSRAM_PIN_SCK, GPIO_SLEW_RATE_FAST); */
-    /* gpio_set_slew_rate(PSRAM_PIN_MOSI, GPIO_SLEW_RATE_FAST); */
 
-    pio_spi_psram_cs_init(spi.pio, spi.sm0, spi.offset, clkdiv, PSRAM_PIN_CS0, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI, PSRAM_PIN_SD1_SO);
-    
-    // Initialise & check
-    psram_select_device(&spi, PSRAM_PIN_CS0);
-    spi.error = initialise_device(&spi);
-    if (spi.error) return spi;
-    psram_select_device(&spi, PSRAM_PIN_CS1);
-    spi.error = initialise_device(&spi);
-    if (spi.error) return spi;    
+    INIT_PRINTF("psram0\n");
+    qspi_exit(0);
+    int error = initialise_device(0);
+    if (error) return 1;
+    qspi_enter(0);
 
-    // Switch to QSPI mode
-    psram_select_device(&spi, PSRAM_PIN_CS0);
-    enable_qspi(&spi);
-    psram_select_device(&spi, PSRAM_PIN_CS1);
-    enable_qspi(&spi);
+    INIT_PRINTF("psram1\n");
+    qspi_exit(1);
+    error = initialise_device(1);
+    if (error) return 2;
+    qspi_enter(1);
 
-    // Use QSPI program
-    pio_sm_unclaim(spi.pio, spi.sm0);
-    pio_remove_program(spi.pio, &spi_psram_program, spi.offset);    
-    spi.offset = pio_add_program(spi.pio, &qspi_psram_program);
-    pio_qspi_psram_cs_init(spi.pio, spi.sm0, spi.offset, clkdiv, PSRAM_PIN_CS0, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI);
-    pio_qspi_psram_cs_init(spi.pio, spi.sm1, spi.offset, clkdiv, PSRAM_PIN_CS1, PSRAM_PIN_SCK, PSRAM_PIN_SD0_SI);
-    
-//     // Write DMA channel setup
-//     spi.write_dma_chan = dma_claim_unused_channel(true);
-//     spi.write_dma_chan_config = dma_channel_get_default_config(spi.write_dma_chan);
-//     channel_config_set_transfer_data_size(&spi.write_dma_chan_config, DMA_SIZE_32);
-//     channel_config_set_read_increment(&spi.write_dma_chan_config, true);
-//     channel_config_set_write_increment(&spi.write_dma_chan_config, false);
-//     channel_config_set_dreq(&spi.write_dma_chan_config, pio_get_dreq(spi.pio, spi.sm, true));
-//     dma_channel_set_write_addr(spi.write_dma_chan, &spi.pio->txf[spi.sm], false);
-//     dma_channel_set_config(spi.write_dma_chan, &spi.write_dma_chan_config, false);
-
-//     // Read DMA channel setup
-//     spi.read_dma_chan = dma_claim_unused_channel(true);
-//     spi.read_dma_chan_config = dma_channel_get_default_config(spi.read_dma_chan);
-//     channel_config_set_transfer_data_size(&spi.read_dma_chan_config, DMA_SIZE_32);
-//     channel_config_set_read_increment(&spi.read_dma_chan_config, false);
-//     channel_config_set_write_increment(&spi.read_dma_chan_config, true);
-//     channel_config_set_dreq(&spi.read_dma_chan_config, pio_get_dreq(spi.pio, spi.sm, false));
-//     dma_channel_set_read_addr(spi.read_dma_chan, &spi.pio->rxf[spi.sm], false);
-//     dma_channel_set_config(spi.read_dma_chan, &spi.read_dma_chan_config, false);
-
-// #if defined(PSRAM_ASYNC)
-//     // Asynchronous DMA channel setup
-//     spi.async_dma_chan = dma_claim_unused_channel(true);
-//     spi.async_dma_chan_config = dma_channel_get_default_config(spi.async_dma_chan);
-//     channel_config_set_transfer_data_size(&spi.async_dma_chan_config, DMA_SIZE_8);
-//     channel_config_set_read_increment(&spi.async_dma_chan_config, true);
-//     channel_config_set_write_increment(&spi.async_dma_chan_config, false);
-//     channel_config_set_dreq(&spi.async_dma_chan_config, pio_get_dreq(spi.pio, spi.sm, true));
-//     dma_channel_set_write_addr(spi.async_dma_chan, &spi.pio->txf[spi.sm], false);
-//     dma_channel_set_config(spi.async_dma_chan, &spi.async_dma_chan_config, false);
-
-// #if defined(PSRAM_ASYNC_COMPLETE)
-//     irq_set_exclusive_handler(DMA_IRQ_0 + PSRAM_ASYNC_DMA_IRQ, psram_dma_complete_handler);
-//     dma_irqn_set_channel_enabled(PSRAM_ASYNC_DMA_IRQ, spi.async_dma_chan, true);
-//     irq_set_enabled(DMA_IRQ_0 + PSRAM_ASYNC_DMA_IRQ, true);
-// #endif // defined(PSRAM_ASYNC_COMPLETE)
-// #endif // defined(PSRAM_ASYNC)
-
-    spi.error = 0;
-    return spi;
+    use_program(&qspi_psram_program);
+    return 0;
 };
-
-psram_spi_inst_t psram_spi_init(PIO pio) {
-    return psram_spi_init_clkdiv(pio, 1.0);
-}
 
 void psram_spi_uninit(psram_spi_inst_t spi) {
 #if defined(PSRAM_ASYNC)
@@ -206,9 +195,9 @@ void psram_spi_uninit(psram_spi_inst_t spi) {
     spin_lock_unclaim(spin_id);
 #endif
 
-    pio_sm_unclaim(spi.pio, spi.sm0);
-    pio_sm_unclaim(spi.pio, spi.sm1);
-    pio_remove_program(spi.pio, &qspi_psram_program, spi.offset);
+    pio_sm_unclaim(PSRAM_PIO, PSRAM_SM0);
+    pio_sm_unclaim(PSRAM_PIO, PSRAM_SM1);
+    pio_remove_program(PSRAM_PIO, &qspi_psram_program, current_program_offset);
 }
 
 void psram_test(psram_spi_inst_t *psram) {
@@ -220,7 +209,7 @@ void psram_test(psram_spi_inst_t *psram) {
     // **************** 32 bits testing ****************
     psram_begin = time_us_32();
     for (uint32_t addr = 0; addr < (16 * 1024 * 1024); addr += 4) {
-        psram_write32(psram, addr, addr + 10);
+        psram_write32(addr, addr + 10);
     }
     psram_elapsed = time_us_32() - psram_begin;
     psram_speed = 1000000.0 * 16 / psram_elapsed;
@@ -228,10 +217,10 @@ void psram_test(psram_spi_inst_t *psram) {
 
     psram_begin = time_us_32();
     for (uint32_t addr = 0; addr < (16 * 1024 * 1024); addr += 4) {
-        uint32_t result = psram_read32(psram, addr);
+        uint32_t result = psram_read32(addr);
         if (result != addr+10) {
             printf("PSRAM failure at address %x (%08x != %08x) ", addr, result, addr+10);
-            while (1);
+            return;
         }
     }
     psram_elapsed = (time_us_32() - psram_begin);
@@ -244,10 +233,10 @@ void psram_test(psram_spi_inst_t *psram) {
     const int nbytes = 4*bufsiz;
     for (uint32_t addr = 0; addr < 16*1024*1024; addr += nbytes) {
         uint32_t buffer[bufsiz];
-        psram_readwords(psram, addr, buffer, bufsiz);
+        psram_readwords(addr, buffer, bufsiz);
         if (buffer[2] != addr+18) {
             printf("PSRAM failure at address %x (%08x %08x %08x %08x) ", addr, buffer[0], buffer[1], buffer[2], buffer[3]);
-            while (1);
+            return;
         }
     }
     psram_elapsed = (time_us_32() - psram_begin);

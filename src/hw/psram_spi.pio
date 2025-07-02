@@ -77,7 +77,7 @@ readloop_mid:
 % c-sdk {
 #include "hardware/gpio.h"
 
-extern pio_sm_config psram_sm_cfg;;
+extern pio_sm_config psram_sm_cfg;
 
 static inline void pio_spi_psram_cs_init(PIO pio, uint sm, uint prog_offs, float clkdiv, uint pin_cs, uint pin_sck, uint pin_mosi, uint pin_miso) {
     pio_sm_config *c = &psram_sm_cfg;

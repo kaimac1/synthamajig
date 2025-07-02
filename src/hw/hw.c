@@ -36,8 +36,6 @@ static uint8_t btn_value[NUM_BUTTONS];
 static struct audio_buffer_pool *audio_pool;
 static struct audio_buffer *current_audio_buffer;
 
-psram_spi_inst_t psram;
-
 void hw_init(void) {
 
     stdio_init_all();
@@ -102,18 +100,9 @@ bool hw_read_button(int button) {
 
 
 static void psram_init(void) {
-    INIT_PRINTF("psram\n");
-
-    gpio_init(PSRAM_PIN_CS0);
-    gpio_set_dir(PSRAM_PIN_CS0, GPIO_OUT);
-    gpio_put(PSRAM_PIN_CS0, 1);
-    gpio_init(PSRAM_PIN_CS1);
-    gpio_set_dir(PSRAM_PIN_CS1, GPIO_OUT);
-    gpio_put(PSRAM_PIN_CS1, 1);
-
-    psram = psram_spi_init(PSRAM_PIO);
-    if (psram.error) {
-        INIT_PRINTF("  error\n");
+    int error = psram_spi_init();
+    if (error) {
+        INIT_PRINTF("  error %d\n", error);
         while (1);
     }    
 }

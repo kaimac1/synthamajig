@@ -69,8 +69,9 @@ extern "C" {
 #endif
 
 #define PSRAM_DEVICE_SIZE   (8*1024*1024)
-
-#define SPI_READ_WRITE pio_qspi_read_write
+#define PSRAM_SM0   0
+#define PSRAM_SM1   1
+#define PSRAM_CLKDIV 1.0f
 
 /**
  * @brief A struct that holds the configuration for the PSRAM interface.
@@ -79,11 +80,6 @@ extern "C" {
  * the psram access functions.
  */
 typedef struct psram_spi_inst {
-    PIO pio;
-    int sm0;
-    int sm1;
-    uint offset;
-    int error;
 #if defined(PSRAM_MUTEX)
     mutex_t mtx;
 #elif defined(PSRAM_SPINLOCK)
@@ -99,94 +95,46 @@ typedef struct psram_spi_inst {
     dma_channel_config async_dma_chan_config;
 #endif
 } psram_spi_inst_t;
+extern psram_spi_inst_t psram;
 
 #if defined(PSRAM_ASYNC)
 extern psram_spi_inst_t* async_spi_inst;
 #endif
 
 
-// Read data via QSPI
-__force_inline static void __time_critical_func(pio_qspi_read_write)(
-        psram_spi_inst_t* spi,
-        const uint32_t* src, const size_t src_words,
-        uint32_t* dst, const size_t dst_words
-) {
-    size_t tx_remain = src_words, rx_remain = dst_words;
-
-#if defined(PSRAM_MUTEX)
-    mutex_enter_blocking(&spi->mtx); 
-#elif defined(PSRAM_SPINLOCK)
-    spi->spin_irq_state = spin_lock_blocking(spi->spinlock);
-#endif
-
-    if (tx_remain >= 4) {
-        while (!pio_sm_is_tx_fifo_empty(spi->pio, spi->sm0));
-        for (int i=0; i<4; i++) {
-            pio_sm_put(spi->pio, spi->sm0, *src++);
-        }
-        tx_remain -= 4;
-    }
-
-    while (tx_remain) {
-        if (!pio_sm_is_tx_fifo_full(spi->pio, spi->sm0)) {
-            pio_sm_put(spi->pio, spi->sm0, *src++);
-            --tx_remain;
-        }
-    }
-
-    // Read 32-bit values
-    while (rx_remain) {
-        *dst++ = pio_sm_get_blocking(spi->pio, spi->sm0);
-        rx_remain--;
-    }
-
-
-
-#if defined(PSRAM_MUTEX)
-    mutex_exit(&spi->mtx);
-#elif defined(PSRAM_SPINLOCK)
-    spin_unlock(spi->spinlock, spi->spin_irq_state);
-#endif
-}
-
-
-
 // For initialising the device over standard (mosi/miso) SPI
 __force_inline static void __time_critical_func(pio_spi_single_rw)(
-        psram_spi_inst_t* spi,
         const uint8_t* src, const size_t src_len,
         uint8_t* dst, const size_t dst_len
 ) {
     size_t tx_remain = src_len, rx_remain = dst_len;
 
 #if defined(PSRAM_MUTEX)
-    mutex_enter_blocking(&spi->mtx); 
+    mutex_enter_blocking(&psram.mtx); 
 #elif defined(PSRAM_SPINLOCK)
-    spi->spin_irq_state = spin_lock_blocking(spi->spinlock);
+    psram.spin_irq_state = spin_lock_blocking(psram.spinlock);
 #endif
 
-    io_rw_8 *txfifo = (io_rw_8 *) &spi->pio->txf[spi->sm0];
+    io_rw_8 *txfifo = (io_rw_8 *) &PSRAM_PIO->txf[PSRAM_SM0];
     while (tx_remain) {
-        if (!pio_sm_is_tx_fifo_full(spi->pio, spi->sm0)) {
+        if (!pio_sm_is_tx_fifo_full(PSRAM_PIO, PSRAM_SM0)) {
             *txfifo = *src++;
             --tx_remain;
         }
     }
 
-    
-
-    io_rw_8 *rxfifo = (io_rw_8 *) &spi->pio->rxf[spi->sm0];
+    io_rw_8 *rxfifo = (io_rw_8 *) &PSRAM_PIO->rxf[PSRAM_SM0];
     while (rx_remain) {
-        if (!pio_sm_is_rx_fifo_empty(spi->pio, spi->sm0)) {
+        if (!pio_sm_is_rx_fifo_empty(PSRAM_PIO, PSRAM_SM0)) {
             *dst++ = *rxfifo;
             --rx_remain;
         }
     }
 
 #if defined(PSRAM_MUTEX)
-    mutex_exit(&spi->mtx);
+    mutex_exit(&psram.mtx);
 #elif defined(PSRAM_SPINLOCK)
-    spin_unlock(spi->spinlock, spi->spin_irq_state);
+    spin_unlock(psram.spinlock, psram.spin_irq_state);
 #endif
 }
 
@@ -303,8 +251,7 @@ __force_inline static void __time_critical_func(pio_spi_write_async)(
 }
 #endif
 
-psram_spi_inst_t psram_spi_init_clkdiv(PIO pio, float clkdiv);
-psram_spi_inst_t psram_spi_init(PIO pio);
+int psram_spi_init(void);
 void psram_spi_uninit(psram_spi_inst_t spi);
 void psram_test(psram_spi_inst_t *psram);
 
@@ -313,15 +260,15 @@ void psram_test(psram_spi_inst_t *psram);
 // Write
 
 // Write single 32-bit value
-__force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, uint32_t val) {
+__force_inline static void psram_write32(uint32_t addr, uint32_t val) {
     uint32_t setup = 0x000F0000;
     uint32_t cmd = 0x02000000 | addr;
-    int sm = (addr >= PSRAM_DEVICE_SIZE) ? spi->sm1 : spi->sm0;
+    int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
 
-    pio_sm_put(spi->pio, sm, setup);
-    pio_sm_put(spi->pio, sm, cmd);
-    pio_sm_put(spi->pio, sm, val);
-    while(!pio_sm_is_tx_fifo_empty(spi->pio, sm));
+    pio_sm_put(PSRAM_PIO, sm, setup);
+    pio_sm_put(PSRAM_PIO, sm, cmd);
+    pio_sm_put(PSRAM_PIO, sm, val);
+    while(!pio_sm_is_tx_fifo_empty(PSRAM_PIO, sm));
 };
 
 
@@ -330,29 +277,29 @@ __force_inline static void psram_write32(psram_spi_inst_t* spi, uint32_t addr, u
 // Read
 
 // Read single 32-bit value
-__force_inline static uint32_t psram_read32(psram_spi_inst_t* spi, uint32_t addr) {
+__force_inline static uint32_t psram_read32(uint32_t addr) {
     uint32_t setup = 0x00070008;
     uint32_t cmd = 0xeb000000 | addr;
-    int sm = (addr >= PSRAM_DEVICE_SIZE) ? spi->sm1 : spi->sm0;
+    int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
 
-    pio_sm_put(spi->pio, sm, setup);
-    pio_sm_put(spi->pio, sm, cmd);
-    uint32_t val = pio_sm_get_blocking(spi->pio, sm);
+    pio_sm_put(PSRAM_PIO, sm, setup);
+    pio_sm_put(PSRAM_PIO, sm, cmd);
+    uint32_t val = pio_sm_get_blocking(PSRAM_PIO, sm);
 
     return val;
 };
 
 // Read a number of 32-bit words into a buffer
 // The address range must not cross the 8MB boundary as this only reads from one device!
-__force_inline static void psram_readwords(psram_spi_inst_t* spi, uint32_t addr, uint32_t *buffer, uint32_t num_words) {
+__force_inline static void psram_readwords(uint32_t addr, uint32_t *buffer, uint32_t num_words) {
     uint32_t setup = 0x00070000 | (8*num_words);
     uint32_t cmd = 0xeb000000 | addr;
-    int sm = (addr >= PSRAM_DEVICE_SIZE) ? spi->sm1 : spi->sm0;
+    int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
 
-    pio_sm_put(spi->pio, sm, setup);
-    pio_sm_put(spi->pio, sm, cmd);
+    pio_sm_put(PSRAM_PIO, sm, setup);
+    pio_sm_put(PSRAM_PIO, sm, cmd);
     while (num_words) {
-        *buffer++ = pio_sm_get_blocking(spi->pio, sm);
+        *buffer++ = pio_sm_get_blocking(PSRAM_PIO, sm);
         num_words--;
     }
 };
