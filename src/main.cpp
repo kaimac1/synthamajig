@@ -1,6 +1,8 @@
 #include "common.h"
 #include "hw/hw.h"
 #include "hw/oled.h"
+#include "hw/disk.h"
+#include "hw/pinmap.h"
 #include "input.h"
 #include "synth_common.hpp"
 
@@ -8,12 +10,7 @@
 #include "userinterface.hpp"
 #include "sample.hpp"
 
-
-#include "pico/stdlib.h"
-#include "ff.h"
-#include "hw/pinmap.h"
-#include <cstdio>
-#include "tlsf/tlsf.h"
+#include "debug_shell.h"
 
 
 // DMA transfer complete ISR
@@ -27,16 +24,16 @@ extern "C" void audio_dma_callback(void) {
     put_audio_buffer(buffer);
 }
 
-int main() {
+int main(void) {
     create_lookup_tables();
     hw_init();
 
     SampleManager::init();
-    SampleManager::load(0);
-
     UI::init();
-
     hw_audio_start();
+
+    //debug_shell_init();
+    //prompt();
 
     bool update_display = true;
     int ctr = 0;
@@ -52,7 +49,7 @@ int main() {
         }
         int64_t time_ui = perf_end(PERF_UI_UPDATE);
         if (time_ui > 500) {
-            printf("time ui: %lld us\n", time_ui);
+            //printf("time ui: %lld us\n", time_ui);
         }
 
         // Write framebuffer out to display when needed
@@ -65,7 +62,5 @@ int main() {
             }
             hw_debug_led(0);
         }
-
-        ctr++;
     }
 }

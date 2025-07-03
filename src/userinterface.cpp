@@ -320,8 +320,10 @@ void SampleSelector::react(DrawEvent const& devt) {
             // Item selected
             if (PRESSED(BTN_SHIFT)) {
                 printf("loading sample %d...", samp->sample_id);
-                SampleManager::load(samp->sample_id);
-                printf("done\n");
+                perf_start(PERF_SAMPLE_LOAD);
+                int error = SampleManager::load(samp->sample_id);
+                int64_t tt = perf_end(PERF_SAMPLE_LOAD);
+                printf("took %lld ms, err=%d\n", tt / 1000, error);
                 selected_step->sample_id = samp->sample_id;
                 exit = true;
             }

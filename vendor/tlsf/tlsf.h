@@ -39,34 +39,38 @@
 */
 
 #include <stddef.h>
+#include <stdint.h>
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+// Quite ugly to hardcode this but it needs to be a constant
+// This will change if SL_INDEX_COUNT_LOG2 is modified
+#define TLSF_SIZE   3172
+
 /* tlsf_t: a TLSF structure. Can contain 1 to N pools. */
 /* pool_t: a block of memory that TLSF can manage. */
 typedef void* tlsf_t;
 typedef void* pool_t;
+typedef int32_t mem_addr;
 
-/* Create/destroy a memory pool. */
-tlsf_t tlsf_create(void* mem);
-tlsf_t tlsf_create_with_pool(void* mem, size_t bytes);
-void tlsf_destroy(tlsf_t tlsf);
-pool_t tlsf_get_pool(tlsf_t tlsf);
+typedef uint32_t (*tlsf_read_func)(uint32_t addr);
+typedef void (*tlsf_write_func)(uint32_t addr, uint32_t val);
 
-/* Add/remove memory pools. */
-pool_t tlsf_add_pool(tlsf_t tlsf, void* mem, size_t bytes);
-void tlsf_remove_pool(tlsf_t tlsf, pool_t pool);
+void tlsf_set_rw_functions(tlsf_read_func read, tlsf_write_func write);
+
+/* Create a memory pool with base address=zero. */
+tlsf_t tlsf_create(void *ctrlmem, size_t bytes);
 
 /* malloc/memalign/realloc/free replacements. */
-void* tlsf_malloc(tlsf_t tlsf, size_t bytes);
-void* tlsf_memalign(tlsf_t tlsf, size_t align, size_t bytes);
-void* tlsf_realloc(tlsf_t tlsf, void* ptr, size_t size);
-void tlsf_free(tlsf_t tlsf, void* ptr);
+mem_addr tlsf_malloc(tlsf_t tlsf, size_t bytes);
+mem_addr tlsf_memalign(tlsf_t tlsf, size_t align, size_t bytes);
+//mem_addr tlsf_realloc(tlsf_t tlsf, mem_addr ptr, size_t size);
+void tlsf_free(tlsf_t tlsf, mem_addr ptr);
 
 /* Returns internal block size, not original request size */
-size_t tlsf_block_size(void* ptr);
+size_t tlsf_block_size(mem_addr ptr);
 
 /* Overheads/limits of internal structures. */
 size_t tlsf_size(void);

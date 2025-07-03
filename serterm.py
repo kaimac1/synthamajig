@@ -77,28 +77,41 @@ def get_port(match):
 
 quit = False
 
+def send_char(c):
+    s.write(c.encode())
+
 def input_thread():
     global quit
     kb = KBHit()
     while True:
         c = kb.getch()
         if c == '\x1b': #esc
-            c = kb.getch()
-            if ord(c) == 79: # 0?
-                c = kb.getch()
-                if ord(c) == 80: # F1  59?
+            # Look for F1, send escaped sequence if it isn't F1
+            buffer = ['\x1b']
+            buffer.append(kb.getch())
+            if ord(buffer[-1]) == 79: # 0?
+                buffer.append(kb.getch())
+                if ord(buffer[-1]) == 80: # F1  59?
                     quit = True
+            else:
+                for c in buffer:
+                    send_char(c)
+
         else:
             if c == '\n': c = '\r' # send CR for enter instead of newline
-            if s.isOpen(): s.write(c.encode())
+            try:
+                if s.isOpen(): s.write(c.encode())
+            except:
+                quit = True
 
 
 
 try:
     port = sys.argv[1]
 except:
-    print('Usage: {} port'.format(sys.argv[0]))
-    sys.exit()
+    port = 'acm0'
+    #print('Usage: {} port'.format(sys.argv[0]))
+    #sys.exit()
 
 port = get_port(port)
 s = serial.Serial(port, BAUDRATE, timeout=0.5)

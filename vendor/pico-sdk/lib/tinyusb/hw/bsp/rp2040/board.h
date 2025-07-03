@@ -31,6 +31,8 @@
  extern "C" {
 #endif
 
+#define PICO_DEFAULT_LED_PIN 25
+
 // LED
 #ifdef PICO_DEFAULT_LED_PIN
 #define LED_PIN               PICO_DEFAULT_LED_PIN
