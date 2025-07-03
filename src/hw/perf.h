@@ -12,6 +12,7 @@ typedef enum {
     PERF_CPUTIME,
     PERF_DRAWTIME,
     PERF_TEST,
+    PERF_SAMPLE_LOAD,
     NUM_PERFCOUNTERS
 } PerfMetric;
 

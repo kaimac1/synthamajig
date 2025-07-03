@@ -46,7 +46,11 @@ void hw_init(void) {
     //gpio_init(PICO_LED_PIN);
     //gpio_set_dir(PICO_LED_PIN, GPIO_OUT);
 
-    // Enable PSRAMs
+    // OLED & graphics library
+    oled_init(ngl_framebuffer());
+    ngl_init();
+
+    // RAM
     psram_init();
 
     // Encoders
@@ -57,10 +61,6 @@ void hw_init(void) {
     quadrature_encoder_program_init(ENCODER_PIO, 2, PIN_ENC2, 0);
     quadrature_encoder_program_init(ENCODER_PIO, 3, PIN_ENC3, 0);
 
-    // OLED & graphics library
-    oled_init(ngl_framebuffer());
-    ngl_init();
-
     // Input & LED matrix
     matrix_init();
 
@@ -69,8 +69,9 @@ void hw_init(void) {
     audio_pool = init_audio(SAMPLE_RATE, PIN_CODEC_DIN, PIN_CODEC_LRCK, 0, AUDIO_DMA_CHANNEL);
 
     // Disk
-    //disk_init();
+    disk_init();
 }
+
 
 void hw_audio_start(void) {
     audio_i2s_set_enabled(true);
@@ -104,7 +105,9 @@ static void psram_init(void) {
     if (error) {
         INIT_PRINTF("  error %d\n", error);
         while (1);
-    }    
+    } else {
+        INIT_PRINTF("  ok\n");
+    }
 }
 
 
@@ -113,9 +116,6 @@ static void set_sw_row(int row) {
     gpio_put(PIN_BTN1, 0);
     gpio_put(PIN_BTN2, 0);
     gpio_put(PIN_BTN3, 0);
-
-
-
     if (row == 0) gpio_put(PIN_BTN0, 1);
     if (row == 1) gpio_put(PIN_BTN1, 1);
     if (row == 2) gpio_put(PIN_BTN2, 1);
@@ -125,7 +125,6 @@ static void set_sw_row(int row) {
     for (int i=0; i<NUM_COLUMNS; i++) gpio_set_input_enabled(PIN_COL0 + i, false);    
     for (int i=0; i<NUM_COLUMNS; i++) gpio_pull_down(PIN_COL0 + i);
     for (int i=0; i<NUM_COLUMNS; i++) gpio_set_input_enabled(PIN_COL0 + i, true);
-
 }
 
 

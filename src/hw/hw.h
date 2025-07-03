@@ -5,6 +5,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "common.h"
 
 #define PSRAM_SIZE      (16 * 1024 * 1024)
 

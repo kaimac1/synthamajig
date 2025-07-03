@@ -14,7 +14,7 @@ struct SampleInfo {
     bool is_valid;
     bool is_loaded;
     unsigned int root_midi_note;
-    const int16_t *data;
+    int32_t addr;
     char name[SAMPLE_NAME_SIZE];
 };
 

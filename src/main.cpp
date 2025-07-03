@@ -28,14 +28,13 @@ int main(void) {
     create_lookup_tables();
     hw_init();
 
-    //SampleManager::init();
+    SampleManager::init();
     UI::init();
     hw_audio_start();
 
     //debug_shell_init();
     //prompt();
 
-    INIT_PRINTF("main loop\n");
     bool update_display = true;
     int ctr = 0;
     while (1) {
@@ -50,7 +49,7 @@ int main(void) {
         }
         int64_t time_ui = perf_end(PERF_UI_UPDATE);
         if (time_ui > 500) {
-            printf("time ui: %lld us\n", time_ui);
+            //printf("time ui: %lld us\n", time_ui);
         }
 
         // Write framebuffer out to display when needed
@@ -63,7 +62,5 @@ int main(void) {
             }
             hw_debug_led(0);
         }
-
-        if (ctr++ % 256 == 0) INIT_PRINTF(".");
     }
 }
