@@ -10,6 +10,7 @@ extern Track track;
 
 void core1_main(void);
 static int doorbell_core1_start;
+static int doorbell_core1_finished;
 
 // The main code and the audio callback use the same RawInput data which is read once per frame,
 // but they (potentially) process this data at different rates, so they each have their own InputState.
@@ -26,8 +27,19 @@ struct {
 // Start core 1
 extern "C" void multicore_init(void) {
     multicore_reset_core1();
-    doorbell_core1_start = multicore_doorbell_claim_unused((1 << NUM_CORES) - 1, true);    
+    doorbell_core1_start = multicore_doorbell_claim_unused((1 << NUM_CORES) - 1, true);
+    doorbell_core1_finished = multicore_doorbell_claim_unused((1 << NUM_CORES) - 1, true);
     multicore_launch_core1(core1_main);
+}
+
+static void trigger_core1(void) {
+    multicore_doorbell_set_other_core(doorbell_core1_start);
+}
+static void wait_for_core1(void) {
+    while (!multicore_doorbell_is_set_current_core(doorbell_core1_finished)) {
+        tight_loop_contents();
+    }
+    multicore_doorbell_clear_current_core(doorbell_core1_finished);
 }
 
 
@@ -58,11 +70,12 @@ extern "C" void audio_dma_callback(void) {
         track.play_active_channel(audio_cb_input_state);
     }
 
-    // Trigger core1 to start processing its channels
-    multicore_doorbell_set_other_core(doorbell_core1_start);
-
+    // Process channels on both cores
+    trigger_core1();
     track.process_channels(CORE0_CHANNEL_MASK);
+    wait_for_core1();
     
+    // Mix channels down into output buffer
     track.downmix(buffer);
 
     shared.input = input;
@@ -89,5 +102,7 @@ void core1_main(void) {
 
     while (1) {
         __wfi();
+        track.process_channels(CORE1_CHANNEL_MASK);
+        multicore_doorbell_set_other_core(doorbell_core1_finished);
     }
 }
