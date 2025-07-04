@@ -2,7 +2,6 @@
 #include <stdio.h>
 
 RawInput input_read(void) {
-
     RawInput input;
 
     for (int i=0; i<NUM_KNOBS; i++) {
@@ -13,17 +12,6 @@ RawInput input_read(void) {
     for (int i=0; i<NUM_BUTTONS; i++) {
         input.button_raw[i] = hw_read_button(i);
     }
-
-    // // Simulated buttons via USB
-    // int c = getchar_timeout_us(1);
-    // input.button_raw[BTN_MENU] = c == '1';
-    // input.button_raw[BTN_SEQUENCER] = c == '2';
-    // input.button_raw[BTN_OSC] = c == 'q';
-    // input.button_raw[BTN_FILTER] = c == 'w';
-    // input.button_raw[BTN_AMP] = c == 'e';
-    // input.button_raw[BTN_PLAYPAUSE] = c == 'p';
-    // input.button_raw[BTN_STOP] = c == 'o';
-
 
     return input;
 }
@@ -49,7 +37,6 @@ static int update_button_state(int state, bool down) {
 }
 
 bool input_process(InputState *input_state, RawInput in) {
-
     bool changed = false;
 
     for (int i=0; i<NUM_KNOBS; i++) {

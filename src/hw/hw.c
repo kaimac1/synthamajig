@@ -1,21 +1,17 @@
 #include "pico/stdlib.h"
+#include "pico/audio_i2s.h"
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
-#include "hardware/sync.h"
-#include "hardware/structs/xip.h"
-#include "hardware/regs/xip.h"
-#include "quadrature_encoder.pio.h"
 #include "hw.h"
+#include "quadrature_encoder.pio.h"
 #include "codec.h"
 #include "oled.h"
 #include "disk.h"
 #include "pinmap.h"
 #include "audio.h"
 #include "psram_spi.h"
-#include "pico/audio_i2s.h"
 #include "gfx/ngl.h"
-#include "../common.h"
 
 const int PWM_SYSCLK_DIVISOR = 32;
 const int LED_SCAN_RATE_HZ = 100;
@@ -27,6 +23,7 @@ static bool led_timer_callback(repeating_timer_t *rt);
 static void led_timer_start(void);
 static void matrix_init(void);
 static void psram_init(void);
+extern void multicore_init(void);
 
 static repeating_timer_t led_timer;
 static int led_column;
@@ -70,6 +67,9 @@ void hw_init(void) {
 
     // Disk
     disk_init();
+
+    // Core1 init
+    multicore_init();
 }
 
 

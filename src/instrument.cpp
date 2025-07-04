@@ -81,7 +81,7 @@ float AcidBass::process() {
 }
 
 
-void AcidBass::control(InstrumentPage page, InputState *in) {
+void AcidBass::control(InstrumentPage page, const InputState *in) {
 
     switch (page) {
     case INSTRUMENT_PAGE_OSC:
@@ -184,7 +184,7 @@ float TestSynth::process() {
 }
 
 
-void TestSynth::control(InstrumentPage page, InputState *in) {
+void TestSynth::control(InstrumentPage page, const InputState *in) {
 
     switch (page) {
     case INSTRUMENT_PAGE_OSC:

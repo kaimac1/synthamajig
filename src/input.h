@@ -37,15 +37,15 @@ RawInput input_read(void);
 bool input_process(InputState *input_state, RawInput input_raw);
 
 
-inline bool btn_down(InputState *input, int btn) {
+inline bool btn_down(const InputState *input, int btn) {
     return ((input->button_state[btn] == BTN_PRESSED) || (input->button_state[btn] == BTN_DOWN));
 }
 
-inline bool btn_press(InputState *input, int btn) {
+inline bool btn_press(const InputState *input, int btn) {
     return input->button_state[btn] == BTN_PRESSED;
 }
 
-inline bool btn_release(InputState *input, int btn) {
+inline bool btn_release(const InputState *input, int btn) {
     return input->button_state[btn] == BTN_RELEASED;
 }
 

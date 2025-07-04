@@ -29,6 +29,7 @@ add_executable(synth
     src/hw/mass_storage.c
     src/hw/usb_descriptors.c
     src/hw/perf.c
+    src/hw/print_exception.c
 
     src/gfx/ngl.c
     src/gfx/gfx_ext.c
@@ -64,11 +65,11 @@ pico_generate_pio_header(synth ${CMAKE_CURRENT_LIST_DIR}/src/hw/psram_spi.pio)
 target_link_libraries(synth
     pico_stdlib
     pico_audio_i2s
+    pico_multicore
     hardware_i2c
     hardware_pwm
     hardware_pio
-#    pico_multicore
-
+    
     pico_unique_id
     tinyusb_device
     tinyusb_board

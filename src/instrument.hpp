@@ -17,7 +17,7 @@ public:
     Instrument() {}
     virtual void init() {}
     virtual float process() { return 0.0f; }
-    virtual void control(InstrumentPage page, InputState *input) {}
+    virtual void control(InstrumentPage page, const InputState *input) {}
     virtual void draw(InstrumentPage page) {}
     virtual void silence() { gate = 0; }
 
@@ -46,7 +46,7 @@ public:
     AcidBass();
     void init();
     float process();
-    void control(InstrumentPage page, InputState *input);
+    void control(InstrumentPage page, const InputState *input);
     void draw(InstrumentPage page);
 
 private:
@@ -77,7 +77,7 @@ public:
     TestSynth();
     void init();
     float process();
-    void control(InstrumentPage page, InputState *input);
+    void control(InstrumentPage page, const InputState *input);
     void draw(InstrumentPage page);
 
 private:

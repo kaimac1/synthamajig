@@ -1,8 +1,12 @@
+#include "pico/multicore.h"
 #include "audio.hpp"
 #include "track.hpp"
 #include "common.h"
 
 extern Track track;
+
+void core1_main(void);
+static int doorbell_core1_start;
 
 // The main code and the audio callback use the same RawInput data which is read once per frame,
 // but they (potentially) process this data at different rates, so they each have their own InputState.
@@ -15,6 +19,13 @@ struct {
 } shared;
 
 
+extern "C" void multicore_init(void) {
+    multicore_reset_core1();
+    doorbell_core1_start = multicore_doorbell_claim_unused((1 << NUM_CORES) - 1, true);    
+    multicore_launch_core1(core1_main);
+}
+
+
 
 RawInput audio_wait(void) {
     // TODO: redo this properly
@@ -24,21 +35,52 @@ RawInput audio_wait(void) {
     return shared.input;
 }
 
-void audio_callback(AudioBuffer buffer, RawInput input) {
+
+// DMA transfer complete ISR on core 0.
+// - Read hardware inputs
+// - Update parameters for current voice
+// - Generate audio
+extern "C" void audio_dma_callback(void) {
+    RawInput input = input_read();
+    AudioBuffer buffer = get_audio_buffer();
+
     perf_start(PERF_AUDIO);
 
     if (input_process(&audio_cb_input_state, input)) {
         // Change parameters via encoders
         // Play notes via keyboard
-        track.control_active_channel(&audio_cb_input_state);
-        track.play_active_channel(&audio_cb_input_state);
+        track.control_active_channel(audio_cb_input_state);
+        track.play_active_channel(audio_cb_input_state);
     }
+
+    multicore_doorbell_set_other_core(doorbell_core1_start);
 
     // Sample generation
     track.fill_buffer(buffer);
 
     shared.input = input;
     shared.audio_done = 1;
+    
     perf_end(PERF_AUDIO);
+    put_audio_buffer(buffer);
 }
 
+
+
+
+void core1_doorbell_irq(void) {
+    if (multicore_doorbell_is_set_current_core(doorbell_core1_start)) {
+        multicore_doorbell_clear_current_core(doorbell_core1_start);
+        printf("core1 start\n");
+    }
+}
+
+void core1_main(void) {
+    uint32_t irq = multicore_doorbell_irq_num(doorbell_core1_start);
+    irq_set_exclusive_handler(irq, core1_doorbell_irq);
+    irq_set_enabled(irq, true);
+
+    while (1) {
+        __wfi();
+    }
+}

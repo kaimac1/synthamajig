@@ -12,18 +12,6 @@
 
 #include "debug_shell.h"
 
-
-// DMA transfer complete ISR
-// - Read hardware inputs
-// - Update parameters for current voice
-// - Generate audio
-extern "C" void audio_dma_callback(void) {
-    RawInput input = input_read();
-    AudioBuffer buffer = get_audio_buffer();
-    audio_callback(buffer, input);
-    put_audio_buffer(buffer);
-}
-
 int main(void) {
     create_lookup_tables();
     hw_init();

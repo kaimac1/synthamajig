@@ -77,8 +77,8 @@ class Track {
 public:
     void reset();
     void play(bool start_playing);
-    void control_active_channel(InputState *input);
-    void play_active_channel(InputState *input);
+    void control_active_channel(const InputState &input);
+    void play_active_channel(const InputState &input);
     // Call frequently to ensure the next notes in the pattern are scheduled
     void schedule();
     void fill_buffer(AudioBuffer buffer);

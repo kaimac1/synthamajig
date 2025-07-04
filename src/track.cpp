@@ -87,19 +87,19 @@ bool Track::get_channel_activity(int chan) {
     return false;
 }
 
-void Track::control_active_channel(InputState *input) {
+void Track::control_active_channel(const InputState &input) {
     if (channels[active_channel].inst) {
-        channels[active_channel].inst->control(instrument_page, input);
+        channels[active_channel].inst->control(instrument_page, &input);
     }
 }
 
-void Track::play_active_channel(InputState *input) {
+void Track::play_active_channel(const InputState &input) {
     static int current_key = -1;
 
     if (!keyboard_enabled || keyboard_inhibited) return;
 
-    bool oct_dn = btn_down(input, BTN_LEFT);
-    bool oct_up = btn_down(input, BTN_RIGHT);
+    bool oct_dn = btn_down(&input, BTN_LEFT);
+    bool oct_up = btn_down(&input, BTN_RIGHT);
     int shift = oct_up - oct_dn;
 
     int (*map)(int, int) = keymap_pentatonic_linear;
@@ -108,15 +108,15 @@ void Track::play_active_channel(InputState *input) {
     bool any_triggered = false;
     bool any_released = false;
     for (int b=0; b<NUM_STEPKEYS; b++) {
-        if (input->button_state[b] == BTN_RELEASED) any_released = true;
-        if (input->button_state[b] == BTN_PRESSED) {
+        if (input.button_state[b] == BTN_RELEASED) any_released = true;
+        if (input.button_state[b] == BTN_PRESSED) {
             any_triggered = true;
             current_key = b;
             int midi_note = map(b, shift);
             if (midi_note > 0) {
                 uint32_t freq = midi_note_to_freq(midi_note);
                 channels[active_channel].inst->trigger = 1;
-                channels[active_channel].inst->accent = btn_down(input, BTN_SHIFT);
+                channels[active_channel].inst->accent = btn_down(&input, BTN_SHIFT);
                 channels[active_channel].inst->gate = 1;
                 channels[active_channel].inst->note_freq = freq;
 
@@ -128,7 +128,7 @@ void Track::play_active_channel(InputState *input) {
 
     if (!any_triggered && any_released) {
         for (int b=0; b<NUM_STEPKEYS; b++) {
-            if (input->button_state[b] == BTN_RELEASED) {
+            if (input.button_state[b] == BTN_RELEASED) {
                 if (current_key == b) {
                     channels[active_channel].inst->gate = 0;
                 }
