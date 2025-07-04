@@ -3,6 +3,9 @@
 #include "track.hpp"
 #include "common.h"
 
+#define CORE0_CHANNEL_MASK  0b00001111
+#define CORE1_CHANNEL_MASK  0b11110000
+
 extern Track track;
 
 void core1_main(void);
@@ -19,6 +22,8 @@ struct {
 } shared;
 
 
+
+// Start core 1
 extern "C" void multicore_init(void) {
     multicore_reset_core1();
     doorbell_core1_start = multicore_doorbell_claim_unused((1 << NUM_CORES) - 1, true);    
@@ -26,7 +31,7 @@ extern "C" void multicore_init(void) {
 }
 
 
-
+// Wait for audio callback on core 0 to finish
 RawInput audio_wait(void) {
     // TODO: redo this properly
     // Wait for end of audio task
@@ -36,7 +41,7 @@ RawInput audio_wait(void) {
 }
 
 
-// DMA transfer complete ISR on core 0.
+// Core 0 audio callback (DMA transfer complete ISR)
 // - Read hardware inputs
 // - Update parameters for current voice
 // - Generate audio
@@ -53,10 +58,12 @@ extern "C" void audio_dma_callback(void) {
         track.play_active_channel(audio_cb_input_state);
     }
 
+    // Trigger core1 to start processing its channels
     multicore_doorbell_set_other_core(doorbell_core1_start);
 
-    // Sample generation
-    track.fill_buffer(buffer);
+    track.process_channels(CORE0_CHANNEL_MASK);
+    
+    track.downmix(buffer);
 
     shared.input = input;
     shared.audio_done = 1;
@@ -71,7 +78,7 @@ extern "C" void audio_dma_callback(void) {
 void core1_doorbell_irq(void) {
     if (multicore_doorbell_is_set_current_core(doorbell_core1_start)) {
         multicore_doorbell_clear_current_core(doorbell_core1_start);
-        printf("core1 start\n");
+        //printf("core1 start\n");
     }
 }
 

@@ -5,10 +5,21 @@
 #include "hw/perf.h"
 #include <stdio.h>
 #include "config.h"
-
 #include "pico/stdlib.h"
 
+
+/************************************************/
+// Audio config
+
+// Output sample rate
 #define SAMPLE_RATE 48000
+
+// Buffer size in samples
+#define BUFFER_SIZE_SAMPS 256
+
+/************************************************/
+
+#define BUFFER_TIME_SEC ((BUFFER_SIZE_SAMPS) / (float)(SAMPLE_RATE))
 
 // Show min and max sample values
 //#define DEBUG_AMPLITUDE

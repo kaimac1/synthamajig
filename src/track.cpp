@@ -137,66 +137,45 @@ void Track::play_active_channel(const InputState &input) {
     }
 }
 
-void Track::fill_buffer(AudioBuffer buffer) {
+void Track::process_channels(uint32_t channel_mask) {
+
+    int chan = 0;
+    while (chan < NUM_CHANNELS) {
+        if (channel_mask & 1) {
+            if (!channels[chan].is_muted) {
+                channels[chan].fill_buffer(sampletick);
+            }
+        }
+
+        channel_mask >>= 1;
+        chan++;
+    }
+}
+
+void Track::downmix(AudioBuffer buffer) {
     int16_t *samples = (int16_t *) buffer.samples;
-    int count = buffer.sample_count;
-    uint32_t tick_start = sampletick;
+    memset(samples, 0, 2*BUFFER_SIZE_SAMPS);
 
-    is_over_limit = false;
-
-    memset(samples, 0, 2*count);
-
-    // For each channel
     for (int v=0; v<NUM_CHANNELS; v++) {
         if (channels[v].is_muted) continue;
 
-        sampletick = tick_start;
-
-        for (int sn=0; sn<count; sn++) {
-            if (channels[v].type == CHANNEL_INSTRUMENT) {
-                if (sampletick == channels[v].next_note.on_time) {
-                    // Set up instrument to play next note now
-                    //set_note_on_instrument(channels[v].inst, &channels[v].next_note);
-                    channels[v].inst->gate = channels[v].next_note.note.trigger; // NOTE: trigger becomes gate
-                    channels[v].inst->accent = channels[v].next_note.note.accent;
-                    uint32_t freq = midi_note_to_freq(channels[v].next_note.note.midi_note);
-                    channels[v].inst->note_freq = freq;
-                } else if (sampletick == channels[v].next_note.off_time) {
-                    channels[v].inst->gate = 0;
-                    channels[v].inst->trigger = 0;
-                }
-
-            } else if (channels[v].type == CHANNEL_SAMPLE) {
-                if (sampletick == channels[v].next_note.on_time) {
-                    channels[v].cur_sample_id = channels[v].next_note.sample_id;
-                    channels[v].cur_sample_pos = 0;
-                    if (channels[v].cur_sample_id >= 0) {
-                        uint32_t play_freq = midi_note_to_freq(channels[v].next_note.note.midi_note);
-                        SampleInfo *samp = SampleManager::get_info(channels[v].cur_sample_id);
-                        uint32_t root_freq = midi_note_to_freq(samp->root_midi_note);
-                        channels[v].cur_sample_ratio = (float)play_freq / root_freq;
-                    }
-                }
-            }
-
-            float sample = channels[v].process();
-
-            sample *= volume * 0.2f * 32767;
+        for (int sn=0; sn<BUFFER_SIZE_SAMPS; sn++) {
+            // Volume & convert to 16-bit
+            float sample = channels[v].buffer[sn] * volume * 0.2f * 32767;
 
             // TODO: a proper limiter
             const float vlimit = 20000.0f;
             if (sample > vlimit) { 
                 sample = vlimit;
-                is_over_limit = true;
             } 
             else if (sample < -vlimit) {
                 sample = -vlimit;
-                is_over_limit = true;
             }
             samples[sn] += (int16_t)sample;
-            sampletick++;            
         }
     }
+
+    sampletick += BUFFER_SIZE_SAMPS;
 
     // // See if note events will occur during this buffer
     // //bool note_events = false;
@@ -293,3 +272,36 @@ float Channel::process() {
     return 0.0f;
 }
 
+void Channel::fill_buffer(uint32_t start_tick) {
+    for (int sn=0; sn<BUFFER_SIZE_SAMPS; sn++) {
+        uint32_t tick = start_tick + sn;
+
+        if (type == CHANNEL_INSTRUMENT) {
+            if (tick == next_note.on_time) {
+                // Set up instrument to play next note now
+                //set_note_on_instrument(channels[v].inst, &channels[v].next_note);
+                inst->gate = next_note.note.trigger; // NOTE: trigger becomes gate
+                inst->accent = next_note.note.accent;
+                uint32_t freq = midi_note_to_freq(next_note.note.midi_note);
+                inst->note_freq = freq;
+            } else if (tick == next_note.off_time) {
+                inst->gate = 0;
+                inst->trigger = 0;
+            }
+
+        } else if (type == CHANNEL_SAMPLE) {
+            if (tick == next_note.on_time) {
+                cur_sample_id = next_note.sample_id;
+                cur_sample_pos = 0;
+                if (cur_sample_id >= 0) {
+                    uint32_t play_freq = midi_note_to_freq(next_note.note.midi_note);
+                    SampleInfo *samp = SampleManager::get_info(cur_sample_id);
+                    uint32_t root_freq = midi_note_to_freq(samp->root_midi_note);
+                    cur_sample_ratio = (float)play_freq / root_freq;
+                }
+            }
+        }
+
+        buffer[sn] = process();
+    }
+}

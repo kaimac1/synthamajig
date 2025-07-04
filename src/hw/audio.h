@@ -5,10 +5,9 @@
  */
 #pragma once
 #include "pico/audio_i2s.h"
+#include "../common.h"
 
 void fill_buffer(struct audio_buffer *buffer);
-
-#define SAMPLES_PER_BUFFER 256
 
 audio_format_t audio_format;
 
@@ -25,7 +24,7 @@ struct audio_buffer_pool *init_audio(uint32_t sample_rate, uint8_t pin_data, uin
   struct audio_buffer_pool *producer_pool = audio_new_producer_pool(
     &producer_format,
     1,
-    SAMPLES_PER_BUFFER
+    BUFFER_SIZE_SAMPS
   );
 
   const struct audio_format *output_format;

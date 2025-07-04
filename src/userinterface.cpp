@@ -55,6 +55,7 @@ Step new_step;
 
 void control_leds();
 void draw_debug_info();
+void debug_menu();
 
 
 void set_brightness(int level) {
@@ -79,7 +80,7 @@ void draw_header() {
     char buf[32] = {0};
     if (recording) strcat(buf, "Rec ");
     if (track.keyboard_enabled) strcat(buf, "Kb ");
-    ngl_textf(FONT_A, 0,0,0, "Ch%d %s %s", track.active_channel+1, buf, track.is_over_limit ? "[!]" : "");
+    ngl_textf(FONT_A, 0,0,0, "Ch%d %s %s", track.active_channel+1, buf, false ? "[!]" : "");
 }
 
 
@@ -359,6 +360,9 @@ void Screensaver::react(DrawEvent const& devt) {
     static float dx = 0.3;
     static float dy = 0.25;
 
+    debug_menu();
+    return;
+
     ngl_fillscreen(0);
     ngl_bitmap(x, y, dvdlogo);
     x += dx;
@@ -523,7 +527,7 @@ void draw_debug_info(void) {
     
     // audio CPU usage
     int64_t time_audio_us = perf_get(PERF_AUDIO);
-    float audio_percent = 100.0f * time_audio_us/5805.0f;
+    float audio_percent = 100.0f * time_audio_us/(1E6 * BUFFER_TIME_SEC);
     ngl_textf(FONT_A, 0,115,0,"%.1f%%",  audio_percent);
 
     //float fps_display = 1E6 / perf_get(PERF_DISPLAY_UPDATE);

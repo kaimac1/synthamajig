@@ -50,6 +50,7 @@ public:
     void mute(bool mute);
     void silence();
     float process();
+    void fill_buffer(uint32_t start_tick);
 
     ChannelType type;
     Instrument *inst;
@@ -62,6 +63,8 @@ public:
     int cur_sample_id {-1};
     float cur_sample_pos;
     float cur_sample_ratio;
+
+    float buffer[BUFFER_SIZE_SAMPS];
 
     
 private:
@@ -79,9 +82,16 @@ public:
     void play(bool start_playing);
     void control_active_channel(const InputState &input);
     void play_active_channel(const InputState &input);
+
     // Call frequently to ensure the next notes in the pattern are scheduled
     void schedule();
-    void fill_buffer(AudioBuffer buffer);
+
+    // Fill channel buffer for channels in the mask
+    void process_channels(uint32_t channel_mask);
+
+    // Mix all channel buffers down into the given output buffer
+    void downmix(AudioBuffer buffer);
+
     void set_volume_percent(int vol);
     void enable_keyboard(bool en);
 
@@ -89,7 +99,6 @@ public:
     
     int bpm;
     bool is_playing;
-    bool is_over_limit;
     
     Channel channels[NUM_CHANNELS];
     int active_channel;
