@@ -3,7 +3,7 @@
 #include "instrument.hpp"
 
 #define DEFAULT_BPM 120
-#define NUM_CHANNELS 4
+#define NUM_CHANNELS 8
 
 #define PATTERN_MAX_LEN 64
 #define GATE_LENGTH_BITS 7

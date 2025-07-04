@@ -156,23 +156,26 @@ void Track::downmix(AudioBuffer buffer) {
     int16_t *samples = (int16_t *) buffer.samples;
     memset(samples, 0, 2*BUFFER_SIZE_SAMPS);
 
-    for (int v=0; v<NUM_CHANNELS; v++) {
-        if (channels[v].is_muted) continue;
+    for (int sn=0; sn<BUFFER_SIZE_SAMPS; sn++) {
+        float sample = 0.0f;
 
-        for (int sn=0; sn<BUFFER_SIZE_SAMPS; sn++) {
+        for (int v=0; v<NUM_CHANNELS; v++) {
+            if (channels[v].is_muted) continue;
+
             // Volume & convert to 16-bit
-            float sample = channels[v].buffer[sn] * volume * 0.2f * 32767;
-
-            // TODO: a proper limiter
-            const float vlimit = 20000.0f;
-            if (sample > vlimit) { 
-                sample = vlimit;
-            } 
-            else if (sample < -vlimit) {
-                sample = -vlimit;
-            }
-            samples[sn] += (int16_t)sample;
+            sample += channels[v].buffer[sn] * volume * 0.2f * 32767;
         }
+
+        // TODO: a proper limiter
+        const float vlimit = 20000.0f;
+        if (sample > vlimit) { 
+            sample = vlimit;
+        } 
+        else if (sample < -vlimit) {
+            sample = -vlimit;
+        }        
+
+        samples[sn] = (int16_t)sample;
     }
 
     sampletick += BUFFER_SIZE_SAMPS;

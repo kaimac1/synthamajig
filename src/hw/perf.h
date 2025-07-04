@@ -13,6 +13,8 @@ typedef enum {
     PERF_DRAWTIME,
     PERF_TEST,
     PERF_SAMPLE_LOAD,
+    PERF_CHAN_CORE0,
+    PERF_CHAN_CORE1,
     NUM_PERFCOUNTERS
 } PerfMetric;
 

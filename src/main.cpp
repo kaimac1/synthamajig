@@ -50,5 +50,14 @@ int main(void) {
             }
             hw_debug_led(0);
         }
+
+        if (++ctr == 256) {
+            printf("perf:\taudio=%lld  cores=%lld,%lld\tui=%lld\n", 
+                perf_get(PERF_AUDIO),
+                perf_get(PERF_CHAN_CORE0),
+                perf_get(PERF_CHAN_CORE1),
+                perf_get(PERF_UI_UPDATE));
+            ctr = 0;
+        }
     }
 }

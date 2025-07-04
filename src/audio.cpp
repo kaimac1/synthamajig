@@ -32,6 +32,7 @@ extern "C" void multicore_init(void) {
     multicore_launch_core1(core1_main);
 }
 
+
 static void trigger_core1(void) {
     multicore_doorbell_set_other_core(doorbell_core1_start);
 }
@@ -72,7 +73,9 @@ extern "C" void audio_dma_callback(void) {
 
     // Process channels on both cores
     trigger_core1();
+    perf_start(PERF_CHAN_CORE0);
     track.process_channels(CORE0_CHANNEL_MASK);
+    perf_end(PERF_CHAN_CORE0);
     wait_for_core1();
     
     // Mix channels down into output buffer
@@ -86,8 +89,6 @@ extern "C" void audio_dma_callback(void) {
 }
 
 
-
-
 void core1_doorbell_irq(void) {
     if (multicore_doorbell_is_set_current_core(doorbell_core1_start)) {
         multicore_doorbell_clear_current_core(doorbell_core1_start);
@@ -95,14 +96,18 @@ void core1_doorbell_irq(void) {
     }
 }
 
+
 void core1_main(void) {
     uint32_t irq = multicore_doorbell_irq_num(doorbell_core1_start);
     irq_set_exclusive_handler(irq, core1_doorbell_irq);
     irq_set_enabled(irq, true);
 
     while (1) {
+        // Wait for doorbell
         __wfi();
+        perf_start(PERF_CHAN_CORE1);
         track.process_channels(CORE1_CHANNEL_MASK);
+        perf_end(PERF_CHAN_CORE1);
         multicore_doorbell_set_other_core(doorbell_core1_finished);
     }
 }
