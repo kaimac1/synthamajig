@@ -65,14 +65,16 @@ void ngl_rect(int x, int y, int w, int h, nglFillColour fillcolour) {
     }
 }
 
-void ngl_line(int x0, int y0, int x1, int y1, bool colour) {
+void ngl_line(int x0, int y0, int x1, int y1, nglFillColour colour) {
     const int dx = abs(x1 - x0), dy = -abs(y1 - y0);
     const int sx = x0 < x1 ? 1 : -1;
     const int sy = y0 < y1 ? 1 : -1;
     int error = dx + dy;
+    bool col = colour;
 
     while (1) {
-        ngl_setpixel(x0, y0, colour);
+        ngl_setpixel(x0, y0, col);
+        if (colour == FILLCOLOUR_HALF) col = !col;
         if (x0 == x1 && y0 == y1) break;
         int e2 = 2*error;
         if (e2 >= dy) {

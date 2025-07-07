@@ -57,7 +57,7 @@ void ngl_fillscreen(bool colour);
 void ngl_rect(int x, int y, int w, int h, nglFillColour fillcolour);
 
 // Draw line (Bresenham)
-void ngl_line(int x0, int y0, int x1, int y1, bool colour);
+void ngl_line(int x0, int y0, int x1, int y1, nglFillColour colour);
 
 void ngl_bitmap(int x, int y, nglBitmap bitmap);
 
