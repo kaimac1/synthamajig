@@ -15,8 +15,8 @@ extern "C" {
 #define NUM_STEPKEYS 16
 
 #define LED_OFF 0
-#define LED_DIM 64
-#define LED_ON  255
+#define LED_DIM 32
+#define LED_ON  128
 
 typedef enum {
     BTN_STEP_1 = 0,
@@ -68,7 +68,7 @@ void hw_audio_start(void);
 int32_t read_knob(int encoder);
 
 // Scan the input matrix
-void hw_scan_buttons(void);
+void hw_scan_matrix(void);
 
 bool hw_read_button(int button);
 

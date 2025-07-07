@@ -8,7 +8,7 @@ RawInput input_read(void) {
         input.knob_raw[i] = read_knob(i);
     }
 
-    hw_scan_buttons();
+    hw_scan_matrix();
     for (int i=0; i<NUM_BUTTONS; i++) {
         input.button_raw[i] = hw_read_button(i);
     }

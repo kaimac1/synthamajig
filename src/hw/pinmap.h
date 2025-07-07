@@ -30,7 +30,8 @@
 #define OLED_CLK_KHZ        1000
 
 // Button/LED matrix
-#define LED_PWM_SLICE 1
+#define LED_PWM_START     5
+#define LED_PWM_END       8
 #define PIN_LED0            18
 #define PIN_LED1            19
 #define PIN_LED2            20
