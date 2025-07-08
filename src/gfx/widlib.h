@@ -37,7 +37,7 @@ void wl_update_knobs(int *delta);
 // Create a list. Call this first.
 // title is stored and used to identify the list, to see if we are a drawing a different one
 // visible_items is the number of items to show at once
-void wl_list_start(const char *title, int visible_items, wlListDrawFuncs *draw_funcs);
+void wl_list_start(const char *title, int visible_items, int scroll_knob, int data_knob, wlListDrawFuncs *draw_funcs);
 
 // Then call these functions to create list items. Returns true if the item is currently selected.
 bool wl_list_item_int(const char *name, int value);

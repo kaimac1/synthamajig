@@ -16,6 +16,8 @@ typedef struct {
     int scan_item;
     int top_item;
     int num_visible_items;
+    int scroll_knob;
+    int data_knob;
     wlListDrawFuncs *funcs;
     char last_name[TXTLEN];
 } Menu;
@@ -40,7 +42,7 @@ void wl_update_knobs(int *delta) {
 #define MENU_END()              menu.built = true;
 
 
-void wl_list_start(const char *title, int visible_items, wlListDrawFuncs *draw_funcs) {
+void wl_list_start(const char *title, int visible_items, int scroll_knob, int data_knob, wlListDrawFuncs *draw_funcs) {
     if (strcmp(menu.title, title)) {
         // Reset
         menu.built = false;
@@ -48,14 +50,16 @@ void wl_list_start(const char *title, int visible_items, wlListDrawFuncs *draw_f
         menu.selected_item = 0;
         menu.top_item = 0;
         menu.num_visible_items = visible_items;
+        menu.scroll_knob = scroll_knob;
+        menu.data_knob = data_knob;
         strlcpy(menu.title, title, sizeof(menu.title));
         menu.funcs = draw_funcs;
     }
     menu.scan_item = -1;
 
-    if (menu.built && knob_delta[SCROLL_KNOB]) {
+    if (menu.built && knob_delta[menu.scroll_knob]) {
         // Change selected item
-        menu.selected_item += knob_delta[SCROLL_KNOB];
+        menu.selected_item += knob_delta[menu.scroll_knob];
         if (menu.selected_item < 0) menu.selected_item = 0;
         if (menu.selected_item >= menu.num_items) menu.selected_item = menu.num_items - 1;
         // Scroll window
@@ -95,8 +99,8 @@ bool wl_list_item_str(const char *name, const char *value) {
 bool wl_list_edit_int(int *value, int min, int max) {
     // Change value by delta_data
     bool changed = false;
-    if (MENU_ITEM_SELECTED() && knob_delta[DATA_KNOB]) {
-        int newval = *value + knob_delta[DATA_KNOB];
+    if (MENU_ITEM_SELECTED() && knob_delta[menu.data_knob]) {
+        int newval = *value + knob_delta[menu.data_knob];
         if (newval < min) newval = min;
         if (newval > max) newval = max;
         *value = newval;

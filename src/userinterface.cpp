@@ -256,12 +256,12 @@ void change_step_note(int delta) {
 }
 
 void StepView::react(InputEvent const &ievt) {
-    if (inputs.knob_delta[0]) {
+    if (inputs.knob_delta[1]) {
         transit<SampleSelector>();
         return;
     }
-    if (inputs.knob_delta[1]) {
-        change_step_note(inputs.knob_delta[1]);
+    if (inputs.knob_delta[0]) {
+        change_step_note(inputs.knob_delta[0]);
     }
 
     react(DrawEvent {});
@@ -356,7 +356,7 @@ void SampleSelector::react(DrawEvent const& devt) {
     bool exit = false;
     
     ngl_fillscreen(0);
-    wl_list_start("Samples", 8, &sample_browser_funcs);
+    wl_list_start("Samples", 8, 1, 0, &sample_browser_funcs);
     for (int i=0; i<numsamps; i++) {
         char value[32];
         SampleInfo *samp = &SampleManager::sample_list[i];
@@ -642,7 +642,7 @@ wlListDrawFuncs debug_menu_funcs = {
 
 void debug_menu() {
 
-    wl_list_start("Debug menu", 6, &debug_menu_funcs);
+    wl_list_start("Debug menu", 6, 0, 1, &debug_menu_funcs);
     if (wl_list_item_int("Volume", volume_percent)) {
         if (wl_list_edit_int(&volume_percent, 0, 100)) {
             track.set_volume_percent(volume_percent);    
