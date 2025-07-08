@@ -11,7 +11,7 @@
 uint8_t framebuffer[NGL_FRAMEBUFFER_SIZE];
 
 nglFont font_minipixel = {32, 96, 12, 1, font_minipixel_index, font_minipixel_widths, font_minipixel_data};
-nglFont font_notalot = {32, 95, 9, 1, font_notalot_index, font_notalot_widths, font_notalot_data};
+nglFont font_palmbold = {32, 95, 9, 1, font_palmbold_index, font_palmbold_widths, font_palmbold_data};
 
 
 void ngl_init(void) {

@@ -1,8 +1,8 @@
 from PIL import ImageFont, ImageDraw, Image
 import math
 
-FONT_NAME = 'notalot'
-FONT_FILE = 'notalot35.ttf'
+FONT_NAME = 'palmbold'
+FONT_FILE = 'palm-os-bold.ttf'
 FONT_SIZE = 16
 BITMAP_HEIGHT = 9
 Y_OFFSET = -2

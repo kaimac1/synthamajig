@@ -2,9 +2,7 @@
 #include "input.h"
 #include "track.hpp"
 #include "tinyfsm/tinyfsm.hpp"
-
-#define DEFAULT_BRIGHTNESS 1
-#define DEFAULT_VOLUME 50
+#include "common.h"
 
 // Shifted button functions
 #define MODBTN_FILTER     BTN_STEP_9

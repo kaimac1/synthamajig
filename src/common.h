@@ -19,6 +19,14 @@
 
 /************************************************/
 
+// 1 - 10
+#define DEFAULT_BRIGHTNESS 3
+
+// 0 - 100
+#define DEFAULT_VOLUME 50
+
+
+
 #define BUFFER_TIME_SEC ((BUFFER_SIZE_SAMPS) / (float)(SAMPLE_RATE))
 
 // Show min and max sample values

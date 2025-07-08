@@ -205,9 +205,14 @@ void PatternView::react(InputEvent const & ievt) {
             write_to_step(step);
         } else {
             if (step) {
-                selected_step = step;
-                transit<StepView>();
-                return;
+                if (shift) {
+                    step->on = !step->on;
+                    step->note.trigger = step->on;
+                } else {
+                    selected_step = step;
+                    transit<StepView>();
+                    return;
+                }
             }
         }
     }
@@ -236,6 +241,14 @@ void change_step_note(int delta) {
     const int min_note = 21;
     const int max_note = 80;
 
+    // static int delta2 = 0;
+    // const int sens = 4;
+    // delta2 += delta;
+    // int delta_out = delta2 / sens;
+    // if (delta_out != 0) {
+    //     delta2 -= sens*delta_out;
+    // }
+
     int note = selected_step->note.midi_note + delta;
     if (note < min_note) note = min_note;
     if (note > max_note) note = max_note;
@@ -260,20 +273,50 @@ void StepView::react(DrawEvent const& devt) {
     ngl_fillscreen(0);
     draw_header();
     if (selected_step == NULL) return;
-    
+
+    const int bw=62, bh=54;
+    const nglFillColour col = FILLCOLOUR_HALF;
+    int sx=0, sy=16;
+    ngl_line(sx+1,sy,sx+bw-1,sy, col);
+    ngl_line(sx+1,sy+bh,sx+bw-1,sy+bh, col);
+    ngl_line(sx,sy+1,sx,sy+bh-1, col);
+    ngl_line(sx+bw,sy+1,sx+bw,sy+bh-1, col);
+    ngl_text(&font_palmbold, sx+2, sy+2, 0, "note");
     char buf[32];
     midi_note_to_str(buf, sizeof(buf), selected_step->note.midi_note);
-    ngl_textf(FONT_A, 16,48,0, "%s", buf);
+    ngl_textf(FONT_A, sx+bw/2,sy+24,TEXT_CENTRE, "%s", buf);
+    
+    sx = 65; sy=16;
+    ngl_line(sx+1,sy,sx+bw-1,sy, col);
+    ngl_line(sx+1,sy+bh,sx+bw-1,sy+bh, col);
+    ngl_line(sx,sy+1,sx,sy+bh-1, col);
+    ngl_line(sx+bw,sy+1,sx+bw,sy+bh-1, col);
+    ngl_text(&font_palmbold, sx+2, sy+2, 0, "sample");
+    ngl_textf(FONT_A, sx+bw/2,sy+24,TEXT_CENTRE, "%d", selected_step->sample_id);
 
-    ngl_textf(FONT_A, 16,64,0, "Trig: %d", selected_step->note.trigger);
-    ngl_textf(FONT_A, 16,80,0, "Samp: %d", selected_step->sample_id);
+    sx = 0; sy=73;
+    ngl_line(sx+1,sy,sx+bw-1,sy, col);
+    ngl_line(sx+1,sy+bh,sx+bw-1,sy+bh, col);
+    ngl_line(sx,sy+1,sx,sy+bh-1, col);
+    ngl_line(sx+bw,sy+1,sx+bw,sy+bh-1, col);
+    ngl_text(&font_palmbold, sx+2, sy+2, 0, "prob");
+    ngl_textf(FONT_A, sx+8,sy+24,0, "trig=%d", selected_step->note.trigger);
+
+    sx = 65; sy=73;
+    ngl_line(sx+1,sy,sx+bw-1,sy, col);
+    ngl_line(sx+1,sy+bh,sx+bw-1,sy+bh, col);
+    ngl_line(sx,sy+1,sx,sy+bh-1, col);
+    ngl_line(sx+bw,sy+1,sx+bw,sy+bh-1, col);
+    ngl_text(&font_palmbold, sx+2, sy+2, 0, "level");
+
+    
 }
 
 
 /************************************************************/
 // Sample select
 
-const int sample_browser_item_height = 14;
+const int sample_browser_item_height = 12;
 
 void draw_sample_browser(const char *title, int num_items) {
     ngl_text(FONT_A, 0,0,0, title);
@@ -284,9 +327,9 @@ void draw_sample_browser_item(const char *name, const char *value, int pos, bool
     const int yoffset = 16;
     const int ypos = sample_browser_item_height * pos;
     if (selected) ngl_rect(3, yoffset+ypos, 125,sample_browser_item_height, FILLCOLOUR_WHITE);
-    ngl_text(&font_notalot, 5, yoffset+ypos+1, flags, name);
+    ngl_text(&font_palmbold, 5, yoffset+ypos+2, flags, name);
     if (value) {
-        ngl_text(&font_notalot, 127, yoffset+ypos+1, flags | TEXT_ALIGN_RIGHT, value);
+        ngl_text(&font_palmbold, 127, yoffset+ypos+2, flags | TEXT_ALIGN_RIGHT, value);
     }
 }
 
@@ -313,7 +356,7 @@ void SampleSelector::react(DrawEvent const& devt) {
     bool exit = false;
     
     ngl_fillscreen(0);
-    wl_list_start("Samples", 6, &sample_browser_funcs);
+    wl_list_start("Samples", 8, &sample_browser_funcs);
     for (int i=0; i<numsamps; i++) {
         char value[32];
         SampleInfo *samp = &SampleManager::sample_list[i];
