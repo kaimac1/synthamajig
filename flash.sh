@@ -1,2 +1,2 @@
 #!/bin/bash
-picotool load build/synth.uf2 -f
+vendor/picotool/build/picotool load build/synth.uf2 -f
