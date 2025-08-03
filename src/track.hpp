@@ -83,6 +83,9 @@ public:
     void enable_keyboard(bool en);
 
     bool get_channel_activity(int chan);
+
+    Step get_step(int pattern, int chan, int stepno);
+    void set_step(int pattern, int chan, int stepno, Step step);
     
     int bpm;
     int samples_per_step;

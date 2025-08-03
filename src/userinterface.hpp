@@ -58,6 +58,7 @@ namespace UI {
 
     class PatternView : public UIFSM {
     public:
+        void entry() override;
         void react(InputEvent const &) override;
         void react(DrawEvent const &) override;
     };

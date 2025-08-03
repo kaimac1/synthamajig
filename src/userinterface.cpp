@@ -1,4 +1,5 @@
 #include "userinterface.hpp"
+#include "hw.h"
 #include "track.hpp"
 #include "sample.hpp"
 #include "common.h"
@@ -30,8 +31,7 @@ FSM_INITIAL_STATE(UI::UIFSM, UI::TrackView);
 
 // The current channel and pattern
 #define CHANNEL (track.channels[track.active_channel])
-#define PATTERN (track.pattern[track.current_pattern])
-#define CHAN_PATTERN (track.pattern[track.current_pattern].chan[track.active_channel])
+#define PATTERN_LENGTH (track.pattern[track.current_pattern].length)
 
 // The current track/project.
 // Contains channels, instruments, parameters, pattern data
@@ -51,8 +51,9 @@ bool recording;
 bool screensaver_active;
 bool keys_pressed;
 int pattern_page;           // Which page of the pattern we can currently see
-Step *selected_step;
 Step new_step;
+Step steps[NUM_STEPKEYS];   // Data for currently visible steps
+int selected_step;          // Index into steps for selected step
 
 void control_leds();
 void draw_debug_info();
@@ -65,16 +66,27 @@ void set_brightness(int level) {
 }
 
 int next_pattern_page(void) {
-    int num_pages = (PATTERN.length + NUM_STEPKEYS-1) / NUM_STEPKEYS; // round up
+    int num_pages = (PATTERN_LENGTH + NUM_STEPKEYS-1) / NUM_STEPKEYS; // round up
     return (pattern_page + 1) % num_pages;
+}
+
+void load_steps(void) {
+    for (int i=0; i<NUM_STEPKEYS; i++) {
+        steps[i] = track.get_step(track.current_pattern, track.active_channel, NUM_STEPKEYS*pattern_page + i);
+    }
+}
+
+void update_step(int i) {
+    if ((i < 0) || (i >= NUM_STEPKEYS)) return;
+    track.set_step(track.current_pattern, track.active_channel, NUM_STEPKEYS*pattern_page + i, steps[i]);
 }
 
 // Get the step in the pattern corresponding to the given key.
 // May return null, as the key could be beyond the end of the pattern.
 Step *get_step_from_key(int key) {
     int stepidx = pattern_page*NUM_STEPKEYS + key;
-    if (stepidx >= PATTERN.length) return NULL;
-    return &CHAN_PATTERN.step[stepidx];
+    if (stepidx >= PATTERN_LENGTH) return NULL;
+    return &steps[key];
 }
 
 void draw_header() {
@@ -172,10 +184,15 @@ void ChannelView::react(DrawEvent const & devt) {
 /************************************************************/
 // Pattern
 
-void write_to_step(Step *step) {
-    if (!selected_step) return;
-    memcpy(step, selected_step, sizeof(Step));
-    step->on = true;
+void write_selected_to_step(int i) {
+    if (selected_step < 0) return;
+    steps[i] = steps[selected_step];
+    steps[i].on = true;
+    update_step(i);
+}
+
+void PatternView::entry() {
+    load_steps();
 }
 
 void PatternView::react(InputEvent const & ievt) {
@@ -188,29 +205,26 @@ void PatternView::react(InputEvent const & ievt) {
         }
     }
 
-    Step *step = NULL;
-    if (btn != -1) {
-        step = get_step_from_key(btn);
-    }
-
     if (track.keyboard_enabled) {
         if (btn != -1) {
             if (selected_step) {
                 // Edit note of selected step
-                selected_step->midi_note = track.last_played_midi_note;
+                steps[selected_step].midi_note = track.last_played_midi_note;
+                update_step(selected_step);
             }
         }
     } else {
         // Select or toggle steps
         if (recording) {
-            write_to_step(step);
+            write_selected_to_step(btn);
         } else {
-            if (step) {
+            if (btn >= 0) {
                 if (shift) {
-                    step->on = !step->on;
-                    step->trigger = step->on;
+                    steps[btn].on = !steps[btn].on;
+                    steps[btn].trigger = steps[btn].on;
+                    update_step(btn);
                 } else {
-                    selected_step = step;
+                    selected_step = btn;
                     transit<StepView>();
                     return;
                 }
@@ -230,7 +244,7 @@ void PatternView::react(DrawEvent const& devt) {
     }
     ngl_fillscreen(0);
     draw_header();
-    kmgui_gauge(0, &PATTERN.length, 1, 64, "Len=$");
+    kmgui_gauge(0, &PATTERN_LENGTH, 1, 64, "Len=$");
 }
 
 
@@ -238,7 +252,7 @@ void PatternView::react(DrawEvent const& devt) {
 // Step
 
 void change_step_note(int delta) {
-    if (selected_step == NULL) return;
+    if (selected_step < 0) return;
     const int min_note = 21;
     const int max_note = 80;
 
@@ -250,10 +264,11 @@ void change_step_note(int delta) {
     //     delta2 -= sens*delta_out;
     // }
 
-    int note = selected_step->midi_note + delta;
+    int note = steps[selected_step].midi_note + delta;
     if (note < min_note) note = min_note;
     if (note > max_note) note = max_note;
-    selected_step->midi_note = note;
+    steps[selected_step].midi_note = note;
+    update_step(selected_step);
 }
 
 void StepView::react(InputEvent const &ievt) {
@@ -273,7 +288,7 @@ void StepView::react(DrawEvent const& devt) {
     led_mode = track.keyboard_enabled ? LEDS_SHOW_KEYBOARD : LEDS_SHOW_STEPS;
     ngl_fillscreen(0);
     draw_header();
-    if (selected_step == NULL) return;
+    if (selected_step < 0) return;
 
     const int bw=62, bh=54;
     const nglFillColour col = FILLCOLOUR_HALF;
@@ -284,7 +299,7 @@ void StepView::react(DrawEvent const& devt) {
     ngl_line(sx+bw,sy+1,sx+bw,sy+bh-1, col);
     ngl_text(&font_palmbold, sx+2, sy+2, 0, "note");
     char buf[32];
-    midi_note_to_str(buf, sizeof(buf), selected_step->midi_note);
+    midi_note_to_str(buf, sizeof(buf), steps[selected_step].midi_note);
     ngl_textf(FONT_A, sx+bw/2,sy+24,TEXT_CENTRE, "%s", buf);
     
     sx = 65; sy=16;
@@ -293,7 +308,7 @@ void StepView::react(DrawEvent const& devt) {
     ngl_line(sx,sy+1,sx,sy+bh-1, col);
     ngl_line(sx+bw,sy+1,sx+bw,sy+bh-1, col);
     ngl_text(&font_palmbold, sx+2, sy+2, 0, "sample");
-    ngl_textf(FONT_A, sx+bw/2,sy+24,TEXT_CENTRE, "%d", selected_step->sample_id);
+    ngl_textf(FONT_A, sx+bw/2,sy+24,TEXT_CENTRE, "%d", steps[selected_step].sample_id);
 
     sx = 0; sy=73;
     ngl_line(sx+1,sy,sx+bw-1,sy, col);
@@ -301,7 +316,7 @@ void StepView::react(DrawEvent const& devt) {
     ngl_line(sx,sy+1,sx,sy+bh-1, col);
     ngl_line(sx+bw,sy+1,sx+bw,sy+bh-1, col);
     ngl_text(&font_palmbold, sx+2, sy+2, 0, "prob");
-    ngl_textf(FONT_A, sx+8,sy+24,0, "trig=%d", selected_step->trigger);
+    ngl_textf(FONT_A, sx+8,sy+24,0, "trig=%d", steps[selected_step].trigger);
 
     sx = 65; sy=73;
     ngl_line(sx+1,sy,sx+bw-1,sy, col);
@@ -369,7 +384,8 @@ void SampleSelector::react(DrawEvent const& devt) {
                 int error = SampleManager::load(samp->sample_id);
                 int64_t tt = perf_end(PERF_SAMPLE_LOAD);
                 printf("took %lld ms, err=%d\n", tt / 1000, error);
-                selected_step->sample_id = samp->sample_id;
+                steps[selected_step].sample_id = samp->sample_id;
+                update_step(selected_step);
                 exit = true;
             }
         }
@@ -438,27 +454,28 @@ void init() {
     track.set_volume_percent(volume_percent);
 
     // demo pattern
-    #define PATTERN_LEN 16
-    const int notes[PATTERN_LEN] = {42,40,42,42,40,42,47,42,42,49,46,49,40,45,42,47};
-    const int    on[PATTERN_LEN] = { 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1};
-    const int accts[PATTERN_LEN] = { 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0};
-    ChannelPattern *p = &track.pattern[0].chan[0];
-    for (int i=0; i<PATTERN_LEN; i++) {
-        p->step[i].on = on[i];
-        p->step[i].gate_length = 96;
+    #define PTNLEN 16
+    const int notes[PTNLEN] = {42,40,42,42,40,42,47,42,42,49,46,49,40,45,42,47};
+    const int    on[PTNLEN] = { 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1};
+    const int accts[PTNLEN] = { 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0};
+    for (int i=0; i<PTNLEN; i++) {
+        Step step;
+        step.on = on[i];
+        step.gate_length = 96;
         if (on[i]) {
-            p->step[i].midi_note = notes[i];
-            p->step[i].trigger = 1;
-            p->step[i].accent  = accts[i];
-        }        
+            step.midi_note = notes[i];
+            step.trigger = 1;
+            step.accent  = accts[i];
+        }
+        track.set_step(0, 0, i, step);
     }
-    track.pattern[0].length = PATTERN_LEN;
+    track.pattern[0].length = PTNLEN;
 
     // drum
-    p = &track.pattern[0].chan[2];
-    p->step[0].on = true;
-    p->step[0].midi_note = 60;
-    //p->step[0].sample_id = 0;
+    Step step;
+    step.on = true;
+    step.midi_note = 60;
+    track.set_step(0, 2, 0, step);
 
     UIFSM::start();
 }
@@ -531,7 +548,7 @@ void control_leds() {
     if (led_mode != LEDS_OVERRIDDEN) {
         for (int i=0; i<NUM_STEPKEYS; i++) {
             uint8_t led = LED_OFF;
-            int pidx;
+            const int stepno = pattern_page*NUM_STEPKEYS + i;
 
             switch (led_mode) {
             case LEDS_SHOW_CHANNELS:
@@ -546,10 +563,9 @@ void control_leds() {
                 break;
 
             case LEDS_SHOW_STEPS:
-                pidx = pattern_page*NUM_STEPKEYS + i;
-                if (CHAN_PATTERN.step[pidx].on && pidx < PATTERN.length) led = LED_DIM;
+                if (steps[i].on && stepno < PATTERN_LENGTH) led = LED_DIM;
                 if (track.is_playing) {
-                    if (CHANNEL.stepno == pidx) led = LED_ON;
+                    if (CHANNEL.stepno == stepno) led = LED_ON;
                 }
                 break;
 
@@ -566,7 +582,7 @@ void draw_debug_info(void) {
 
     //draw_textf(70,0,0, "P%02d", track.pattern_idx+1);
     ngl_textf(FONT_A, 127,0,TEXT_ALIGN_RIGHT, "%d/%d",
-        track.channels[track.active_channel].stepno+1, PATTERN.length);
+        track.channels[track.active_channel].stepno+1, PATTERN_LENGTH);
     
     // audio CPU usage
     int64_t time_audio_us = perf_get(PERF_AUDIO);

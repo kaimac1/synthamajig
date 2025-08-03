@@ -7,7 +7,7 @@
 #include "sample.hpp"
 
 // Total count of elapsed samples
-// at 44.1kHz this uint32 value will overflow after 27 hours
+// at 48 kHz this uint32 value will overflow after 24 hours
 static uint32_t sampletick;
 
 AcidBass acid;
@@ -53,7 +53,6 @@ void Track::play(bool start_playing) {
 
     for (int v=0; v<NUM_CHANNELS; v++) {
         Channel *c = &channels[v];
-        ChannelPattern *p = &pattern[current_pattern].chan[v];
 
         if (start_playing) {
             c->stepno = 0;
@@ -62,11 +61,12 @@ void Track::play(bool start_playing) {
             first_step = true;
 
             // Play first note immediately
-            if (p->step[c->stepno].on) {
+            const Step first_step = get_step(current_pattern, v, c->stepno);
+            if (first_step.on) {
                 c->next_on_time = sampletick;
-                int len = (samples_per_step * p->step[c->stepno].gate_length) >> GATE_LENGTH_BITS;
+                int len = (samples_per_step * first_step.gate_length) >> GATE_LENGTH_BITS;
                 c->next_off_time = c->next_on_time + len;
-                c->next_step = p->step[c->stepno];
+                c->next_step = first_step;
             }
         } else {
             c->stepno = 0;
@@ -87,7 +87,6 @@ void Track::schedule() {
     if (is_playing) {
         for (int v=0; v<NUM_CHANNELS; v++) {
             Channel *c = &channels[v];
-            ChannelPattern *p = &pattern[current_pattern].chan[v];
 
             if (!c->step_on && sampletick > c->next_step_time) {
                 // Increment step
@@ -97,21 +96,20 @@ void Track::schedule() {
                 // we can set the on_time for the next step
                 c->next_step_time += samples_per_step;
                 int nn = next_note_idx(v);
-                if (p->step[nn].on) {
+                const Step next_step = get_step(current_pattern, v, nn);
+                if (next_step.on) {
                     c->next_on_time = c->next_step_time;
-                    c->next_step = p->step[nn];
+                    c->next_step = next_step;
                     c->step_on = true;
                 }
             } else if (c->step_on && sampletick > c->next_off_time) {
                 // Step off time reached, set off time for the next step
                 int nn = next_note_idx(v);
-                int len = (samples_per_step * p->step[nn].gate_length) >> GATE_LENGTH_BITS;
+                const Step next_step = get_step(current_pattern, v, nn);
+                int len = (samples_per_step * next_step.gate_length) >> GATE_LENGTH_BITS;
                 c->next_off_time = c->next_on_time + len;
                 c->step_on = false;
             }
-
-
-
         }
         first_step = false;
     }
@@ -120,6 +118,15 @@ void Track::schedule() {
 int Track::next_note_idx(int channel) {
     if (pattern[current_pattern].length == 0) return 0;
     return (channels[channel].stepno + 1) % pattern[current_pattern].length;
+}
+
+Step Track::get_step(int ptn, int chan, int stepno) {
+    Step step = pattern[ptn].chan[chan].step[stepno];
+    return step;
+}
+
+void Track::set_step(int ptn, int chan, int stepno, Step step) {
+    pattern[ptn].chan[chan].step[stepno] = step;
 }
 
 bool Track::get_channel_activity(int chan) {
