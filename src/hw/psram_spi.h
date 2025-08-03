@@ -54,10 +54,10 @@ SOFTWARE.
 #include "hardware/gpio.h"
 #include "hardware/timer.h"
 #include "hardware/dma.h"
+#include "hardware/sync.h"
 #if defined(PSRAM_MUTEX)
 #include "pico/mutex.h"
 #elif defined(PSRAM_SPINLOCK)
-#include "hardware/sync.h"
 #endif
 #include <string.h>
 
@@ -265,10 +265,16 @@ __force_inline static void psram_write32(uint32_t addr, uint32_t val) {
     uint32_t cmd = 0x02000000 | addr;
     int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
 
+    uint32_t irq = save_and_disable_interrupts();
     pio_sm_put(PSRAM_PIO, sm, setup);
     pio_sm_put(PSRAM_PIO, sm, cmd);
     pio_sm_put(PSRAM_PIO, sm, val);
-    while(!pio_sm_is_tx_fifo_empty(PSRAM_PIO, sm));
+    int timeout = 10000;
+    while(!pio_sm_is_tx_fifo_empty(PSRAM_PIO, sm) && timeout) timeout--;
+    if (timeout == 0) {
+        printf("psram timeout! addr %08x val %08x\n", addr, val);
+    }
+    restore_interrupts(irq);
 };
 
 

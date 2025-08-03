@@ -5,17 +5,16 @@
 #define DEFAULT_BPM 120
 #define NUM_CHANNELS 8
 #define NUM_PATTERNS 16
-
 #define PATTERN_MAX_LEN 64
 #define GATE_LENGTH_BITS 7
 
 struct Step {
     uint8_t midi_note;
-    uint8_t gate_length;
+    uint8_t gate_length {96};
     bool on : 1;
     bool trigger : 1;
-    bool accent  : 1;
-    int sample_id {-1};
+    bool accent : 1;
+    int16_t sample_id {-1};
 };
 
 struct ChannelPattern {
@@ -109,3 +108,4 @@ private:
     float volume {0.0f};
     bool first_step;
 };
+

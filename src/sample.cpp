@@ -3,7 +3,6 @@
 #include "hw/psram_spi.h"
 #include "common.h"
 #include "libwave/libwave.h"
-#include "tlsf/tlsf.h"
 #include "ff.h"
 #include <cstring>
 #include <vector>
@@ -14,11 +13,6 @@
 #define FULL_PATH_LEN 128
 
 namespace SampleManager {
-
-// The TLSF allocator manages the sample memory.
-// Its control structure/metadata is kept in on-chip SRAM (about 3KB)
-tlsf_t sample_ram;
-uint8_t sample_ram_metadata[TLSF_SIZE];
 
 std::vector<SampleInfo> sample_list;
 int sample_map[MAX_SAMPLES];
@@ -31,15 +25,12 @@ static inline SampleInfo *get_sample_info(int sample_id) {
 }
 
 void init() {
-    tlsf_set_rw_functions(psram_read32, psram_write32);
-    sample_ram = tlsf_create(sample_ram_metadata, PSRAM_SIZE);
     build_list();
 }
     
 int build_list() {
 
     WaveFile wavefile;
-    int num_samples = 0;
 
     // Clear list and map
     sample_list.clear();
@@ -76,6 +67,7 @@ int build_list() {
             samp.size_bytes = samp.length * FRAME_SIZE;
             samp.addr = -1;
             samp.root_midi_note = DEFAULT_SAMPLE_ROOT_NOTE;
+            samp.is_loaded = false;
             strlcpy(samp.name, sample_name, sizeof(samp.name));
 
             sample_list.push_back(samp);
@@ -84,7 +76,6 @@ int build_list() {
             DEBUG_PRINTF("Added sample %s, id=%d len=%d idx=%d\n", sample_name, samp.sample_id, samp.length, sample_map[samp.sample_id]);
 
             next_id++;
-            num_samples++;
         }
 
         wave_close(&wavefile);
@@ -92,7 +83,7 @@ int build_list() {
     }
 
     f_closedir(&dir);
-    return num_samples;
+    return sample_list.size();
 }
 
 int load_sample_data(const char *path, SampleInfo *samp) {
@@ -104,20 +95,22 @@ int load_sample_data(const char *path, SampleInfo *samp) {
     // Read into a small buffer and write this out to RAM
     const size_t num_read_frames = 1024;
     const size_t buffer_size = num_read_frames * FRAME_SIZE;
-    uint8_t buffer[buffer_size];
+    uint32_t buffer[buffer_size/4];
 
     size_t bytes_read = buffer_size;
     size_t total_bytes_read = 0;
     uint32_t addr = samp->addr;
     while (bytes_read == buffer_size) {
+        DEBUG_PRINTF(".");
         bytes_read = FRAME_SIZE * wave_read(&wavefile, (void*)buffer, num_read_frames);
+        DEBUG_PRINTF("x");
         total_bytes_read += bytes_read;
 
         // TODO: speed this up with a psram_writewords function
         // Note that the sample size in bytes may not be a whole number of 32-bit words.
         // This works because TLSF allocation sizes are aligned to 32 bits.
         for (size_t idx=0; idx<bytes_read; idx += 4) {
-            psram_write32(addr, *(uint32_t*)(buffer + idx));
+            psram_write32(addr, *(uint32_t*)((uint8_t*)buffer + idx));
             addr += 4;
         }
     }
@@ -144,11 +137,13 @@ int load(int sample_id) {
 
     // Allocate memory in sample RAM
     const size_t data_size = samp->size_bytes;
-    int32_t addr = tlsf_malloc(sample_ram, data_size);
+    DEBUG_PRINTF("alloc");
+    int32_t addr = psram_alloc(data_size);
     if (addr < 0) {
         DEBUG_PRINTF("Allocation of %d bytes failed\n", data_size);
         return -1;
     }
+    DEBUG_PRINTF(" ok");
     samp->addr = addr;
 
     if (load_sample_data(full_path, samp) == 0) {
@@ -172,7 +167,7 @@ int unload(int sample_id) {
         return -1;
     }
 
-    tlsf_free(sample_ram, samp->addr);
+    psram_free(samp->addr);
     samp->is_loaded = false;
     return 0;
 }

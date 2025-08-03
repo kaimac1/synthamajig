@@ -85,6 +85,13 @@ AudioBuffer get_audio_buffer(void);
 // Send out a previously got buffer
 void put_audio_buffer(AudioBuffer buffer);
 
+// Allocate memory in external RAM
+int32_t psram_alloc(size_t bytes);
+
+// Free memory in external RAM
+void psram_free(int32_t addr);
+
+
 #ifdef __cplusplus
 }
 #endif

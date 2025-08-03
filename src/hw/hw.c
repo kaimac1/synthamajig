@@ -12,6 +12,7 @@
 #include "audio.h"
 #include "psram_spi.h"
 #include "gfx/ngl.h"
+#include "tlsf/tlsf.h"
 
 const int PWM_SYSCLK_DIVISOR = 16;
 
@@ -31,6 +32,11 @@ static uint8_t btn_value[NUM_BUTTONS];
 
 static struct audio_buffer_pool *audio_pool;
 static struct audio_buffer *current_audio_buffer;
+
+// The TLSF allocator manages external RAM.
+// Its control structure/metadata is kept in on-chip SRAM (about 3KB)
+tlsf_t external_ram;
+uint8_t external_ram_metadata[TLSF_SIZE];
 
 void hw_init(void) {
 
@@ -107,6 +113,17 @@ static void psram_init(void) {
     } else {
         INIT_PRINTF("  ok\n");
     }
+
+    tlsf_set_rw_functions(psram_read32, psram_write32);
+    external_ram = tlsf_create(external_ram_metadata, PSRAM_SIZE);    
+}
+
+int32_t psram_alloc(size_t bytes) {
+    return tlsf_malloc(external_ram, bytes);
+}
+
+void psram_free(int32_t addr) {
+    return tlsf_free(external_ram, addr);
 }
 
 
