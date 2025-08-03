@@ -6,13 +6,15 @@
 #include "ff.h"
 #include "hw/disk.h"
 #include "hw/psram_spi.h"
+#include "hw/hw.h"
+#include "hw/pinmap.h"
 
 void write_char(char c) {
     putchar(c);
 }
 
 int enter_msc(int argc, char **argv) {
-    disk_enter_mass_storage_mode();
+    //disk_enter_mass_storage_mode();
     return 0;
 }
 
@@ -156,6 +158,29 @@ int ram_test(int argc, char **argv) {
 
 }
 
+int led_test(int argc, char **argv) {
+
+    for (int n=0; n<8; n++) {
+        for (int i=0; i<255; i++) {
+            uint8_t val = (i*i) >> 8;
+            for (int k=0; k<5; k++) {
+                hw_set_led(k*3, val);
+            }
+            sleep_ms(1);
+        }
+
+        for (int i=255; i>=0; i--) {
+            uint8_t val = (i*i) >> 8;
+            for (int k=0; k<5; k++) {
+                hw_set_led(k*3, val);
+            }
+            sleep_ms(1);
+        }
+    }
+
+    return 0;
+}
+
 
 void debug_shell_init(void) {
     set_read_char(getchar);
@@ -172,4 +197,5 @@ void debug_shell_init(void) {
     ADD_CMD("frd", "file read test", file_read_test);
     ADD_CMD("ramtest", "PSRAM test", ram_test);
     ADD_CMD("msc", "mass storage mode", enter_msc);
+    ADD_CMD("ledtest", "led test", led_test);
 }
