@@ -4,27 +4,32 @@
 
 #define DEFAULT_BPM 120
 #define NUM_CHANNELS 8
+#define NUM_PATTERNS 16
 
 #define PATTERN_MAX_LEN 64
 #define GATE_LENGTH_BITS 7
 
 
 struct Note {
-    unsigned int midi_note;
-    bool trigger;
-    bool accent;
+    uint8_t midi_note;
+    bool trigger : 1;
+    bool accent  : 1;
 };
 
 struct Step {
     Note note;
-    int sample_id {-1};
-    bool on;
     uint8_t gate_length;
+    bool on;
+    int sample_id {-1};
+};
+
+struct ChannelPattern {
+    Step step[PATTERN_MAX_LEN];
 };
 
 struct Pattern {
-    Step step[PATTERN_MAX_LEN];
     int length;
+    ChannelPattern chan[NUM_CHANNELS];
 };
 
 // Note data with a start and end time, sent to instrument
@@ -45,8 +50,6 @@ enum ChannelType {
 class Channel {
 public:
     Channel();
-    void play(bool start);
-    void schedule();
     void mute(bool mute);
     void silence();
     float process();
@@ -54,7 +57,6 @@ public:
 
     ChannelType type;
     Instrument *inst;
-    Pattern pattern;
     bool is_muted;
     int step;
     ScheduledNote next_note;
@@ -66,12 +68,8 @@ public:
 
     float buffer[BUFFER_SIZE_SAMPS];
 
-    
-private:
-    int next_note_idx();
-    uint32_t next_step_time;
     bool step_on;
-    bool first_step;
+    uint32_t next_step_time;
 };
 
 
@@ -98,17 +96,24 @@ public:
     bool get_channel_activity(int chan);
     
     int bpm;
+    int samples_per_step;
     bool is_playing;
     
     Channel channels[NUM_CHANNELS];
     int active_channel;
+
+    Pattern pattern[NUM_PATTERNS];
+    int current_pattern {0};
 
     InstrumentPage instrument_page {INSTRUMENT_PAGE_OFF};
     uint32_t last_played_midi_note {0};
     bool keyboard_enabled {false};
     bool keyboard_inhibited {false};
 
+
 private:
+    int next_note_idx(int channel);
     int bpm_old;
     float volume {0.0f};
+    bool first_step;
 };

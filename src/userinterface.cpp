@@ -30,7 +30,8 @@ FSM_INITIAL_STATE(UI::UIFSM, UI::TrackView);
 
 // The current channel and pattern
 #define CHANNEL (track.channels[track.active_channel])
-#define PATTERN (CHANNEL.pattern)
+#define PATTERN (track.pattern[track.current_pattern])
+#define CHAN_PATTERN (track.pattern[track.current_pattern].chan[track.active_channel])
 
 // The current track/project.
 // Contains channels, instruments, parameters, pattern data
@@ -73,7 +74,7 @@ int next_pattern_page(void) {
 Step *get_step_from_key(int key) {
     int stepidx = pattern_page*NUM_STEPKEYS + key;
     if (stepidx >= PATTERN.length) return NULL;
-    return &PATTERN.step[stepidx];
+    return &CHAN_PATTERN.step[stepidx];
 }
 
 void draw_header() {
@@ -441,7 +442,7 @@ void init() {
     const int notes[PATTERN_LEN] = {42,40,42,42,40,42,47,42,42,49,46,49,40,45,42,47};
     const int    on[PATTERN_LEN] = { 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1};
     const int accts[PATTERN_LEN] = { 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0};
-    Pattern *p = &track.channels[0].pattern;
+    ChannelPattern *p = &track.pattern[0].chan[0];
     for (int i=0; i<PATTERN_LEN; i++) {
         p->step[i].on = on[i];
         p->step[i].gate_length = 96;
@@ -451,14 +452,13 @@ void init() {
             p->step[i].note.accent  = accts[i];
         }        
     }
-    p->length = PATTERN_LEN;
+    track.pattern[0].length = PATTERN_LEN;
 
     // drum
-    p = &track.channels[2].pattern;
-    p->length = 4;
+    p = &track.pattern[0].chan[2];
     p->step[0].on = true;
     p->step[0].note.midi_note = 60;
-    p->step[0].sample_id = 0;
+    //p->step[0].sample_id = 0;
 
     UIFSM::start();
 }
@@ -547,7 +547,7 @@ void control_leds() {
 
             case LEDS_SHOW_STEPS:
                 pidx = pattern_page*NUM_STEPKEYS + i;
-                if (PATTERN.step[pidx].on && pidx < PATTERN.length) led = LED_DIM;
+                if (CHAN_PATTERN.step[pidx].on && pidx < PATTERN.length) led = LED_DIM;
                 if (track.is_playing) {
                     if (CHANNEL.step == pidx) led = LED_ON;
                 }
@@ -566,7 +566,7 @@ void draw_debug_info(void) {
 
     //draw_textf(70,0,0, "P%02d", track.pattern_idx+1);
     ngl_textf(FONT_A, 127,0,TEXT_ALIGN_RIGHT, "%d/%d",
-        track.channels[track.active_channel].step+1, track.channels[track.active_channel].pattern.length);
+        track.channels[track.active_channel].step+1, PATTERN.length);
     
     // audio CPU usage
     int64_t time_audio_us = perf_get(PERF_AUDIO);

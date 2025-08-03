@@ -14,11 +14,6 @@ AcidBass acid;
 TestSynth testsynth;
 
 
-void set_note_on_instrument(Instrument *inst, Note *note) {
-
-}
-
-
 void Track::reset() {
     bpm = DEFAULT_BPM;
     bpm_old = 0;
@@ -40,13 +35,6 @@ void Track::reset() {
     }
 }
 
-void Track::play(bool start_playing) {
-    is_playing = start_playing;
-    for (int v=0; v<NUM_CHANNELS; v++) {
-        channels[v].play(start_playing);
-    }
-}
-
 void Track::set_volume_percent(int vol) {
     if (vol < 0) vol = 0;
     if (vol > 100) vol = 100;
@@ -60,22 +48,80 @@ void Track::enable_keyboard(bool en) {
     }    
 }
 
+void Track::play(bool start_playing) {
+    is_playing = start_playing;
+
+    for (int v=0; v<NUM_CHANNELS; v++) {
+        Channel *c = &channels[v];
+        ChannelPattern *p = &pattern[current_pattern].chan[v];
+
+        if (start_playing) {
+            c->step = 0;
+            c->next_step_time = sampletick;
+            c->step_on = false;
+            first_step = true;
+
+            // Play first note immediately
+            if (p->step[c->step].on) {
+                c->next_note.on_time = sampletick;
+                int len = (samples_per_step * p->step[c->step].gate_length) >> GATE_LENGTH_BITS;
+                c->next_note.off_time = c->next_note.on_time + len;
+                c->next_note.note = p->step[c->step].note;
+                c->next_note.sample_id = p->step[c->step].sample_id;
+            }
+        } else {
+            c->step = 0;
+            c->next_note.on_time = 0;
+            c->next_note.off_time = sampletick;
+        }
+    }
+}
+
 void Track::schedule() {
     // Tempo change
     if (bpm != bpm_old) {
-        int sps = SAMPLE_RATE * 60.0f / (bpm * 4); // steps (sixteenth notes)
-        for (int v=0; v<NUM_CHANNELS; v++) {
-            channels[v].samples_per_step = sps;
-        }
+        samples_per_step = SAMPLE_RATE * 60.0f / (bpm * 4); // steps (sixteenth notes)
         bpm_old = bpm;
     }
 
     // Schedule next note for each channel
     if (is_playing) {
         for (int v=0; v<NUM_CHANNELS; v++) {
-            channels[v].schedule();
+            Channel *c = &channels[v];
+            ChannelPattern *p = &pattern[current_pattern].chan[v];
+
+            if (!c->step_on && sampletick > c->next_step_time) {
+                // Increment step
+                if (!first_step) c->step = next_note_idx(v);
+
+                // Now that we are in the "next" step, and it has started,
+                // we can set the on_time for the next step
+                c->next_step_time += samples_per_step;
+                int nn = next_note_idx(v);
+                if (p->step[nn].on) {
+                    c->next_note.on_time = c->next_step_time;
+                    c->next_note.note = p->step[nn].note;
+                    c->next_note.sample_id = p->step[nn].sample_id;
+                    c->step_on = true;
+                }
+            } else if (c->step_on && sampletick > c->next_note.off_time) {
+                // Step off time reached, set off time for the next step
+                int nn = next_note_idx(v);
+                int len = (samples_per_step * p->step[nn].gate_length) >> GATE_LENGTH_BITS;
+                c->next_note.off_time = c->next_note.on_time + len;
+                c->step_on = false;
+            }
+
+
+
         }
+        first_step = false;
     }
+}
+
+int Track::next_note_idx(int channel) {
+    if (pattern[current_pattern].length == 0) return 0;
+    return (channels[channel].step + 1) % pattern[current_pattern].length;
 }
 
 bool Track::get_channel_activity(int chan) {
@@ -192,61 +238,6 @@ void Track::downmix(AudioBuffer buffer) {
 
 
 Channel::Channel() {}
-
-int Channel::next_note_idx() {
-    if (pattern.length == 0) return 0;
-    return (step + 1) % pattern.length;
-}
-
-void Channel::schedule() {
-
-    if (!step_on && sampletick > next_step_time) {
-        // Increment step
-        if (!first_step) step = next_note_idx();
-
-        // Now that we are in the "next" step, and it has started,
-        // we can set the on_time for the next step
-        next_step_time += samples_per_step;
-        int nn = next_note_idx();
-        if (pattern.step[nn].on) {
-            next_note.on_time = next_step_time;
-            next_note.note = pattern.step[nn].note;
-            next_note.sample_id = pattern.step[nn].sample_id;
-            step_on = true;
-        }
-        first_step = false;
-    } else if (step_on && sampletick > next_note.off_time) {
-        // Step off time reached, set off time for the next step
-        int nn = next_note_idx();
-        int len = (samples_per_step * pattern.step[nn].gate_length) >> GATE_LENGTH_BITS;
-        next_note.off_time = next_note.on_time + len;
-        step_on = false;
-    }
-}
-
-void Channel::play(bool start) {
-
-    if (start) {
-        step = 0;
-        next_step_time = sampletick;
-        step_on = false;
-        first_step = true;
-
-        // Play first note immediately
-        if (pattern.step[step].on) {
-            next_note.on_time = sampletick;
-            int len = (samples_per_step * pattern.step[step].gate_length) >> GATE_LENGTH_BITS;
-            next_note.off_time = next_note.on_time + len;
-            next_note.note = pattern.step[step].note;
-            next_note.sample_id = pattern.step[step].sample_id;
-        }
-    } else {
-        step = 0;
-        next_note.on_time = 0;
-        next_note.off_time = sampletick;
-    }
-
-}
 
 void Channel::mute(bool mute) {
     is_muted = mute;
