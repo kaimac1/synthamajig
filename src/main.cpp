@@ -1,8 +1,6 @@
 #include "common.h"
 #include "hw/hw.h"
 #include "hw/oled.h"
-#include "hw/disk.h"
-#include "hw/pinmap.h"
 #include "input.h"
 #include "synth_common.hpp"
 
