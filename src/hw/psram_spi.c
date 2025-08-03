@@ -142,6 +142,8 @@ int psram_spi_init(void) {
     psram.spinlock = spin_lock_init(spin_id);
 #endif
 
+    mutex_init(&psram.mtx);
+
     gpio_init(PSRAM_PIN_CS0);
     gpio_set_dir(PSRAM_PIN_CS0, GPIO_OUT);
     gpio_put(PSRAM_PIN_CS0, 1);

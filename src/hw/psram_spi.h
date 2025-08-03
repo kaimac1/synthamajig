@@ -55,10 +55,7 @@ SOFTWARE.
 #include "hardware/timer.h"
 #include "hardware/dma.h"
 #include "hardware/sync.h"
-#if defined(PSRAM_MUTEX)
 #include "pico/mutex.h"
-#elif defined(PSRAM_SPINLOCK)
-#endif
 #include <string.h>
 
 #include "psram_spi.pio.h"
@@ -81,11 +78,11 @@ extern "C" {
  */
 typedef struct psram_spi_inst {
 #if defined(PSRAM_MUTEX)
-    mutex_t mtx;
 #elif defined(PSRAM_SPINLOCK)
     spin_lock_t* spinlock;
     uint32_t spin_irq_state;
 #endif
+    mutex_t mtx;
     int write_dma_chan;
     dma_channel_config write_dma_chan_config;
     int read_dma_chan;
@@ -265,6 +262,7 @@ __force_inline static void psram_write32(uint32_t addr, uint32_t val) {
     uint32_t cmd = 0x02000000 | addr;
     int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
 
+    
     uint32_t irq = save_and_disable_interrupts();
     pio_sm_put(PSRAM_PIO, sm, setup);
     pio_sm_put(PSRAM_PIO, sm, cmd);
@@ -276,6 +274,22 @@ __force_inline static void psram_write32(uint32_t addr, uint32_t val) {
     }
     restore_interrupts(irq);
 };
+
+__force_inline static void psram_writewords(uint32_t addr, uint32_t *buffer, uint32_t num_words) {
+    uint32_t setup = (7 + 8*num_words) << 16;
+    uint32_t cmd = 0x02000000 | addr;
+    int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
+
+    uint32_t irq = save_and_disable_interrupts();
+    pio_sm_put(PSRAM_PIO, sm, setup);
+    pio_sm_put(PSRAM_PIO, sm, cmd);
+    while (num_words) {
+        pio_sm_put(PSRAM_PIO, sm, *buffer++);
+        num_words--;
+        while(!pio_sm_is_tx_fifo_empty(PSRAM_PIO, sm));
+    }
+    restore_interrupts(irq);
+}
 
 
 

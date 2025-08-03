@@ -5,6 +5,7 @@
 #include "track.hpp"
 #include "keyboard.h"
 #include "sample.hpp"
+#include "hw/psram_spi.h"
 
 // Total count of elapsed samples
 // at 48 kHz this uint32 value will overflow after 24 hours
@@ -33,6 +34,8 @@ void Track::reset() {
     for (int v=0; v<NUM_CHANNELS; v++) {
         channels[v].next_off_time = 1;
     }
+
+    step_data.init();
 }
 
 void Track::set_volume_percent(int vol) {
@@ -121,12 +124,13 @@ int Track::next_note_idx(int channel) {
 }
 
 Step Track::get_step(int ptn, int chan, int stepno) {
-    Step step = pattern[ptn].chan[chan].step[stepno];
+    Step step = step_data.get_step(ptn, chan, stepno); //pattern[ptn].chan[chan].step[stepno];
     return step;
 }
 
 void Track::set_step(int ptn, int chan, int stepno, Step step) {
-    pattern[ptn].chan[chan].step[stepno] = step;
+    step_data.set_step(ptn, chan, stepno, step);
+    //pattern[ptn].chan[chan].step[stepno] = step;
 }
 
 bool Track::get_channel_activity(int chan) {
@@ -240,10 +244,6 @@ void Track::downmix(AudioBuffer buffer) {
 
 
 
-
-
-Channel::Channel() {}
-
 void Channel::mute(bool mute) {
     is_muted = mute;
     if (mute && type == CHANNEL_INSTRUMENT) {
@@ -303,4 +303,55 @@ void Channel::fill_buffer(uint32_t start_tick) {
 
         buffer[sn] = process();
     }
+}
+
+
+
+void StepData::init() {
+    const size_t step_size = ((sizeof(Step) + 3)/4) * 4;
+    const size_t alloc_size = step_size * PATTERN_MAX_LEN * NUM_PATTERNS * NUM_CHANNELS;
+    printf("stepdata: step_size=%d\n", step_size);
+    printf("stepdata: alloc_size=%d\n", alloc_size);
+
+    baseaddr = psram_alloc(alloc_size);
+    printf("stepdata: addr=%d\n", baseaddr);
+
+    // Initialise data
+    printf("initialising...");
+    Step step;
+    step.on = false;
+    for (int stepno=0; stepno<PATTERN_MAX_LEN; stepno++) {
+        for (int chan=0; chan<NUM_CHANNELS; chan++) {
+            for (int ptn=0; ptn<NUM_PATTERNS; ptn++) {
+                set_step(ptn, chan, stepno, step);
+            }
+        }
+    }
+    printf("done\n");
+}
+
+Step StepData::get_step(int pattern, int chan, int stepno) {
+    const size_t step_size = ((sizeof(Step) + 3)/4) * 4;
+    const int32_t addr = baseaddr + step_size*(PATTERN_MAX_LEN*(NUM_CHANNELS*pattern + chan) + stepno);
+    const size_t num_words = (sizeof(Step) + 3)/4;
+
+    printf("GET ptn %d chan %d step %d\n", pattern, chan, stepno);
+    
+    uint32_t buffer[num_words];
+    psram_readwords(addr, buffer, num_words);
+    
+    Step step;
+    memcpy(&step, buffer, sizeof(Step));
+    return step;
+}
+
+void StepData::set_step(int pattern, int chan, int stepno, Step step) {
+    const size_t step_size = ((sizeof(Step) + 3)/4) * 4;
+    const int32_t addr = baseaddr + step_size*(PATTERN_MAX_LEN*(NUM_CHANNELS*pattern + chan) + stepno);
+    const size_t num_words = (sizeof(Step) + 3)/4;
+
+    uint32_t buffer[num_words];
+    memcpy(buffer, &step, sizeof(Step));
+
+    psram_writewords(addr, buffer, num_words);
 }

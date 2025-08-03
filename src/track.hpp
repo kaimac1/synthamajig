@@ -17,14 +17,22 @@ struct Step {
     int16_t sample_id {-1};
 };
 
-struct ChannelPattern {
-    Step step[PATTERN_MAX_LEN];
-};
-
 struct Pattern {
     int length;
-    ChannelPattern chan[NUM_CHANNELS];
 };
+
+
+
+class StepData {
+public:
+    void init();
+    Step get_step(int pattern, int chan, int stepno);
+    void set_step(int pattern, int chan, int stepno, Step step);
+private:
+    int32_t baseaddr;
+};
+
+
 
 // Channels can be sample channels, where each step can be an arbitrary sample,
 // or instrument channels, which play notes from a single instrument
@@ -35,7 +43,6 @@ enum ChannelType {
 
 class Channel {
 public:
-    Channel();
     void mute(bool mute);
     void silence();
     float process();
@@ -93,6 +100,7 @@ public:
     Channel channels[NUM_CHANNELS];
     int active_channel;
 
+    StepData step_data;
     Pattern pattern[NUM_PATTERNS];
     int current_pattern {0};
 

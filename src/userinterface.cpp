@@ -462,6 +462,7 @@ void init() {
         Step step;
         step.on = on[i];
         step.gate_length = 96;
+        step.sample_id = -1;
         if (on[i]) {
             step.midi_note = notes[i];
             step.trigger = 1;
@@ -475,6 +476,7 @@ void init() {
     Step step;
     step.on = true;
     step.midi_note = 60;
+    step.sample_id = -1;
     track.set_step(0, 2, 0, step);
 
     UIFSM::start();
