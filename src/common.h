@@ -23,7 +23,7 @@
 #define DEFAULT_BRIGHTNESS 3
 
 // 0 - 100
-#define DEFAULT_VOLUME 50
+#define DEFAULT_VOLUME 20
 
 
 
