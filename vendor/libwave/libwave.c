@@ -42,7 +42,7 @@
 #define WAVE_WAVE_ID             ((WaveU32)'WAVE')
 #endif
 
-WAVE_THREAD_LOCAL WaveErr g_err = {WAVE_OK, "", 1};
+WaveErr g_err = {WAVE_OK, "", 1};
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
