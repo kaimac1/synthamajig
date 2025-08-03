@@ -31,7 +31,7 @@ void Track::reset() {
     
     active_channel = 0;
     for (int v=0; v<NUM_CHANNELS; v++) {
-        channels[v].next_note.off_time = 1;
+        channels[v].next_off_time = 1;
     }
 }
 
@@ -56,23 +56,22 @@ void Track::play(bool start_playing) {
         ChannelPattern *p = &pattern[current_pattern].chan[v];
 
         if (start_playing) {
-            c->step = 0;
+            c->stepno = 0;
             c->next_step_time = sampletick;
             c->step_on = false;
             first_step = true;
 
             // Play first note immediately
-            if (p->step[c->step].on) {
-                c->next_note.on_time = sampletick;
-                int len = (samples_per_step * p->step[c->step].gate_length) >> GATE_LENGTH_BITS;
-                c->next_note.off_time = c->next_note.on_time + len;
-                c->next_note.note = p->step[c->step].note;
-                c->next_note.sample_id = p->step[c->step].sample_id;
+            if (p->step[c->stepno].on) {
+                c->next_on_time = sampletick;
+                int len = (samples_per_step * p->step[c->stepno].gate_length) >> GATE_LENGTH_BITS;
+                c->next_off_time = c->next_on_time + len;
+                c->next_step = p->step[c->stepno];
             }
         } else {
-            c->step = 0;
-            c->next_note.on_time = 0;
-            c->next_note.off_time = sampletick;
+            c->stepno = 0;
+            c->next_on_time = 0;
+            c->next_off_time = sampletick;
         }
     }
 }
@@ -92,23 +91,22 @@ void Track::schedule() {
 
             if (!c->step_on && sampletick > c->next_step_time) {
                 // Increment step
-                if (!first_step) c->step = next_note_idx(v);
+                if (!first_step) c->stepno = next_note_idx(v);
 
                 // Now that we are in the "next" step, and it has started,
                 // we can set the on_time for the next step
                 c->next_step_time += samples_per_step;
                 int nn = next_note_idx(v);
                 if (p->step[nn].on) {
-                    c->next_note.on_time = c->next_step_time;
-                    c->next_note.note = p->step[nn].note;
-                    c->next_note.sample_id = p->step[nn].sample_id;
+                    c->next_on_time = c->next_step_time;
+                    c->next_step = p->step[nn];
                     c->step_on = true;
                 }
-            } else if (c->step_on && sampletick > c->next_note.off_time) {
+            } else if (c->step_on && sampletick > c->next_off_time) {
                 // Step off time reached, set off time for the next step
                 int nn = next_note_idx(v);
                 int len = (samples_per_step * p->step[nn].gate_length) >> GATE_LENGTH_BITS;
-                c->next_note.off_time = c->next_note.on_time + len;
+                c->next_off_time = c->next_on_time + len;
                 c->step_on = false;
             }
 
@@ -121,7 +119,7 @@ void Track::schedule() {
 
 int Track::next_note_idx(int channel) {
     if (pattern[current_pattern].length == 0) return 0;
-    return (channels[channel].step + 1) % pattern[current_pattern].length;
+    return (channels[channel].stepno + 1) % pattern[current_pattern].length;
 }
 
 bool Track::get_channel_activity(int chan) {
@@ -271,24 +269,24 @@ void Channel::fill_buffer(uint32_t start_tick) {
         uint32_t tick = start_tick + sn;
 
         if (type == CHANNEL_INSTRUMENT) {
-            if (tick == next_note.on_time) {
+            if (tick == next_on_time) {
                 // Set up instrument to play next note now
                 //set_note_on_instrument(channels[v].inst, &channels[v].next_note);
-                inst->gate = next_note.note.trigger; // NOTE: trigger becomes gate
-                inst->accent = next_note.note.accent;
-                uint32_t freq = midi_note_to_freq(next_note.note.midi_note);
+                inst->gate = next_step.trigger; // NOTE: trigger becomes gate
+                inst->accent = next_step.accent;
+                uint32_t freq = midi_note_to_freq(next_step.midi_note);
                 inst->note_freq = freq;
-            } else if (tick == next_note.off_time) {
+            } else if (tick == next_off_time) {
                 inst->gate = 0;
                 inst->trigger = 0;
             }
 
         } else if (type == CHANNEL_SAMPLE) {
-            if (tick == next_note.on_time) {
-                cur_sample_id = next_note.sample_id;
+            if (tick == next_on_time) {
+                cur_sample_id = next_step.sample_id;
                 cur_sample_pos = 0;
                 if (cur_sample_id >= 0) {
-                    uint32_t play_freq = midi_note_to_freq(next_note.note.midi_note);
+                    uint32_t play_freq = midi_note_to_freq(next_step.midi_note);
                     SampleInfo *samp = SampleManager::get_info(cur_sample_id);
                     uint32_t root_freq = midi_note_to_freq(samp->root_midi_note);
                     cur_sample_ratio = (float)play_freq / root_freq;

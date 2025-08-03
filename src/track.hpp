@@ -9,17 +9,12 @@
 #define PATTERN_MAX_LEN 64
 #define GATE_LENGTH_BITS 7
 
-
-struct Note {
+struct Step {
     uint8_t midi_note;
+    uint8_t gate_length;
+    bool on : 1;
     bool trigger : 1;
     bool accent  : 1;
-};
-
-struct Step {
-    Note note;
-    uint8_t gate_length;
-    bool on;
     int sample_id {-1};
 };
 
@@ -30,14 +25,6 @@ struct ChannelPattern {
 struct Pattern {
     int length;
     ChannelPattern chan[NUM_CHANNELS];
-};
-
-// Note data with a start and end time, sent to instrument
-struct ScheduledNote {
-    uint32_t on_time;
-    uint32_t off_time;
-    int sample_id {-1};
-    Note note;
 };
 
 // Channels can be sample channels, where each step can be an arbitrary sample,
@@ -58,8 +45,10 @@ public:
     ChannelType type;
     Instrument *inst;
     bool is_muted;
-    int step;
-    ScheduledNote next_note;
+    int stepno;
+    Step next_step;
+    uint32_t next_on_time;
+    uint32_t next_off_time;
     int samples_per_step;
 
     int cur_sample_id {-1};

@@ -197,7 +197,7 @@ void PatternView::react(InputEvent const & ievt) {
         if (btn != -1) {
             if (selected_step) {
                 // Edit note of selected step
-                selected_step->note.midi_note = track.last_played_midi_note;
+                selected_step->midi_note = track.last_played_midi_note;
             }
         }
     } else {
@@ -208,7 +208,7 @@ void PatternView::react(InputEvent const & ievt) {
             if (step) {
                 if (shift) {
                     step->on = !step->on;
-                    step->note.trigger = step->on;
+                    step->trigger = step->on;
                 } else {
                     selected_step = step;
                     transit<StepView>();
@@ -250,10 +250,10 @@ void change_step_note(int delta) {
     //     delta2 -= sens*delta_out;
     // }
 
-    int note = selected_step->note.midi_note + delta;
+    int note = selected_step->midi_note + delta;
     if (note < min_note) note = min_note;
     if (note > max_note) note = max_note;
-    selected_step->note.midi_note = note;
+    selected_step->midi_note = note;
 }
 
 void StepView::react(InputEvent const &ievt) {
@@ -284,7 +284,7 @@ void StepView::react(DrawEvent const& devt) {
     ngl_line(sx+bw,sy+1,sx+bw,sy+bh-1, col);
     ngl_text(&font_palmbold, sx+2, sy+2, 0, "note");
     char buf[32];
-    midi_note_to_str(buf, sizeof(buf), selected_step->note.midi_note);
+    midi_note_to_str(buf, sizeof(buf), selected_step->midi_note);
     ngl_textf(FONT_A, sx+bw/2,sy+24,TEXT_CENTRE, "%s", buf);
     
     sx = 65; sy=16;
@@ -301,7 +301,7 @@ void StepView::react(DrawEvent const& devt) {
     ngl_line(sx,sy+1,sx,sy+bh-1, col);
     ngl_line(sx+bw,sy+1,sx+bw,sy+bh-1, col);
     ngl_text(&font_palmbold, sx+2, sy+2, 0, "prob");
-    ngl_textf(FONT_A, sx+8,sy+24,0, "trig=%d", selected_step->note.trigger);
+    ngl_textf(FONT_A, sx+8,sy+24,0, "trig=%d", selected_step->trigger);
 
     sx = 65; sy=73;
     ngl_line(sx+1,sy,sx+bw-1,sy, col);
@@ -447,9 +447,9 @@ void init() {
         p->step[i].on = on[i];
         p->step[i].gate_length = 96;
         if (on[i]) {
-            p->step[i].note.midi_note = notes[i];
-            p->step[i].note.trigger = 1;
-            p->step[i].note.accent  = accts[i];
+            p->step[i].midi_note = notes[i];
+            p->step[i].trigger = 1;
+            p->step[i].accent  = accts[i];
         }        
     }
     track.pattern[0].length = PATTERN_LEN;
@@ -457,7 +457,7 @@ void init() {
     // drum
     p = &track.pattern[0].chan[2];
     p->step[0].on = true;
-    p->step[0].note.midi_note = 60;
+    p->step[0].midi_note = 60;
     //p->step[0].sample_id = 0;
 
     UIFSM::start();
@@ -549,7 +549,7 @@ void control_leds() {
                 pidx = pattern_page*NUM_STEPKEYS + i;
                 if (CHAN_PATTERN.step[pidx].on && pidx < PATTERN.length) led = LED_DIM;
                 if (track.is_playing) {
-                    if (CHANNEL.step == pidx) led = LED_ON;
+                    if (CHANNEL.stepno == pidx) led = LED_ON;
                 }
                 break;
 
@@ -566,7 +566,7 @@ void draw_debug_info(void) {
 
     //draw_textf(70,0,0, "P%02d", track.pattern_idx+1);
     ngl_textf(FONT_A, 127,0,TEXT_ALIGN_RIGHT, "%d/%d",
-        track.channels[track.active_channel].step+1, PATTERN.length);
+        track.channels[track.active_channel].stepno+1, PATTERN.length);
     
     // audio CPU usage
     int64_t time_audio_us = perf_get(PERF_AUDIO);
