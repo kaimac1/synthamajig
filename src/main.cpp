@@ -18,8 +18,7 @@ int main(void) {
     UI::init();
     hw_audio_start();
 
-    // debug_shell_init();
-    // prompt();
+    // debug_shell();
 
     bool update_display = true;
     int ctr = 0;

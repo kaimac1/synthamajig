@@ -207,7 +207,7 @@ int psram_write_test(int argc, char **argv) {
 }
 
 
-void debug_shell_init(void) {
+void debug_shell(void) {
     set_read_char(getchar);
     set_write_char(write_char);
 
@@ -224,4 +224,6 @@ void debug_shell_init(void) {
     ADD_CMD("msc", "mass storage mode", enter_msc);
     ADD_CMD("ledtest", "led test", led_test);
     ADD_CMD("ramw", "psram write", psram_write_test);
+
+    prompt();
 }

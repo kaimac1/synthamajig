@@ -6,7 +6,7 @@ extern "C" {
 
 #include "shell/shell.h"
 
-void debug_shell_init(void);
+void debug_shell(void);
 
 #ifdef __cplusplus
 }
