@@ -61,3 +61,12 @@ bool check_pressed(InputState *input, int btn) {
     }
     return pressed;
 }
+
+bool check_released(InputState *input, int btn) {
+    bool released = false;
+    if (input->button_state[btn] == BTN_RELEASED) {
+        released = true;
+        input->button_state[btn] = BTN_UP;
+    }
+    return released;
+}

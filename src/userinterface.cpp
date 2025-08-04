@@ -26,7 +26,7 @@ FSM_INITIAL_STATE(UI::UIFSM, UI::TrackView);
 
 // Macros for readability
 #define PRESSED(btn) check_pressed(&inputs, (btn))
-#define RELEASED(btn) btn_release(&inputs, (btn))
+#define RELEASED(btn) check_released(&inputs, (btn))
 #define MOD_PRESSED(mod, btn) (btn_down(&inputs, (mod)) && btn_press(&inputs, (btn)))
 
 // The current channel and pattern
@@ -53,7 +53,8 @@ bool keys_pressed;
 int pattern_page;           // Which page of the pattern we can currently see
 Step new_step;
 Step steps[NUM_STEPKEYS];   // Data for currently visible steps
-int selected_step;          // Index into steps for selected step
+int selected_step = -1;     // Index into steps for selected step
+bool state_changes_made;
 
 void control_leds();
 void draw_debug_info();
@@ -99,6 +100,41 @@ void draw_header() {
 
 
 /************************************************************/
+// Quick change
+// If changes are made in a state while holding down its relevant button,
+// e.g. new channel selected while holding down CHAN, releasing the button
+// will return to the previous state
+
+UIFSM::state_ptr_t previous_state[2] = {NULL, NULL};
+
+// // Get state ptr for a state
+// template <typename S> UIFSM::state_ptr_t state_ptr() {
+//     return &tinyfsm::_state_instance<S>::value;
+// }
+
+void UIFSM::entry() {
+    printf("state entry %p\n", current_state_ptr);
+    previous_state[0] = previous_state[1];
+    previous_state[1] = current_state_ptr;
+    state_changes_made = false;
+    react(DrawEvent {});
+}
+
+void UIFSM::exit() {
+    printf("state exit %p\n", current_state_ptr);
+}
+
+void UIFSM::pop_quick_change() {
+    if (state_changes_made && previous_state[0]) {
+        // Go back to previous state
+        current_state_ptr->exit();
+        current_state_ptr = previous_state[0];
+        current_state_ptr->entry();
+    }
+}
+
+
+/************************************************************/
 // Default input handler
 
 void UIFSM::react(InputEvent const & evt) {
@@ -106,6 +142,8 @@ void UIFSM::react(InputEvent const & evt) {
         transit<TrackView>();
     } else if (PRESSED(BTN_CHAN)) {
         transit<ChannelsOverview>();
+    } else if (RELEASED(BTN_CHAN)) {
+        pop_quick_change();
     } else if (PRESSED(BTN_PATTERN)) {
         if (!is_in_state<PatternView>()) {
             pattern_page = 0;
@@ -153,9 +191,11 @@ void ChannelsOverview::react(InputEvent const & ievt) {
         for (int i=0; i<NUM_CHANNELS; i++) {
             if (MOD_PRESSED(BTN_SHIFT, i)) {
                 track.channels[i].mute(!track.channels[i].is_muted);
+                state_changes_made = true;
             } else if (PRESSED(i)) {
                 track.active_channel = i;
-                transit<ChannelView>();
+                state_changes_made = true;
+                //transit<ChannelView>();
                 return;
             }
         }
@@ -178,7 +218,6 @@ void ChannelsOverview::react(DrawEvent const & devt) {
 void ChannelView::react(DrawEvent const & devt) {
     ChannelsOverview::react(DrawEvent {});
     ngl_text(FONT_A,  32,32,0, "Chan edit");
-    ngl_textf(FONT_A, 16,80,0, "Samp: %d", track.channels[track.active_channel].cur_sample_id);
 }
 
 
@@ -193,7 +232,9 @@ void write_selected_to_step(int i) {
 }
 
 void PatternView::entry() {
+    printf("patternview\n");
     load_steps();
+    UIFSM::entry();
 }
 
 void PatternView::react(InputEvent const & ievt) {
@@ -206,20 +247,18 @@ void PatternView::react(InputEvent const & ievt) {
         }
     }
 
-    if (track.keyboard_enabled) {
-        if (btn != -1) {
+    if (btn >= 0) {
+        if (track.keyboard_enabled) {
             if (selected_step) {
                 // Edit note of selected step
                 steps[selected_step].midi_note = track.last_played_midi_note;
                 update_step(selected_step);
             }
-        }
-    } else {
-        // Select or toggle steps
-        if (recording) {
-            write_selected_to_step(btn);
         } else {
-            if (btn >= 0) {
+            // Select or toggle steps
+            if (recording) {
+                write_selected_to_step(btn);
+            } else {
                 if (shift) {
                     steps[btn].on = !steps[btn].on;
                     steps[btn].trigger = steps[btn].on;
@@ -404,7 +443,7 @@ void SampleSelector::react(DrawEvent const& devt) {
 
 void Screensaver::entry() {
     screensaver_active = true;
-    react(DrawEvent {});
+    UIFSM::entry();
 }
 void Screensaver::exit() {
     screensaver_active = false;
@@ -569,6 +608,7 @@ void control_leds() {
 
             case LEDS_SHOW_STEPS:
                 if (steps[i].on && stepno < PATTERN_LENGTH) led = LED_DIM;
+                if (stepno == selected_step) led = LED_ON;
                 if (track.is_playing) {
                     if (CHANNEL.stepno == stepno) led = LED_ON;
                 }

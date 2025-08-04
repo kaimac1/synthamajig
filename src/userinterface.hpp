@@ -27,10 +27,11 @@ namespace UI {
     class UIFSM : public tinyfsm::Fsm<UIFSM> {
     public:
         void react(tinyfsm::Event const &) {};
+        void pop_quick_change();
         virtual void react(DrawEvent const & evt) {};
         virtual void react(InputEvent const & evt);
-        virtual void entry() {react(DrawEvent {});};
-        virtual void exit() {};
+        virtual void entry();
+        virtual void exit();
     };
 
     class Screensaver : public UIFSM {

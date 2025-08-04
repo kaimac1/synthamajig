@@ -49,10 +49,9 @@ inline bool btn_release(const InputState *input, int btn) {
     return input->button_state[btn] == BTN_RELEASED;
 }
 
-
-
 // These functions "consume" a successful check, so subsequent checks don't fire
 bool check_pressed(InputState *input, int btn);
+bool check_released(InputState *input, int btn);
 
 
 
