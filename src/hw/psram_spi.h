@@ -274,22 +274,8 @@ __force_inline static void psram_write32(uint32_t addr, uint32_t val) {
     restore_interrupts(irq);
 };
 
-__force_inline static void psram_writewords(uint32_t addr, uint32_t *buffer, uint32_t num_words) {
-    uint32_t setup = (7 + 8*num_words) << 16;
-    uint32_t cmd = 0x02000000 | addr;
-    int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
-
-    uint32_t irq = save_and_disable_interrupts();
-    pio_sm_put(PSRAM_PIO, sm, setup);
-    pio_sm_put(PSRAM_PIO, sm, cmd);
-    while (num_words) {
-        pio_sm_put(PSRAM_PIO, sm, __builtin_bswap32(*buffer++));
-        num_words--;
-        while(!pio_sm_is_tx_fifo_empty(PSRAM_PIO, sm));
-    }
-    restore_interrupts(irq);
-}
-
+// Write bytes from a buffer
+// The address range must not cross the 8MB boundary as this only writes to one device!
 __force_inline static void psram_writebuf(uint32_t addr, uint8_t *buffer, size_t bytes) {
     uint32_t setup = (7 + 2*bytes) << 16;
     uint32_t cmd = 0x02000000 | addr;
@@ -334,23 +320,8 @@ __force_inline static uint8_t psram_read8(uint32_t addr) {
     return psram_read32(addr) >> 24;
 };
 
-// Read a number of 32-bit words into a buffer
+// Read bytes into a buffer
 // The address range must not cross the 8MB boundary as this only reads from one device!
-__force_inline static void psram_readwords(uint32_t addr, uint32_t *buffer, uint32_t num_words) {
-    uint32_t setup = 0x00070000 | (8*num_words);
-    uint32_t cmd = 0xeb000000 | addr;
-    int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
-
-    uint32_t irq = save_and_disable_interrupts();
-    pio_sm_put(PSRAM_PIO, sm, setup);
-    pio_sm_put(PSRAM_PIO, sm, cmd);
-    while (num_words) {
-        *buffer++ = __builtin_bswap32(pio_sm_get_blocking(PSRAM_PIO, sm));
-        num_words--;
-    }
-    restore_interrupts(irq);
-};
-
 __force_inline static void psram_readbuf(uint32_t addr, uint8_t *buffer, size_t bytes) {
     const size_t words = (bytes + 3)/4;
     uint32_t setup = 0x00070000 | (8*words);
