@@ -25,6 +25,7 @@ static inline SampleInfo *get_sample_info(int sample_id) {
 }
 
 void init() {
+    INIT_PRINTF("samples\n");
     build_list();
 }
     
@@ -57,7 +58,7 @@ int build_list() {
         if (wave_get_num_channels(&wavefile) == 1 && wave_get_sample_size(&wavefile) == FRAME_SIZE) {
             valid = true;
         } else {
-            DEBUG_PRINTF("Sample %s not in right format\n", sample_name);
+            INIT_PRINTF("  (\"%s\" not in right format)\n", sample_name);
         }
 
         if (valid) {
@@ -73,7 +74,7 @@ int build_list() {
             sample_list.push_back(samp);
             sample_map[samp.sample_id] = sample_list.size() - 1; // Map stores index of sample in list
 
-            DEBUG_PRINTF("Added sample %s, id=%d len=%d idx=%d\n", sample_name, samp.sample_id, samp.length, sample_map[samp.sample_id]);
+            INIT_PRINTF("  %d: \"%s\", len=%d idx=%d\n", samp.sample_id, sample_name, samp.length, sample_map[samp.sample_id]);
 
             next_id++;
         }
@@ -101,9 +102,7 @@ int load_sample_data(const char *path, SampleInfo *samp) {
     size_t total_bytes_read = 0;
     uint32_t addr = samp->addr;
     while (bytes_read == buffer_size) {
-        DEBUG_PRINTF(".");
         bytes_read = FRAME_SIZE * wave_read(&wavefile, (void*)buffer, num_read_frames);
-        DEBUG_PRINTF("x");
         total_bytes_read += bytes_read;
 
         // TODO: speed this up with a psram_writewords function
@@ -137,13 +136,11 @@ int load(int sample_id) {
 
     // Allocate memory in sample RAM
     const size_t data_size = samp->size_bytes;
-    DEBUG_PRINTF("alloc");
     int32_t addr = psram_alloc(data_size);
     if (addr < 0) {
         DEBUG_PRINTF("Allocation of %d bytes failed\n", data_size);
         return -1;
     }
-    DEBUG_PRINTF(" ok");
     samp->addr = addr;
 
     if (load_sample_data(full_path, samp) == 0) {

@@ -181,6 +181,31 @@ int led_test(int argc, char **argv) {
     return 0;
 }
 
+int psram_write_test(int argc, char **argv) {
+
+    uint16_t samps[3] = {1234, 2345, 3456};
+
+    uint32_t buffer[2];
+    memcpy(buffer, (void*)samps, 6);
+
+    //psram_writebuf(0, (void*)samps, 6);
+    psram_write32(0, *(uint32_t*)((uint8_t*)buffer + 0));
+    psram_write32(4, *(uint32_t*)((uint8_t*)buffer + 4));
+
+    uint32_t val = psram_read32(0);
+    printf("val = %08x\n", val);
+
+    uint8_t readbuf[8];
+    psram_readbuf(0, readbuf, 8);
+
+    for (int i=0; i<8; i++) {
+        printf("%02x ", readbuf[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
+
 
 void debug_shell_init(void) {
     set_read_char(getchar);
@@ -198,4 +223,5 @@ void debug_shell_init(void) {
     ADD_CMD("ramtest", "PSRAM test", ram_test);
     ADD_CMD("msc", "mass storage mode", enter_msc);
     ADD_CMD("ledtest", "led test", led_test);
+    ADD_CMD("ramw", "psram write", psram_write_test);
 }

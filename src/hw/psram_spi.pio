@@ -49,6 +49,7 @@ readloop_mid:
 ; then send 32-bit data (first word will be command + 24-bit address)
 begin:
     set pins, 1                 ; CS high
+    pull
     out x, 16                   ; high 16 bits of setup word = number of nibbles to output MINUS ONE
     out y, 16                   ; low 16 bits of setup word = number of nibbles to input
     set pins, 0         side 0  ; CS low    

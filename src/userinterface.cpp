@@ -72,13 +72,13 @@ int next_pattern_page(void) {
 
 void load_steps(void) {
     for (int i=0; i<NUM_STEPKEYS; i++) {
-        steps[i] = track.get_step(track.current_pattern, track.active_channel, NUM_STEPKEYS*pattern_page + i);
+        steps[i] = track.step_data.get_step(track.current_pattern, track.active_channel, NUM_STEPKEYS*pattern_page + i);
     }
 }
 
 void update_step(int i) {
     if ((i < 0) || (i >= NUM_STEPKEYS)) return;
-    track.set_step(track.current_pattern, track.active_channel, NUM_STEPKEYS*pattern_page + i, steps[i]);
+    track.step_data.set_step(track.current_pattern, track.active_channel, NUM_STEPKEYS*pattern_page + i, steps[i]);
 }
 
 // Get the step in the pattern corresponding to the given key.
@@ -112,6 +112,7 @@ void UIFSM::react(InputEvent const & evt) {
             transit<PatternView>();    
         } else {
             pattern_page = next_pattern_page();
+            load_steps();
         }
         
     } else if (PRESSED(BTN_PLAY)) {
@@ -468,7 +469,7 @@ void init() {
             step.trigger = 1;
             step.accent  = accts[i];
         }
-        track.set_step(0, 0, i, step);
+        track.step_data.set_step(0, 0, i, step);
     }
     track.pattern[0].length = PTNLEN;
 
@@ -477,12 +478,13 @@ void init() {
     step.on = true;
     step.midi_note = 60;
     step.sample_id = -1;
-    track.set_step(0, 2, 0, step);
+    track.step_data.set_step(0, 2, 0, step);
 
     UIFSM::start();
 }
 
 bool process(RawInput in) {
+    perf_start(PERF_UI_UPDATE);
 
     bool update = false;
 
@@ -505,6 +507,7 @@ bool process(RawInput in) {
 
     control_leds();
 
+    perf_end(PERF_UI_UPDATE);
     return update;
 }
 

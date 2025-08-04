@@ -28,14 +28,8 @@ int main(void) {
         RawInput raw_input = audio_wait();
 
         // Update device state & draw UI
-        //time_loop_us = perf_loop(PERF_MAINLOOP);
-        perf_start(PERF_UI_UPDATE);
         if (UI::process(raw_input)) {
             update_display = true;
-        }
-        int64_t time_ui = perf_end(PERF_UI_UPDATE);
-        if (time_ui > 500) {
-            //printf("time ui: %lld us\n", time_ui);
         }
 
         // Write framebuffer out to display when needed

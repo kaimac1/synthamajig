@@ -262,15 +262,14 @@ __force_inline static void psram_write32(uint32_t addr, uint32_t val) {
     uint32_t cmd = 0x02000000 | addr;
     int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
 
-    
     uint32_t irq = save_and_disable_interrupts();
     pio_sm_put(PSRAM_PIO, sm, setup);
     pio_sm_put(PSRAM_PIO, sm, cmd);
-    pio_sm_put(PSRAM_PIO, sm, val);
+    pio_sm_put(PSRAM_PIO, sm, __builtin_bswap32(val));
     int timeout = 10000;
     while(!pio_sm_is_tx_fifo_empty(PSRAM_PIO, sm) && timeout) timeout--;
     if (timeout == 0) {
-        printf("psram timeout! addr %08x val %08x\n", addr, val);
+        printf("psram timeout! addr %08x\n", addr);
     }
     restore_interrupts(irq);
 };
@@ -284,8 +283,26 @@ __force_inline static void psram_writewords(uint32_t addr, uint32_t *buffer, uin
     pio_sm_put(PSRAM_PIO, sm, setup);
     pio_sm_put(PSRAM_PIO, sm, cmd);
     while (num_words) {
-        pio_sm_put(PSRAM_PIO, sm, *buffer++);
+        pio_sm_put(PSRAM_PIO, sm, __builtin_bswap32(*buffer++));
         num_words--;
+        while(!pio_sm_is_tx_fifo_empty(PSRAM_PIO, sm));
+    }
+    restore_interrupts(irq);
+}
+
+__force_inline static void psram_writebuf(uint32_t addr, uint8_t *buffer, size_t bytes) {
+    uint32_t setup = (7 + 2*bytes) << 16;
+    uint32_t cmd = 0x02000000 | addr;
+    int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
+
+    uint32_t irq = save_and_disable_interrupts();
+    pio_sm_put(PSRAM_PIO, sm, setup);
+    pio_sm_put(PSRAM_PIO, sm, cmd);
+    int num_bytes = bytes;
+    while (num_bytes > 0) {
+        pio_sm_put(PSRAM_PIO, sm, __builtin_bswap32(*(uint32_t*)buffer));
+        num_bytes -= 4;
+        buffer += 4;
         while(!pio_sm_is_tx_fifo_empty(PSRAM_PIO, sm));
     }
     restore_interrupts(irq);
@@ -302,11 +319,19 @@ __force_inline static uint32_t psram_read32(uint32_t addr) {
     uint32_t cmd = 0xeb000000 | addr;
     int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
 
+    uint32_t irq = save_and_disable_interrupts();
     pio_sm_put(PSRAM_PIO, sm, setup);
     pio_sm_put(PSRAM_PIO, sm, cmd);
     uint32_t val = pio_sm_get_blocking(PSRAM_PIO, sm);
+    restore_interrupts(irq);
 
-    return val;
+    return __builtin_bswap32(val);
+};
+
+// Read single 8-bit value
+__force_inline static uint8_t psram_read8(uint32_t addr) {
+    // We can't actually read less than 32 bits at a time, so do that
+    return psram_read32(addr) >> 24;
 };
 
 // Read a number of 32-bit words into a buffer
@@ -316,15 +341,34 @@ __force_inline static void psram_readwords(uint32_t addr, uint32_t *buffer, uint
     uint32_t cmd = 0xeb000000 | addr;
     int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
 
+    uint32_t irq = save_and_disable_interrupts();
     pio_sm_put(PSRAM_PIO, sm, setup);
     pio_sm_put(PSRAM_PIO, sm, cmd);
     while (num_words) {
-        *buffer++ = pio_sm_get_blocking(PSRAM_PIO, sm);
+        *buffer++ = __builtin_bswap32(pio_sm_get_blocking(PSRAM_PIO, sm));
         num_words--;
     }
+    restore_interrupts(irq);
 };
 
+__force_inline static void psram_readbuf(uint32_t addr, uint8_t *buffer, size_t bytes) {
+    const size_t words = (bytes + 3)/4;
+    uint32_t setup = 0x00070000 | (8*words);
+    uint32_t cmd = 0xeb000000 | addr;
+    int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
 
+    uint32_t irq = save_and_disable_interrupts();
+    pio_sm_put(PSRAM_PIO, sm, setup);
+    pio_sm_put(PSRAM_PIO, sm, cmd);
+    int num_bytes = bytes;
+    while (num_bytes > 0) {
+        uint32_t data32 = __builtin_bswap32(pio_sm_get_blocking(PSRAM_PIO, sm));
+        memcpy(buffer, &data32, num_bytes >= 4 ? 4 : num_bytes);
+        buffer += 4;
+        num_bytes -= 4;
+    }
+    restore_interrupts(irq);
+};
 
 
 

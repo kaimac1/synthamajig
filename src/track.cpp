@@ -64,7 +64,7 @@ void Track::play(bool start_playing) {
             first_step = true;
 
             // Play first note immediately
-            const Step first_step = get_step(current_pattern, v, c->stepno);
+            const Step first_step = step_data.get_step(current_pattern, v, c->stepno);
             if (first_step.on) {
                 c->next_on_time = sampletick;
                 int len = (samples_per_step * first_step.gate_length) >> GATE_LENGTH_BITS;
@@ -99,7 +99,7 @@ void Track::schedule() {
                 // we can set the on_time for the next step
                 c->next_step_time += samples_per_step;
                 int nn = next_note_idx(v);
-                const Step next_step = get_step(current_pattern, v, nn);
+                const Step next_step = step_data.get_step(current_pattern, v, nn);
                 if (next_step.on) {
                     c->next_on_time = c->next_step_time;
                     c->next_step = next_step;
@@ -108,7 +108,7 @@ void Track::schedule() {
             } else if (c->step_on && sampletick > c->next_off_time) {
                 // Step off time reached, set off time for the next step
                 int nn = next_note_idx(v);
-                const Step next_step = get_step(current_pattern, v, nn);
+                const Step next_step = step_data.get_step(current_pattern, v, nn);
                 int len = (samples_per_step * next_step.gate_length) >> GATE_LENGTH_BITS;
                 c->next_off_time = c->next_on_time + len;
                 c->step_on = false;
@@ -121,16 +121,6 @@ void Track::schedule() {
 int Track::next_note_idx(int channel) {
     if (pattern[current_pattern].length == 0) return 0;
     return (channels[channel].stepno + 1) % pattern[current_pattern].length;
-}
-
-Step Track::get_step(int ptn, int chan, int stepno) {
-    Step step = step_data.get_step(ptn, chan, stepno); //pattern[ptn].chan[chan].step[stepno];
-    return step;
-}
-
-void Track::set_step(int ptn, int chan, int stepno, Step step) {
-    step_data.set_step(ptn, chan, stepno, step);
-    //pattern[ptn].chan[chan].step[stepno] = step;
 }
 
 bool Track::get_channel_activity(int chan) {
@@ -308,13 +298,11 @@ void Channel::fill_buffer(uint32_t start_tick) {
 
 
 void StepData::init() {
-    const size_t step_size = ((sizeof(Step) + 3)/4) * 4;
-    const size_t alloc_size = step_size * PATTERN_MAX_LEN * NUM_PATTERNS * NUM_CHANNELS;
-    printf("stepdata: step_size=%d\n", step_size);
+    const size_t alloc_size = sizeof(Step) * PATTERN_MAX_LEN * NUM_PATTERNS * NUM_CHANNELS;
+    printf("stepdata: step_size=%d\n", sizeof(Step));
     printf("stepdata: alloc_size=%d\n", alloc_size);
 
     baseaddr = psram_alloc(alloc_size);
-    printf("stepdata: addr=%d\n", baseaddr);
 
     // Initialise data
     printf("initialising...");
@@ -331,27 +319,15 @@ void StepData::init() {
 }
 
 Step StepData::get_step(int pattern, int chan, int stepno) {
-    const size_t step_size = ((sizeof(Step) + 3)/4) * 4;
-    const int32_t addr = baseaddr + step_size*(PATTERN_MAX_LEN*(NUM_CHANNELS*pattern + chan) + stepno);
-    const size_t num_words = (sizeof(Step) + 3)/4;
-
-    printf("GET ptn %d chan %d step %d\n", pattern, chan, stepno);
-    
-    uint32_t buffer[num_words];
-    psram_readwords(addr, buffer, num_words);
+    const int32_t addr = baseaddr + sizeof(Step)*(PATTERN_MAX_LEN*(NUM_CHANNELS*pattern + chan) + stepno);
     
     Step step;
-    memcpy(&step, buffer, sizeof(Step));
+    psram_readbuf(addr, (uint8_t*)&step, sizeof(Step));
     return step;
 }
 
 void StepData::set_step(int pattern, int chan, int stepno, Step step) {
-    const size_t step_size = ((sizeof(Step) + 3)/4) * 4;
-    const int32_t addr = baseaddr + step_size*(PATTERN_MAX_LEN*(NUM_CHANNELS*pattern + chan) + stepno);
-    const size_t num_words = (sizeof(Step) + 3)/4;
+    const int32_t addr = baseaddr + sizeof(Step)*(PATTERN_MAX_LEN*(NUM_CHANNELS*pattern + chan) + stepno);
 
-    uint32_t buffer[num_words];
-    memcpy(buffer, &step, sizeof(Step));
-
-    psram_writewords(addr, buffer, num_words);
+    psram_writebuf(addr, (uint8_t*)&step, sizeof(Step));
 }
