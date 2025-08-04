@@ -276,7 +276,7 @@ __force_inline static void psram_write32(uint32_t addr, uint32_t val) {
 
 // Write bytes from a buffer
 // The address range must not cross the 8MB boundary as this only writes to one device!
-__force_inline static void psram_writebuf(uint32_t addr, uint8_t *buffer, size_t bytes) {
+__force_inline static void psram_write(uint32_t addr, uint8_t *buffer, size_t bytes) {
     uint32_t setup = (7 + 2*bytes) << 16;
     uint32_t cmd = 0x02000000 | addr;
     int sm = (addr >= PSRAM_DEVICE_SIZE) ? PSRAM_SM1 : PSRAM_SM0;
@@ -322,7 +322,7 @@ __force_inline static uint8_t psram_read8(uint32_t addr) {
 
 // Read bytes into a buffer
 // The address range must not cross the 8MB boundary as this only reads from one device!
-__force_inline static void psram_readbuf(uint32_t addr, uint8_t *buffer, size_t bytes) {
+__force_inline static void psram_read(uint32_t addr, uint8_t *buffer, size_t bytes) {
     const size_t words = (bytes + 3)/4;
     uint32_t setup = 0x00070000 | (8*words);
     uint32_t cmd = 0xeb000000 | addr;
@@ -341,136 +341,6 @@ __force_inline static void psram_readbuf(uint32_t addr, uint8_t *buffer, size_t 
     restore_interrupts(irq);
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/**
- * @brief Write 32 bits of data to a given address asynchronously to the PSRAM
- * SPI PIO, driven by DMA without CPU involvement.
- *
- * This function is optimized to write 32 bits as quickly as possible to the
- * PSRAM as opposed to the more general-purpose psram_write() function.
- *
- * @param spi The PSRAM configuration instance returned from psram_spi_init().
- * @param addr Address to write to.
- * @param val Value to write.
- */
-#if defined(PSRAM_ASYNC)
-__force_inline static void psram_write32_async(psram_spi_inst_t* spi, uint32_t addr, uint32_t val) {
-    // Break the address into three bytes and send read command
-    write32_command[3] = addr >> 16;
-    write32_command[4] = addr >> 8;
-    write32_command[5] = addr;
-    write32_command[6] = val;
-    write32_command[7] = val >> 8;
-    write32_command[8] = val >> 16;
-    write32_command[9] = val >> 24;
-
-    pio_spi_write_async(spi, write32_command, sizeof(write32_command));
-};
-#endif
-
-
-static uint8_t write_command[] = {
-    0,          // n bits write
-    0,          // 0 bits read
-    0x02u,      // Fast write command
-    0, 0, 0     // Address
-};
-/**
- * @brief Write @c count bytes of data to a given address to the PSRAM SPI PIO,
- * driven by DMA without CPU involvement, blocking until the write is
- * complete.
- *
- * @param spi The PSRAM configuration instance returned from psram_spi_init().
- * @param addr Address to write to.
- * @param src Pointer to the source data to write.
- * @param count Number of bytes to write.
- */
-__force_inline static void psram_write(psram_spi_inst_t* spi, const uint32_t addr, const uint8_t* src, const size_t count) {
-    // Break the address into three bytes and send read command
-    write_command[0] = (4 + count) * 8;
-    write_command[3] = addr >> 16;
-    write_command[4] = addr >> 8;
-    write_command[5] = addr;
-
-    //pio_spi_write_dma_blocking(spi, write_command, sizeof(write_command));
-    //pio_spi_write_dma_blocking(spi, src, count);
-};
-
-
-static uint8_t read_command[] = {
-    40,         // 40 bits write
-    0,          // n bits read
-    0x0bu,      // Fast read command
-    0, 0, 0,    // Address
-    0           // 8 delay cycles
-};
-/**
- * @brief Read @c count bits of data from a given address to the PSRAM SPI PIO,
- * driven by DMA without CPU involvement, blocking until the read is
- * complete.
- *
- * @param spi The PSRAM configuration instance returned from psram_spi_init().
- * @param addr Address to read from.
- * @param dst Pointer to the destination for the read data.
- * @param count Number of bytes to read.
- */
-__force_inline static void psram_read(psram_spi_inst_t* spi, const uint32_t addr, uint8_t* dst, const size_t count) {
-    read_command[1] = count * 8;
-    read_command[3] = addr >> 16;
-    read_command[4] = addr >> 8;
-    read_command[5] = addr;
-
-    //pio_qspi_read_write_dma(spi, read_command, sizeof(read_command), dst, count);
-};
-
-
-static uint8_t write_async_fast_command[134] = {
-    0,          // n bits write
-    0,          // 0 bits read
-    0x02u      // Fast write command
-};
-/**
- * @brief Write @c count bytes of data to a given address asynchronously to the
- * PSRAM SPI PIO, driven by DMA without CPU involvement. 
- *
- * @param spi The PSRAM configuration instance returned from psram_spi_init().
- * @param addr Address to write to.
- * @param src Pointer to the source data to write.
- * @param count Number of bytes to write.
- */
-#if defined(PSRAM_ASYNC)
-__force_inline static void psram_write_async_fast(psram_spi_inst_t* spi, uint32_t addr, uint8_t* val, const size_t count) {
-    write_async_fast_command[0] = (4 + count) * 8;
-    write_async_fast_command[3] = addr >> 16;
-    write_async_fast_command[4] = addr >> 8;
-    write_async_fast_command[5] = addr;
-
-    memcpy(write_async_fast_command + 6, val, count);
-
-    pio_spi_write_async(spi, write_async_fast_command, 6 + count);
-};
-#endif
 
 
 #ifdef __cplusplus

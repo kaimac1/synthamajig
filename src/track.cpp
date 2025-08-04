@@ -305,7 +305,6 @@ void StepData::init() {
     baseaddr = psram_alloc(alloc_size);
 
     // Initialise data
-    printf("initialising...");
     Step step;
     step.on = false;
     for (int stepno=0; stepno<PATTERN_MAX_LEN; stepno++) {
@@ -315,19 +314,18 @@ void StepData::init() {
             }
         }
     }
-    printf("done\n");
 }
 
 Step StepData::get_step(int pattern, int chan, int stepno) {
     const int32_t addr = baseaddr + sizeof(Step)*(PATTERN_MAX_LEN*(NUM_CHANNELS*pattern + chan) + stepno);
     
     Step step;
-    psram_readbuf(addr, (uint8_t*)&step, sizeof(Step));
+    psram_read(addr, (uint8_t*)&step, sizeof(Step));
     return step;
 }
 
 void StepData::set_step(int pattern, int chan, int stepno, Step step) {
     const int32_t addr = baseaddr + sizeof(Step)*(PATTERN_MAX_LEN*(NUM_CHANNELS*pattern + chan) + stepno);
 
-    psram_writebuf(addr, (uint8_t*)&step, sizeof(Step));
+    psram_write(addr, (uint8_t*)&step, sizeof(Step));
 }

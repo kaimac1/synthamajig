@@ -188,7 +188,7 @@ int psram_write_test(int argc, char **argv) {
     uint32_t buffer[2];
     memcpy(buffer, (void*)samps, 6);
 
-    //psram_writebuf(0, (void*)samps, 6);
+    //psram_write(0, (void*)samps, 6);
     psram_write32(0, *(uint32_t*)((uint8_t*)buffer + 0));
     psram_write32(4, *(uint32_t*)((uint8_t*)buffer + 4));
 
@@ -196,7 +196,7 @@ int psram_write_test(int argc, char **argv) {
     printf("val = %08x\n", val);
 
     uint8_t readbuf[8];
-    psram_readbuf(0, readbuf, 8);
+    psram_read(0, readbuf, 8);
 
     for (int i=0; i<8; i++) {
         printf("%02x ", readbuf[i]);
